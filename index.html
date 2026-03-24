@@ -13,7 +13,6 @@
         .bg-dark-card { background-color: #1e293b; }
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        /* Custom scrollbar untuk tabel */
         ::-webkit-scrollbar { height: 8px; width: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
@@ -28,13 +27,14 @@
                 <span class="text-xl font-black tracking-tighter hidden sm:inline">MASS <span class="text-blue-500">PRO</span></span>
             </div>
             
-            <div class="flex gap-2 md:gap-6 h-full items-center text-xs md:text-sm overflow-x-auto">
+            <div class="flex gap-2 md:gap-4 h-full items-center text-xs md:text-sm overflow-x-auto">
                 <button onclick="switchTab('kategori')" id="tab-kategori" class="px-2 py-5 font-bold active-tab transition-all whitespace-nowrap">KATEGORI</button>
                 <button onclick="switchTab('atlet')" id="tab-atlet" class="px-2 py-5 font-bold text-slate-400 hover:text-white transition-all whitespace-nowrap">ATLET</button>
                 <button onclick="switchTab('drawing')" id="tab-drawing" class="px-2 py-5 font-bold text-slate-400 hover:text-white transition-all whitespace-nowrap">DRAWING</button>
                 <button onclick="switchTab('scoring')" id="tab-scoring" class="px-2 py-5 font-bold text-slate-400 hover:text-white transition-all whitespace-nowrap">PENILAIAN</button>
                 <button onclick="switchTab('ranking')" id="tab-ranking" class="px-2 py-5 font-bold text-slate-400 hover:text-white transition-all whitespace-nowrap">RANKING</button>
-                <button onclick="switchTab('admin')" id="tab-admin" class="px-2 py-5 font-bold text-red-400 hover:text-red-300 transition-all whitespace-nowrap"><i class="fas fa-cog"></i> ADMIN</button>
+                <button onclick="switchTab('juara')" id="tab-juara" class="px-2 py-5 font-bold text-yellow-500 hover:text-yellow-400 transition-all whitespace-nowrap"><i class="fas fa-crown"></i> JUARA UMUM</button>
+                <button onclick="switchTab('admin')" id="tab-admin" class="px-2 py-5 font-bold text-red-400 hover:text-red-300 transition-all whitespace-nowrap"><i class="fas fa-cog"></i></button>
             </div>
         </div>
     </nav>
@@ -156,6 +156,7 @@
                             <button id="btn-save-b1" onclick="saveScore(1)" class="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-lg font-bold text-white transition-colors shadow-lg shadow-blue-900/50">SIMPAN BABAK 1</button>
                             <button id="btn-save-b2" onclick="saveScore(2)" class="bg-teal-600 hover:bg-teal-500 px-8 py-3 rounded-lg font-bold text-white transition-colors">SIMPAN BABAK 2</button>
                             <button id="btn-save-penyisihan" onclick="saveScore('penyisihan')" class="hidden bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-lg font-bold text-white transition-colors shadow-lg shadow-purple-900/50">SIMPAN PENYISIHAN</button>
+                            <button id="btn-save-final" onclick="saveScore('final')" class="hidden bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-lg font-bold text-white transition-colors shadow-lg shadow-yellow-900/50">SIMPAN BABAK FINAL</button>
                         </div>
                     </div>
                 </div>
@@ -164,49 +165,67 @@
 
         <section id="section-ranking" class="space-y-6 hidden">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-slate-700 pb-2 gap-4">
-                <h2 class="text-2xl font-bold text-yellow-500"><i class="fas fa-trophy mr-2"></i>Klasemen Pertandingan</h2>
+                <h2 class="text-2xl font-bold text-blue-400"><i class="fas fa-list-ol mr-2"></i>Klasemen Pertandingan</h2>
                 
                 <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto bg-slate-800 p-2 rounded-lg border border-slate-700 items-center">
                     <select id="rank-filter-kategori" onchange="renderRanking()" class="bg-slate-900 border border-slate-600 p-2 rounded-lg text-sm w-full sm:w-48"></select>
                     
+                    <button id="btn-promote-final" onclick="promoteToFinal()" class="hidden bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap"><i class="fas fa-level-up-alt mr-1"></i> Buat Babak Final</button>
+
                     <div class="flex flex-wrap gap-2 text-[11px] text-slate-300 font-bold uppercase tracking-wider items-center px-2">
                         <span>Export:</span>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-kontingen" checked class="accent-blue-500"> Kontingen</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-kategori" checked class="accent-blue-500"> Kategori</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-kontingen" checked class="accent-blue-500"> Kont</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-kategori" checked class="accent-blue-500"> Kat</label>
                         <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-pool" checked class="accent-blue-500"> Pool</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-rincian" class="accent-blue-500"> Rincian B1/B2</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="exp-tie" class="accent-blue-500"> Tie-Break</label>
                     </div>
-
-                    <button onclick="exportCustomCSV()" class="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-bold w-full sm:w-auto whitespace-nowrap"><i class="fas fa-file-excel mr-1"></i> Download</button>
+                    <button onclick="exportCustomCSV()" class="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-bold w-full sm:w-auto whitespace-nowrap"><i class="fas fa-file-excel mr-1"></i> Export</button>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 gap-3" id="ranking-list"></div>
         </section>
 
+        <section id="section-juara" class="space-y-6 hidden">
+            <div class="flex items-center border-b border-slate-700 pb-2 gap-4">
+                <h2 class="text-2xl font-bold text-yellow-400"><i class="fas fa-trophy mr-2"></i>Klasemen Juara Umum (Perolehan Medali)</h2>
+            </div>
+            
+            <div class="bg-dark-card rounded-xl border border-slate-700 overflow-hidden">
+                <table class="w-full text-left whitespace-nowrap">
+                    <thead class="bg-slate-800 text-slate-300 text-sm uppercase tracking-wider">
+                        <tr>
+                            <th class="p-4 text-center w-16 border-b border-slate-700">Rank</th>
+                            <th class="p-4 border-b border-slate-700">Nama Kontingen</th>
+                            <th class="p-4 text-center text-yellow-500 border-b border-slate-700"><i class="fas fa-medal text-xl"></i><br>Emas</th>
+                            <th class="p-4 text-center text-slate-400 border-b border-slate-700"><i class="fas fa-medal text-xl"></i><br>Perak</th>
+                            <th class="p-4 text-center text-amber-600 border-b border-slate-700"><i class="fas fa-medal text-xl"></i><br>Perunggu</th>
+                            <th class="p-4 text-center font-black border-b border-slate-700">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-juara-body"></tbody>
+                </table>
+            </div>
+        </section>
+
         <section id="section-admin" class="space-y-6 hidden">
             <h2 class="text-2xl font-bold text-red-500 border-b border-red-900/50 pb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Zona Administrator (Reset Data)</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
                 <div class="bg-red-900/20 p-6 rounded-xl border border-red-900/50 text-center">
                     <div class="text-red-400 text-4xl mb-4"><i class="fas fa-undo-alt"></i></div>
                     <h3 class="font-bold text-lg mb-2 text-white">Reset Penilaian & Ranking</h3>
                     <p class="text-xs text-slate-400 mb-6">Menghapus seluruh nilai juri yang telah masuk. Data atlet dan urutan drawing TETAP AMAN.</p>
                     <button onclick="resetAllPenilaian()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg w-full transition-colors">Reset Semua Nilai</button>
                 </div>
-
                 <div class="bg-red-900/20 p-6 rounded-xl border border-red-900/50 text-center">
                     <div class="text-red-400 text-4xl mb-4"><i class="fas fa-users-slash"></i></div>
                     <h3 class="font-bold text-lg mb-2 text-white">Reset Data Atlet</h3>
                     <p class="text-xs text-slate-400 mb-6">Menghapus seluruh daftar atlet dan kontingen beserta nilainya. Data Kategori TETAP AMAN.</p>
                     <button onclick="resetDataAtlet()" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg w-full transition-colors">Hapus Semua Atlet</button>
                 </div>
-
                 <div class="bg-red-900/20 p-6 rounded-xl border border-red-900/50 text-center">
                     <div class="text-red-400 text-4xl mb-4"><i class="fas fa-dumpster-fire"></i></div>
                     <h3 class="font-bold text-lg mb-2 text-white">Reset Total (Factory Reset)</h3>
-                    <p class="text-xs text-slate-400 mb-6">Menghapus SELURUH sistem, termasuk Kategori, Atlet, dan Nilai. Sistem akan kembali kosong.</p>
+                    <p class="text-xs text-slate-400 mb-6">Menghapus SELURUH sistem, termasuk Kategori, Atlet, dan Nilai.</p>
                     <button onclick="resetTotalSistem()" class="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg w-full transition-colors">Hapus Seluruh Data</button>
                 </div>
             </div>
@@ -222,18 +241,9 @@
             </div>
             <form id="form-edit-peserta" class="p-6 space-y-4">
                 <input type="hidden" id="edit-id">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Nama Atlet</label>
-                    <input type="text" id="edit-nama" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Kontingen</label>
-                    <input type="text" id="edit-kontingen" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Kategori <span class="text-yellow-500 italic">(Ubah ini akan mereset Drawing/Pool atlet ini)</span></label>
-                    <select id="edit-kategori" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required></select>
-                </div>
+                <div><label class="block text-xs text-slate-400 mb-1">Nama Atlet</label><input type="text" id="edit-nama" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Kontingen</label><input type="text" id="edit-kontingen" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required></div>
+                <div><label class="block text-xs text-slate-400 mb-1">Kategori</label><select id="edit-kategori" class="w-full bg-slate-900 border border-slate-600 p-3 rounded-lg text-white" required></select></div>
                 <div class="pt-4 flex gap-3">
                     <button type="button" onclick="closeEditModal()" class="flex-1 bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold">Batal</button>
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold text-white">Simpan Perubahan</button>
