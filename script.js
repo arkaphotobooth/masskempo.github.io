@@ -1,16 +1,33 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 3.0 (Clean Architecture & Isolated Tabs)
+ * Version 3.1 (With Auto-Repair & Crash Protection)
  */
 
-// --- 1. STATE MANAGEMENT ---
-let STATE = {
-    categories: JSON.parse(localStorage.getItem('mass_categories')) || [],
-    participants: JSON.parse(localStorage.getItem('mass_participants')) || [],
-    settings: {
-        numJudges: 5
+// --- 1. STATE MANAGEMENT & AUTO-REPAIR ---
+function initializeData() {
+    try {
+        let cats = JSON.parse(localStorage.getItem('mass_categories')) || [];
+        let parts = JSON.parse(localStorage.getItem('mass_participants')) || [];
+        
+        // AUTO-REPAIR: Deteksi struktur data lama dan bersihkan jika tidak cocok
+        // Mencegah JS Crash yang membuat Tab tidak bisa diklik
+        if (parts.length > 0) {
+            if (Array.isArray(parts[0].scores) || !parts[0].scores.b1) {
+                console.warn("Mendeteksi sisa data versi lama. Melakukan auto-reset...");
+                localStorage.removeItem('mass_categories');
+                localStorage.removeItem('mass_participants');
+                return { categories: [], participants: [], settings: { numJudges: 5 } };
+            }
+        }
+        return { categories: cats, participants: parts, settings: { numJudges: 5 } };
+    } catch (e) {
+        console.error("Data korup, mereset sistem...", e);
+        localStorage.clear();
+        return { categories: [], participants: [], settings: { numJudges: 5 } };
     }
-};
+}
+
+let STATE = initializeData();
 
 const UI = {
     tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking'],
@@ -20,14 +37,23 @@ const UI = {
 
 // --- 2. INITIALIZATION & TAB ROUTING ---
 document.addEventListener('DOMContentLoaded', () => {
-    refreshAllData();
-    setJudges(5); // Default Juri
-    
-    // Set text nama atlet di scoring awal
-    document.getElementById('select-peserta').addEventListener('change', (e) => {
-        const selected = e.target.options[e.target.selectedIndex].text;
-        document.getElementById('scoring-athlete-name').innerText = selected || 'Pilih atlet di panel kiri';
-    });
+    try {
+        refreshAllData();
+        setJudges(5); // Default Juri
+        
+        // Set text nama atlet di scoring awal
+        const selectPesertaEl = document.getElementById('select-peserta');
+        if (selectPesertaEl) {
+            selectPesertaEl.addEventListener('change', (e) => {
+                if(e.target.selectedIndex >= 0) {
+                    const selected = e.target.options[e.target.selectedIndex].text;
+                    document.getElementById('scoring-athlete-name').innerText = selected || 'Pilih atlet di panel kiri';
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Gagal memuat UI:", error);
+    }
 });
 
 function saveToLocalStorage() {
@@ -42,37 +68,43 @@ function refreshAllData() {
 }
 
 function switchTab(targetTab) {
-    // 1. Sembunyikan semua section dan reset style tab
-    UI.tabs.forEach(tab => {
-        const sectionEl = document.getElementById(`section-${tab}`);
-        const tabEl = document.getElementById(`tab-${tab}`);
+    try {
+        // 1. Sembunyikan semua section
+        UI.tabs.forEach(tab => {
+            const sectionEl = document.getElementById(`section-${tab}`);
+            const tabEl = document.getElementById(`tab-${tab}`);
+            
+            if (sectionEl) {
+                sectionEl.classList.add('hidden');
+                sectionEl.classList.remove('block');
+            }
+            if (tabEl) {
+                tabEl.classList.remove('active-tab', 'text-blue-500');
+                tabEl.classList.add('text-slate-400');
+            }
+        });
+
+        // 2. Tampilkan section target
+        const activeSection = document.getElementById(`section-${targetTab}`);
+        const activeTab = document.getElementById(`tab-${targetTab}`);
         
-        if (sectionEl) {
-            sectionEl.classList.add('hidden');
-            sectionEl.classList.remove('block');
+        if (activeSection) {
+            activeSection.classList.remove('hidden');
+            activeSection.classList.add('block');
         }
-        if (tabEl) {
-            tabEl.classList.remove('active-tab', 'text-blue-500');
-            tabEl.classList.add('text-slate-400');
+        if (activeTab) {
+            activeTab.classList.remove('text-slate-400');
+            activeTab.classList.add('active-tab', 'text-blue-500');
         }
-    });
 
-    // 2. Tampilkan section yang dituju dan beri style aktif
-    const activeSection = document.getElementById(`section-${targetTab}`);
-    const activeTab = document.getElementById(`tab-${targetTab}`);
-    
-    if (activeSection) {
-        activeSection.classList.remove('hidden');
-        activeSection.classList.add('block');
-    }
-    if (activeTab) {
-        activeTab.classList.remove('text-slate-400');
-        activeTab.classList.add('active-tab', 'text-blue-500');
-    }
+        // 3. Trigger fungsi khusus
+        if(targetTab === 'ranking') renderRanking();
+        if(targetTab === 'scoring') filterPesertaScoring();
+        if(targetTab === 'drawing') updateAllDropdowns();
 
-    // 3. Trigger fungsi khusus saat tab tertentu dibuka
-    if(targetTab === 'ranking') renderRanking();
-    if(targetTab === 'scoring') filterPesertaScoring();
+    } catch (error) {
+        console.error("Gagal berpindah tab:", error);
+    }
 }
 
 // --- 3. TAB 1: KATEGORI LOGIC ---
@@ -82,8 +114,6 @@ document.getElementById('form-kategori').addEventListener('submit', (e) => {
     const type = parseInt(document.getElementById('cat-type').value);
     
     if(!name) return;
-    
-    // Cek duplikat
     if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
         return alert("Kategori dengan nama ini sudah ada!");
     }
@@ -111,7 +141,7 @@ function renderCategoryList() {
 }
 
 function deleteCategory(id) {
-    if(confirm("Hapus kategori ini? Pastikan tidak ada atlet di kategori ini.")) {
+    if(confirm("Hapus kategori ini?")) {
         STATE.categories = STATE.categories.filter(c => c.id !== id);
         saveToLocalStorage();
         refreshAllData();
@@ -153,7 +183,6 @@ document.getElementById('form-peserta').addEventListener('submit', (e) => {
     saveToLocalStorage();
     renderParticipantTable();
     
-    // Reset hanya field nama dan kontingen agar cepat menginput yang kategori sama
     document.getElementById('p-nama').value = '';
     document.getElementById('p-nama').focus();
 });
@@ -165,7 +194,6 @@ function renderParticipantTable() {
         return;
     }
 
-    // Sort by kategori, lalu urut
     let sortedList = [...STATE.participants].sort((a,b) => {
         if(a.kategori === b.kategori) return a.urut - b.urut;
         return a.kategori.localeCompare(b.kategori);
@@ -187,7 +215,7 @@ function renderParticipantTable() {
 }
 
 function deletePeserta(id) {
-    if(confirm('Hapus atlet ini dari database?')) {
+    if(confirm('Hapus atlet ini?')) {
         STATE.participants = STATE.participants.filter(p => p.id !== id);
         saveToLocalStorage();
         renderParticipantTable();
@@ -195,7 +223,7 @@ function deletePeserta(id) {
 }
 
 function resetDataAtlet() {
-    if(confirm('BAHAYA: Ini akan menghapus SEMUA data atlet dan nilainya. Lanjutkan?')) {
+    if(confirm('Mereset data akan menghapus semua atlet dan nilainya. Lanjutkan?')) {
         STATE.participants = [];
         saveToLocalStorage();
         refreshAllData();
@@ -208,9 +236,8 @@ function startDrawing() {
     if(!catName) return alert("Pilih kategori yang akan diundi!");
     
     let list = STATE.participants.filter(p => p.kategori === catName);
-    if(list.length === 0) return alert("Belum ada peserta yang terdaftar di kategori ini!");
+    if(list.length === 0) return alert("Belum ada peserta di kategori ini!");
 
-    // Fisher-Yates Shuffle
     for (let i = list.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [list[i], list[j]] = [list[j], list[i]];
@@ -219,7 +246,6 @@ function startDrawing() {
     const resultDiv = document.getElementById('drawing-result');
     resultDiv.innerHTML = '';
 
-    // Logika Pembagian Pool (Berdasarkan aturan: Jika > 6 bagi Pool A & B)
     if (list.length > 6) {
         const half = Math.ceil(list.length / 2);
         const poolA = list.slice(0, half);
@@ -236,14 +262,16 @@ function startDrawing() {
     }
     
     saveToLocalStorage();
-    renderParticipantTable(); // Update tabel di tab Atlet
+    renderParticipantTable();
 }
 
 function applyDrawingData(arr, poolName) {
     arr.forEach((p, index) => {
         const found = STATE.participants.find(item => item.id === p.id);
-        found.urut = index + 1;
-        found.pool = poolName;
+        if(found) {
+            found.urut = index + 1;
+            found.pool = poolName;
+        }
     });
 }
 
@@ -253,7 +281,6 @@ function renderPoolUI(arr, title, container) {
             <h3 class="font-black text-center text-purple-400 mb-4 border-b border-slate-700 pb-3">${title}</h3>
             <div class="space-y-2">
     `;
-    
     arr.forEach((p, i) => {
         html += `
             <div class="flex items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
@@ -265,7 +292,6 @@ function renderPoolUI(arr, title, container) {
             </div>
         `;
     });
-    
     html += `</div></div>`;
     container.innerHTML += html;
 }
@@ -273,7 +299,6 @@ function renderPoolUI(arr, title, container) {
 // --- 6. TAB 4: SCORING & TIMER LOGIC ---
 function filterPesertaScoring() {
     const cat = document.getElementById('select-kategori').value;
-    // Tampilkan hanya peserta di kategori tsb, urutkan berdasar pool lalu nomor urut
     let filtered = STATE.participants.filter(p => p.kategori === cat).sort((a,b) => {
         if(a.pool === b.pool) return a.urut - b.urut;
         return a.pool.localeCompare(b.pool);
@@ -290,7 +315,6 @@ function filterPesertaScoring() {
         <option value="${p.id}">[Pool ${p.pool}] No.${p.urut} - ${p.nama} (${p.kontingen})</option>
     `).join('');
     
-    // Trigger update nama
     selectEl.dispatchEvent(new Event('change'));
 }
 
@@ -309,7 +333,7 @@ function setJudges(n) {
             </div>
         `;
     }
-    calculateLive(); // Reset kalkulasi UI
+    calculateLive();
 }
 
 function calculateLive() {
@@ -322,27 +346,21 @@ function calculateLive() {
     let sum = 0;
     if(STATE.settings.numJudges === 5) {
         let sorted = [...raw].sort((a,b) => a-b);
-        sorted.pop();   // Buang tertinggi
-        sorted.shift(); // Buang terendah
+        sorted.pop();
+        sorted.shift();
         sum = sorted.reduce((a,b) => a+b, 0);
     } else {
         sum = raw.reduce((a,b) => a+b, 0);
     }
 
-    // Hitung Penalty Waktu (Regulasi: per 5 detik kurang/lebih dikenakan 5 poin)
     const minT = parseInt(document.getElementById('min-time').value) || 0;
     const maxT = parseInt(document.getElementById('max-time').value) || 0;
     let penalty = 0;
     
-    if(UI.timerSeconds > 0 && UI.timerSeconds < minT) {
-        penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5;
-    } else if (UI.timerSeconds > maxT) {
-        penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5;
-    }
+    if(UI.timerSeconds > 0 && UI.timerSeconds < minT) penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5;
+    else if (UI.timerSeconds > maxT) penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5;
 
     const final = Math.max(0, sum - penalty);
-    
-    // Update UI Realtime
     document.getElementById('live-final-score').innerText = final.toFixed(1);
     document.getElementById('live-penalty').innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`;
     
@@ -351,40 +369,29 @@ function calculateLive() {
 
 function saveScore(babakNumber) {
     const pId = parseInt(document.getElementById('select-peserta').value);
-    if(!pId) return alert('Pilih atlet yang sedang bertanding di panel kiri!');
+    if(!pId) return alert('Pilih atlet yang sedang bertanding!');
     
-    // Validasi apakah ada nilai yang kosong
     for(let i=1; i<=STATE.settings.numJudges; i++) {
         if(document.getElementById(`score-${i}`).value === "") return alert(`Nilai Wasit ${i} masih kosong!`);
     }
 
     const calc = calculateLive();
     const p = STATE.participants.find(i => i.id === pId);
-    const bKey = `b${babakNumber}`; // 'b1' atau 'b2'
+    const bKey = `b${babakNumber}`;
 
-    // Simpan nilai mentah ke state
-    p.scores[bKey] = {
-        raw: calc.raw,
-        penalty: calc.penalty,
-        final: calc.final,
-        tech: calc.tech
-    };
+    p.scores[bKey] = { raw: calc.raw, penalty: calc.penalty, final: calc.final, tech: calc.tech };
 
-    // Logika Penentuan Nilai Akhir (Regulasi <= 6 Rata-rata, > 6 Penyisihan)
     const totalPesertaKategori = STATE.participants.filter(i => i.kategori === p.kategori).length;
     
     if(totalPesertaKategori <= 6) {
-        // Jika kedua babak sudah diisi, hitung rata-rata
         if(p.scores.b1.final > 0 && p.scores.b2.final > 0) {
             p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2;
             p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2;
         } else {
-            // Jika baru 1 babak, gunakan nilai babak tersebut sementara
             p.finalScore = calc.final;
             p.techScore = calc.tech;
         }
     } else {
-        // Mode Pool: Nilai akhir adalah nilai babak yang baru saja diinput
         p.finalScore = calc.final;
         p.techScore = calc.tech;
     }
@@ -392,32 +399,26 @@ function saveScore(babakNumber) {
     saveToLocalStorage();
     alert(`SKOR TERSIMPAN!\nBabak ${babakNumber} atlet ${p.nama} berhasil direkam.`);
     
-    // Bersihkan UI untuk atlet selanjutnya
     resetTimer();
     for(let i=1; i<=STATE.settings.numJudges; i++) document.getElementById(`score-${i}`).value = '';
     calculateLive();
 }
 
-// --- TIMER CONTROL ---
 function toggleTimer() {
     const btn = document.getElementById('btn-timer');
     if(UI.timerInterval) {
-        // Stop
         clearInterval(UI.timerInterval);
         UI.timerInterval = null;
         btn.innerText = 'LANJUTKAN';
         btn.classList.replace('bg-red-600', 'bg-yellow-600');
         btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500');
     } else {
-        // Start
         UI.timerInterval = setInterval(() => {
             UI.timerSeconds++;
             updateTimerUI();
-            calculateLive(); // Live hitung penalti
+            calculateLive();
         }, 1000);
         btn.innerText = 'STOP';
-        
-        // Reset class to red
         btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold';
     }
 }
@@ -430,7 +431,7 @@ function resetTimer() {
     const btn = document.getElementById('btn-timer');
     btn.innerText = 'START';
     btn.className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold';
-    calculateLive(); // Reset penalti di UI
+    calculateLive();
 }
 
 function updateTimerUI() {
@@ -444,17 +445,12 @@ function renderRanking() {
     const filter = document.getElementById('rank-filter-kategori').value;
     let list = STATE.participants;
     
-    if (filter !== 'all') {
-        list = list.filter(p => p.kategori === filter);
-    }
-    
-    // Filter out atlet yang belum dinilai sama sekali
+    if (filter !== 'all') list = list.filter(p => p.kategori === filter);
     list = list.filter(p => p.finalScore > 0);
 
-    // Sorting: Nilai Akhir (Tinggi -> Rendah), lalu Nilai Wasit 1 (Tinggi -> Rendah)
     list.sort((a,b) => {
         if(b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
-        return b.techScore - a.techScore; // Tie breaker
+        return b.techScore - a.techScore;
     });
 
     const container = document.getElementById('ranking-list');
@@ -465,16 +461,14 @@ function renderRanking() {
     }
 
     container.innerHTML = list.map((p, i) => {
-        let medal = '';
-        if(i === 0) medal = '<i class="fas fa-medal text-yellow-400 text-2xl"></i>';
-        else if(i === 1) medal = '<i class="fas fa-medal text-slate-300 text-2xl"></i>';
-        else if(i === 2) medal = '<i class="fas fa-medal text-amber-600 text-2xl"></i>';
-        else medal = `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
+        let medal = i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : 
+                    i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : 
+                    i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : 
+                    `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
 
         return `
         <div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4">
             <div class="w-12 text-center flex-shrink-0">${medal}</div>
-            
             <div class="flex-1 w-full">
                 <div class="font-bold text-lg text-white">${p.nama}</div>
                 <div class="text-xs text-slate-400 mt-1">
@@ -482,7 +476,6 @@ function renderRanking() {
                     <span class="ml-2 text-blue-400">${p.kategori}</span> | Pool: ${p.pool}
                 </div>
             </div>
-            
             <div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700">
                 <div class="text-center md:text-right border-r border-slate-700 pr-4 flex-1">
                     <div class="text-[10px] text-slate-500 uppercase">Babak 1 / 2</div>
@@ -493,15 +486,14 @@ function renderRanking() {
                     <div class="text-2xl font-black text-white">${p.finalScore.toFixed(2)}</div>
                 </div>
             </div>
-        </div>
-    `}).join('');
+        </div>`
+    }).join('');
 }
 
 function exportToCSV() {
     let rows = [["Rank", "Nama Atlet", "Kontingen", "Kategori", "Pool", "Skor B1", "Skor B2", "NILAI AKHIR", "Tie-Breaker (W1)"]];
-    
-    // Sort logic sama dengan tampilan ranking
     let list = [...STATE.participants].filter(p => p.finalScore > 0);
+    
     list.sort((a,b) => {
         if(b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
         return b.techScore - a.techScore;
