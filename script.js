@@ -1,4 +1,4 @@
-// --- STATE MANAGEMENT ---
+// --- STATE MANAGEMENT --
 let peserta = JSON.parse(localStorage.getItem('mass_peserta')) || [];
 let numJudges = 3;
 let timerSeconds = 0;
