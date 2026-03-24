@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 3.2 (Import CSV, Filter, & Drawing Lock)
+ * Version 3.3 (Split Pool Ranking & Dynamic Scoring Buttons)
  */
 
 function initializeData() {
@@ -33,12 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshAllData();
     setJudges(5); 
     
+    // Listener saat nama atlet di dropdown penilaian diganti
     const selectPesertaEl = document.getElementById('select-peserta');
     if (selectPesertaEl) {
         selectPesertaEl.addEventListener('change', (e) => {
             if(e.target.selectedIndex >= 0) {
                 const selected = e.target.options[e.target.selectedIndex].text;
                 document.getElementById('scoring-athlete-name').innerText = selected || 'Pilih atlet di panel kiri';
+                updateScoringButtonsUI(); // Update tombol babak/penyisihan
             }
         });
     }
@@ -73,7 +75,7 @@ function switchTab(targetTab) {
     if(targetTab === 'drawing') { updateAllDropdowns(); checkExistingDrawing(); }
 }
 
-// --- TAB 1: KATEGORI ---
+// --- TAB 1 & 2: KATEGORI & ATLET (TETAP SAMA) ---
 document.getElementById('form-kategori').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
@@ -109,7 +111,6 @@ function deleteCategory(id) {
     }
 }
 
-// --- TAB 2: ATLET ---
 function updateAllDropdowns() {
     const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     const emptyOpt = `<option value="">-- Pilih Kategori --</option>`;
@@ -118,13 +119,11 @@ function updateAllDropdowns() {
     document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options;
     document.getElementById('select-kategori').innerHTML = emptyOpt + options;
     
-    // Dropdown dengan opsi "Semua Kategori"
     const allOpt = '<option value="all">Semua Kategori</option>';
     document.getElementById('rank-filter-kategori').innerHTML = allOpt + options;
     document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options;
 }
 
-// Import CSV Logic
 function handleCSVUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -133,46 +132,26 @@ function handleCSVUpload(event) {
     reader.onload = function(e) {
         const text = e.target.result;
         const rows = text.split('\n');
-        let count = 0;
-        let errors = 0;
+        let count = 0, errors = 0;
 
         rows.forEach((row, i) => {
-            if(i === 0 || !row.trim()) return; // Skip baris pertama (header) atau baris kosong
-            
-            // Antisipasi koma di dalam nama (jika dibungkus kutip)
+            if(i === 0 || !row.trim()) return; 
             const cols = row.split(',').map(item => item.trim().replace(/^"|"$/g, ''));
-            
             if(cols.length >= 3) {
-                const nama = cols[0];
-                const kontingen = cols[1];
-                const kategori = cols[2];
-
-                // Validasi: Kategori harus sudah terdaftar di tab Kategori
+                const nama = cols[0], kontingen = cols[1], kategori = cols[2];
                 if(nama && STATE.categories.some(c => c.name.toLowerCase() === kategori.toLowerCase())) {
                     STATE.participants.push({
-                        id: Date.now() + i,
-                        nama, kontingen, kategori,
-                        urut: 0, pool: '-',
-                        scores: {
-                            b1: { raw: [], penalty: 0, final: 0, tech: 0 },
-                            b2: { raw: [], penalty: 0, final: 0, tech: 0 }
-                        },
+                        id: Date.now() + i, nama, kontingen, kategori, urut: 0, pool: '-',
+                        scores: { b1: { raw: [], penalty: 0, final: 0, tech: 0 }, b2: { raw: [], penalty: 0, final: 0, tech: 0 } },
                         finalScore: 0, techScore: 0
                     });
                     count++;
-                } else {
-                    errors++;
-                }
+                } else errors++;
             }
         });
 
-        saveToLocalStorage();
-        refreshAllData();
-        event.target.value = ''; // Reset input
-        
-        let msg = `${count} Atlet berhasil diimport.`;
-        if(errors > 0) msg += `\n(${errors} baris gagal. Pastikan nama Kategori di CSV sama persis dengan yang ada di sistem).`;
-        alert(msg);
+        saveToLocalStorage(); refreshAllData(); event.target.value = ''; 
+        alert(`${count} Atlet diimport.\n(${errors} gagal).`);
     };
     reader.readAsText(file);
 }
@@ -180,22 +159,17 @@ function handleCSVUpload(event) {
 document.getElementById('form-peserta').addEventListener('submit', (e) => {
     e.preventDefault();
     const catName = document.getElementById('p-kategori').value;
-    if(!catName) return alert("Pilih kategori terlebih dahulu!");
+    if(!catName) return alert("Pilih kategori!");
 
     STATE.participants.push({
-        id: Date.now(),
-        nama: document.getElementById('p-nama').value,
-        kontingen: document.getElementById('p-kontingen').value,
-        kategori: catName,
-        urut: 0, pool: '-',
+        id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value,
+        kategori: catName, urut: 0, pool: '-',
         scores: { b1: { raw: [], penalty: 0, final: 0, tech: 0 }, b2: { raw: [], penalty: 0, final: 0, tech: 0 } },
         finalScore: 0, techScore: 0
     });
 
-    saveToLocalStorage();
-    renderParticipantTable();
-    document.getElementById('p-nama').value = '';
-    document.getElementById('p-nama').focus();
+    saveToLocalStorage(); renderParticipantTable();
+    document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus();
 });
 
 function renderParticipantTable() {
@@ -203,14 +177,9 @@ function renderParticipantTable() {
     const filter = document.getElementById('filter-atlet-kategori').value;
     
     let list = STATE.participants;
-    if(filter && filter !== 'all') {
-        list = list.filter(p => p.kategori === filter);
-    }
+    if(filter && filter !== 'all') list = list.filter(p => p.kategori === filter);
 
-    if(list.length === 0) {
-        body.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">Tidak ada data atlet.</td></tr>`;
-        return;
-    }
+    if(list.length === 0) return body.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">Tidak ada data atlet.</td></tr>`;
 
     let sortedList = [...list].sort((a,b) => {
         if(a.kategori === b.kategori) return a.urut - b.urut;
@@ -219,36 +188,17 @@ function renderParticipantTable() {
 
     body.innerHTML = sortedList.map(p => `
         <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-            <td class="p-4 font-bold text-blue-300">${p.nama}</td>
-            <td class="p-4">${p.kontingen}</td>
-            <td class="p-4 text-xs text-slate-400">${p.kategori}</td>
-            <td class="p-4 text-center">
-                ${p.urut > 0 ? `<span class="bg-slate-700 px-2 py-1 rounded text-xs font-mono">No.${p.urut} | Pool ${p.pool}</span>` : `<span class="text-xs text-red-400 italic">Belum Undian</span>`}
-            </td>
-            <td class="p-4 text-right">
-                <button onclick="deletePeserta(${p.id})" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-trash"></i></button>
-            </td>
+            <td class="p-4 font-bold text-blue-300">${p.nama}</td><td class="p-4">${p.kontingen}</td><td class="p-4 text-xs text-slate-400">${p.kategori}</td>
+            <td class="p-4 text-center">${p.urut > 0 ? `<span class="bg-slate-700 px-2 py-1 rounded text-xs font-mono">No.${p.urut} | Pool ${p.pool}</span>` : `<span class="text-xs text-red-400 italic">Belum Undian</span>`}</td>
+            <td class="p-4 text-right"><button onclick="deletePeserta(${p.id})" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-trash"></i></button></td>
         </tr>
     `).join('');
 }
 
-function deletePeserta(id) {
-    if(confirm('Hapus atlet ini?')) {
-        STATE.participants = STATE.participants.filter(p => p.id !== id);
-        saveToLocalStorage();
-        renderParticipantTable();
-    }
-}
+function deletePeserta(id) { if(confirm('Hapus atlet ini?')) { STATE.participants = STATE.participants.filter(p => p.id !== id); saveToLocalStorage(); renderParticipantTable(); } }
+function resetDataAtlet() { if(confirm('Mereset data akan menghapus semua atlet dan nilainya. Lanjutkan?')) { STATE.participants = []; saveToLocalStorage(); refreshAllData(); } }
 
-function resetDataAtlet() {
-    if(confirm('Mereset data akan menghapus semua atlet dan nilainya. Lanjutkan?')) {
-        STATE.participants = [];
-        saveToLocalStorage();
-        refreshAllData();
-    }
-}
-
-// --- TAB 3: DRAWING ---
+// --- TAB 3: DRAWING (TETAP SAMA) ---
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value;
     const resultDiv = document.getElementById('drawing-result');
@@ -256,18 +206,14 @@ function checkExistingDrawing() {
     
     if(!catName) return;
 
-    // Cek apakah kategori ini sudah diundi sebelumnya
     let list = STATE.participants.filter(p => p.kategori === catName);
     const isDrawn = list.some(p => p.urut > 0);
 
     if (isDrawn) {
-        // Tampilkan hasil undian sebelumnya
         list.sort((a,b) => a.urut - b.urut);
         if(list.some(p => p.pool === 'A' || p.pool === 'B')) {
-            const poolA = list.filter(p => p.pool === 'A');
-            const poolB = list.filter(p => p.pool === 'B');
-            renderPoolUI(poolA, "POOL A (Sudah Diundi)", resultDiv);
-            renderPoolUI(poolB, "POOL B (Sudah Diundi)", resultDiv);
+            renderPoolUI(list.filter(p => p.pool === 'A'), "POOL A (Sudah Diundi)", resultDiv);
+            renderPoolUI(list.filter(p => p.pool === 'B'), "POOL B (Sudah Diundi)", resultDiv);
         } else {
             renderPoolUI(list, "BABAK PENYISIHAN (Sudah Diundi)", resultDiv);
         }
@@ -283,14 +229,10 @@ function startDrawing() {
     let list = STATE.participants.filter(p => p.kategori === catName);
     if(list.length === 0) return alert("Belum ada peserta di kategori ini!");
 
-    // Sistem Pengunci (Lock)
-    const isDrawn = list.some(p => p.urut > 0);
-    if (isDrawn) {
-        const confirmRedraw = confirm("⚠️ PERINGATAN: Kategori ini SUDAH DIUNDI.\n\nMengacak ulang akan mengubah urutan tampil dan berpotensi mengacaukan sinkronisasi nilai jika pertandingan sudah berjalan.\n\nApakah Anda YAKIN ingin mengacak ulang?");
-        if (!confirmRedraw) return;
+    if (list.some(p => p.urut > 0)) {
+        if (!confirm("⚠️ PERINGATAN: Kategori ini SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return;
     }
 
-    // Algoritma Fisher-Yates
     for (let i = list.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [list[i], list[j]] = [list[j], list[i]];
@@ -301,55 +243,25 @@ function startDrawing() {
 
     if (list.length > 6) {
         const half = Math.ceil(list.length / 2);
-        const poolA = list.slice(0, half);
-        const poolB = list.slice(half);
-        
-        applyDrawingData(poolA, 'A');
-        applyDrawingData(poolB, 'B');
-        
-        renderPoolUI(poolA, "POOL A", resultDiv);
-        renderPoolUI(poolB, "POOL B", resultDiv);
+        const poolA = list.slice(0, half); const poolB = list.slice(half);
+        applyDrawingData(poolA, 'A'); applyDrawingData(poolB, 'B');
+        renderPoolUI(poolA, "POOL A", resultDiv); renderPoolUI(poolB, "POOL B", resultDiv);
     } else {
-        applyDrawingData(list, 'SINGLE');
-        renderPoolUI(list, "BABAK PENYISIHAN (SINGLE POOL)", resultDiv);
+        applyDrawingData(list, 'SINGLE'); renderPoolUI(list, "BABAK PENYISIHAN (SINGLE POOL)", resultDiv);
     }
-    
-    saveToLocalStorage();
-    renderParticipantTable();
+    saveToLocalStorage(); renderParticipantTable();
 }
 
-function applyDrawingData(arr, poolName) {
-    arr.forEach((p, index) => {
-        const found = STATE.participants.find(item => item.id === p.id);
-        if(found) {
-            found.urut = index + 1;
-            found.pool = poolName;
-        }
-    });
-}
-
+function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
 function renderPoolUI(arr, title, container) {
-    let html = `
-        <div class="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg">
-            <h3 class="font-black text-center text-purple-400 mb-4 border-b border-slate-700 pb-3">${title}</h3>
-            <div class="space-y-2">
-    `;
+    let html = `<div class="bg-slate-800 p-5 rounded-xl border border-slate-600 shadow-lg"><h3 class="font-black text-center text-purple-400 mb-4 border-b border-slate-700 pb-3">${title}</h3><div class="space-y-2">`;
     arr.forEach((p, i) => {
-        html += `
-            <div class="flex items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
-                <div class="flex gap-3 items-center">
-                    <span class="font-mono text-slate-500 w-5 text-right">${i+1}.</span>
-                    <span class="font-bold text-white">${p.nama}</span>
-                </div>
-                <span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">${p.kontingen}</span>
-            </div>
-        `;
+        html += `<div class="flex items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50"><div class="flex gap-3 items-center"><span class="font-mono text-slate-500 w-5 text-right">${i+1}.</span><span class="font-bold text-white">${p.nama}</span></div><span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">${p.kontingen}</span></div>`;
     });
-    html += `</div></div>`;
-    container.innerHTML += html;
+    html += `</div></div>`; container.innerHTML += html;
 }
 
-// --- TAB 4: SCORING & TIMER LOGIC (Tetap Sama) ---
+// --- TAB 4: SCORING & TIMER LOGIC (UPDATED DINAMIS BUTTON) ---
 function filterPesertaScoring() {
     const cat = document.getElementById('select-kategori').value;
     let filtered = STATE.participants.filter(p => p.kategori === cat).sort((a,b) => {
@@ -361,6 +273,7 @@ function filterPesertaScoring() {
     if(filtered.length === 0) {
         selectEl.innerHTML = `<option value="">-- Kosong / Belum Undian --</option>`;
         document.getElementById('scoring-athlete-name').innerText = "-";
+        updateScoringButtonsUI();
         return;
     }
 
@@ -371,6 +284,29 @@ function filterPesertaScoring() {
     selectEl.dispatchEvent(new Event('change'));
 }
 
+// LOGIKA BARU: Menyembunyikan/menampilkan tombol babak vs penyisihan
+function updateScoringButtonsUI() {
+    const pId = parseInt(document.getElementById('select-peserta').value);
+    const btnB1 = document.getElementById('btn-save-b1');
+    const btnB2 = document.getElementById('btn-save-b2');
+    const btnPen = document.getElementById('btn-save-penyisihan');
+
+    if(!pId || !btnB1) return;
+
+    const p = STATE.participants.find(i => i.id === pId);
+    if(p.pool === 'A' || p.pool === 'B') {
+        // Jika Pool A/B, tampilkan tombol PENYISIHAN saja
+        btnB1.classList.add('hidden');
+        btnB2.classList.add('hidden');
+        btnPen.classList.remove('hidden');
+    } else {
+        // Jika SINGLE (<= 6 peserta), tampilkan tombol B1 dan B2
+        btnB1.classList.remove('hidden');
+        btnB2.classList.remove('hidden');
+        btnPen.classList.add('hidden');
+    }
+}
+
 function setJudges(n) {
     STATE.settings.numJudges = n;
     document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white';
@@ -379,12 +315,7 @@ function setJudges(n) {
     const container = document.getElementById('judge-inputs');
     container.innerHTML = '';
     for(let i=1; i<=n; i++) {
-        container.innerHTML += `
-            <div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors">
-                <label class="block text-[10px] text-slate-400 uppercase font-bold mb-2">Wasit ${i} ${i===1?'(Teknik)':''}</label>
-                <input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-transparent text-3xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0">
-            </div>
-        `;
+        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><label class="block text-[10px] text-slate-400 uppercase font-bold mb-2">Wasit ${i} ${i===1?'(Teknik)':''}</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-transparent text-3xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div>`;
     }
     calculateLive();
 }
@@ -399,9 +330,7 @@ function calculateLive() {
     let sum = 0;
     if(STATE.settings.numJudges === 5) {
         let sorted = [...raw].sort((a,b) => a-b);
-        sorted.pop();
-        sorted.shift();
-        sum = sorted.reduce((a,b) => a+b, 0);
+        sorted.pop(); sorted.shift(); sum = sorted.reduce((a,b) => a+b, 0);
     } else {
         sum = raw.reduce((a,b) => a+b, 0);
     }
@@ -430,60 +359,48 @@ function saveScore(babakNumber) {
 
     const calc = calculateLive();
     const p = STATE.participants.find(i => i.id === pId);
-    const bKey = `b${babakNumber}`;
 
-    p.scores[bKey] = { raw: calc.raw, penalty: calc.penalty, final: calc.final, tech: calc.tech };
-
-    const totalPesertaKategori = STATE.participants.filter(i => i.kategori === p.kategori).length;
-    
-    if(totalPesertaKategori <= 6) {
+    // LOGIKA BARU: Simpan nilai sesuai jenis turnamen (Pool vs Single)
+    if (babakNumber === 'penyisihan') {
+        p.scores.b1 = { raw: calc.raw, penalty: calc.penalty, final: calc.final, tech: calc.tech };
+        p.finalScore = calc.final;
+        p.techScore = calc.tech;
+        alert(`SKOR TERSIMPAN!\nNilai Penyisihan atlet ${p.nama} berhasil direkam.`);
+    } else {
+        const bKey = `b${babakNumber}`;
+        p.scores[bKey] = { raw: calc.raw, penalty: calc.penalty, final: calc.final, tech: calc.tech };
         if(p.scores.b1.final > 0 && p.scores.b2.final > 0) {
             p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2;
             p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2;
         } else {
-            p.finalScore = calc.final;
+            p.finalScore = calc.final; // Tampilkan sementara
             p.techScore = calc.tech;
         }
-    } else {
-        p.finalScore = calc.final;
-        p.techScore = calc.tech;
+        alert(`SKOR TERSIMPAN!\nBabak ${babakNumber} atlet ${p.nama} berhasil direkam.`);
     }
 
     saveToLocalStorage();
-    alert(`SKOR TERSIMPAN!\nBabak ${babakNumber} atlet ${p.nama} berhasil direkam.`);
-    
     resetTimer();
     for(let i=1; i<=STATE.settings.numJudges; i++) document.getElementById(`score-${i}`).value = '';
     calculateLive();
 }
 
+// --- TIMER ---
 function toggleTimer() {
     const btn = document.getElementById('btn-timer');
     if(UI.timerInterval) {
-        clearInterval(UI.timerInterval);
-        UI.timerInterval = null;
-        btn.innerText = 'LANJUTKAN';
-        btn.classList.replace('bg-red-600', 'bg-yellow-600');
-        btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500');
+        clearInterval(UI.timerInterval); UI.timerInterval = null;
+        btn.innerText = 'LANJUTKAN'; btn.classList.replace('bg-red-600', 'bg-yellow-600'); btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500');
     } else {
-        UI.timerInterval = setInterval(() => {
-            UI.timerSeconds++;
-            updateTimerUI();
-            calculateLive();
-        }, 1000);
-        btn.innerText = 'STOP';
-        btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold';
+        UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000);
+        btn.innerText = 'STOP'; btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold';
     }
 }
 
 function resetTimer() {
-    clearInterval(UI.timerInterval);
-    UI.timerInterval = null;
-    UI.timerSeconds = 0;
-    updateTimerUI();
-    const btn = document.getElementById('btn-timer');
-    btn.innerText = 'START';
-    btn.className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold';
+    clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI();
+    document.getElementById('btn-timer').innerText = 'START';
+    document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold';
     calculateLive();
 }
 
@@ -493,18 +410,13 @@ function updateTimerUI() {
     document.getElementById('timer-display').innerText = `${m}:${s}`;
 }
 
-// --- TAB 5: RANKING LOGIC (Tetap Sama) ---
+// --- TAB 5: RANKING LOGIC (DIPISAHKAN BERDASARKAN POOL) ---
 function renderRanking() {
     const filter = document.getElementById('rank-filter-kategori').value;
     let list = STATE.participants;
     
     if (filter !== 'all') list = list.filter(p => p.kategori === filter);
-    list = list.filter(p => p.finalScore > 0);
-
-    list.sort((a,b) => {
-        if(b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
-        return b.techScore - a.techScore;
-    });
+    list = list.filter(p => p.finalScore > 0); // Hanya tampilkan yang sudah dinilai
 
     const container = document.getElementById('ranking-list');
     
@@ -513,52 +425,95 @@ function renderRanking() {
         return;
     }
 
-    container.innerHTML = list.map((p, i) => {
-        let medal = i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : 
-                    i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : 
-                    i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : 
-                    `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
+    // Mengelompokkan peserta berdasarkan Pool
+    const grouped = { 'SINGLE': [], 'A': [], 'B': [] };
+    list.forEach(p => {
+        if(grouped[p.pool]) grouped[p.pool].push(p);
+        else grouped['SINGLE'].push(p); // Fallback
+    });
 
-        return `
-        <div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4">
-            <div class="w-12 text-center flex-shrink-0">${medal}</div>
-            <div class="flex-1 w-full">
-                <div class="font-bold text-lg text-white">${p.nama}</div>
-                <div class="text-xs text-slate-400 mt-1">
-                    <span class="bg-slate-800 px-2 py-1 rounded border border-slate-700">${p.kontingen}</span>
-                    <span class="ml-2 text-blue-400">${p.kategori}</span> | Pool: ${p.pool}
+    let htmlOutput = '';
+
+    ['SINGLE', 'A', 'B'].forEach(poolKey => {
+        let poolList = grouped[poolKey];
+        if(poolList.length === 0) return; // Skip jika pool kosong
+
+        // Sort per Pool: Nilai Akhir lalu Tie-Breaker
+        poolList.sort((a,b) => {
+            if(b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
+            return b.techScore - a.techScore;
+        });
+
+        // Buat Judul Pool
+        let poolTitle = poolKey === 'SINGLE' ? 'KLASEMEN AKHIR' : `KLASEMEN POOL ${poolKey}`;
+        htmlOutput += `<h3 class="text-lg font-bold text-blue-400 mt-6 mb-2 border-b border-slate-700 pb-2">${poolTitle}</h3>`;
+
+        // Render Kartu Atlet
+        htmlOutput += poolList.map((p, i) => {
+            let medal = i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : 
+                        i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : 
+                        i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : 
+                        `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
+
+            // Tampilan detail nilai berbeda antara Single vs Pool
+            let scoreDetailHTML = '';
+            if (poolKey === 'SINGLE') {
+                scoreDetailHTML = `<div class="text-[10px] text-slate-500 uppercase">Babak 1 / 2</div>
+                                   <div class="text-sm font-mono text-slate-300">${p.scores.b1.final.toFixed(1)} / ${p.scores.b2.final.toFixed(1)}</div>`;
+            } else {
+                scoreDetailHTML = `<div class="text-[10px] text-slate-500 uppercase">Skor Penyisihan</div>
+                                   <div class="text-sm font-mono text-slate-300">${p.scores.b1.final.toFixed(1)}</div>`;
+            }
+
+            return `
+            <div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4 mb-3">
+                <div class="w-12 text-center flex-shrink-0">${medal}</div>
+                <div class="flex-1 w-full">
+                    <div class="font-bold text-lg text-white">${p.nama}</div>
+                    <div class="text-xs text-slate-400 mt-1">
+                        <span class="bg-slate-800 px-2 py-1 rounded border border-slate-700">${p.kontingen}</span>
+                        <span class="ml-2 text-blue-400">${p.kategori}</span>
+                    </div>
                 </div>
-            </div>
-            <div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700">
-                <div class="text-center md:text-right border-r border-slate-700 pr-4 flex-1">
-                    <div class="text-[10px] text-slate-500 uppercase">Babak 1 / 2</div>
-                    <div class="text-sm font-mono text-slate-300">${p.scores.b1.final.toFixed(1)} / ${p.scores.b2.final.toFixed(1)}</div>
+                <div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700">
+                    <div class="text-center md:text-right border-r border-slate-700 pr-4 flex-1">
+                        ${scoreDetailHTML}
+                    </div>
+                    <div class="text-center md:text-right flex-1">
+                        <div class="text-[10px] text-green-400 font-bold uppercase">Nilai Akhir</div>
+                        <div class="text-2xl font-black text-white">${p.finalScore.toFixed(2)}</div>
+                    </div>
                 </div>
-                <div class="text-center md:text-right flex-1">
-                    <div class="text-[10px] text-green-400 font-bold uppercase">Nilai Akhir</div>
-                    <div class="text-2xl font-black text-white">${p.finalScore.toFixed(2)}</div>
-                </div>
-            </div>
-        </div>`
-    }).join('');
+            </div>`;
+        }).join('');
+    });
+
+    container.innerHTML = htmlOutput;
 }
 
 function exportToCSV() {
-    let rows = [["Rank", "Nama Atlet", "Kontingen", "Kategori", "Pool", "Skor B1", "Skor B2", "NILAI AKHIR", "Tie-Breaker (W1)"]];
+    let rows = [["Rank", "Nama Atlet", "Kontingen", "Kategori", "Pool", "Skor B1/Penyisihan", "Skor B2", "NILAI AKHIR", "Tie-Breaker (W1)"]];
     let list = [...STATE.participants].filter(p => p.finalScore > 0);
     
     list.sort((a,b) => {
+        if(a.pool !== b.pool) return a.pool.localeCompare(b.pool); // Urutkan by Pool dulu di CSV
         if(b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
         return b.techScore - a.techScore;
     });
 
     list.forEach((p, i) => {
-        rows.push([i+1, `"${p.nama}"`, `"${p.kontingen}"`, `"${p.kategori}"`, p.pool, p.scores.b1.final, p.scores.b2.final, p.finalScore, p.techScore]);
+        // Logika sederhana untuk rank berulang di tiap pool
+        let rank = 1; 
+        if(i > 0 && list[i-1].pool === p.pool) {
+             rank = rows[rows.length-1][0] + 1;
+        }
+
+        rows.push([rank, `"${p.nama}"`, `"${p.kontingen}"`, `"${p.kategori}"`, p.pool, p.scores.b1.final, p.scores.b2.final, p.finalScore, p.techScore]);
     });
 
     let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
-    link.download = `MASS_Report_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `MASS_Report_Ranking_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
 }
