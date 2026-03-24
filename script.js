@@ -1,27 +1,21 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 3.1 (With Auto-Repair & Crash Protection)
+ * Version 3.2 (Import CSV, Filter, & Drawing Lock)
  */
 
-// --- 1. STATE MANAGEMENT & AUTO-REPAIR ---
 function initializeData() {
     try {
         let cats = JSON.parse(localStorage.getItem('mass_categories')) || [];
         let parts = JSON.parse(localStorage.getItem('mass_participants')) || [];
         
-        // AUTO-REPAIR: Deteksi struktur data lama dan bersihkan jika tidak cocok
-        // Mencegah JS Crash yang membuat Tab tidak bisa diklik
         if (parts.length > 0) {
             if (Array.isArray(parts[0].scores) || !parts[0].scores.b1) {
-                console.warn("Mendeteksi sisa data versi lama. Melakukan auto-reset...");
-                localStorage.removeItem('mass_categories');
-                localStorage.removeItem('mass_participants');
+                localStorage.clear();
                 return { categories: [], participants: [], settings: { numJudges: 5 } };
             }
         }
         return { categories: cats, participants: parts, settings: { numJudges: 5 } };
     } catch (e) {
-        console.error("Data korup, mereset sistem...", e);
         localStorage.clear();
         return { categories: [], participants: [], settings: { numJudges: 5 } };
     }
@@ -35,24 +29,18 @@ const UI = {
     timerSeconds: 0
 };
 
-// --- 2. INITIALIZATION & TAB ROUTING ---
 document.addEventListener('DOMContentLoaded', () => {
-    try {
-        refreshAllData();
-        setJudges(5); // Default Juri
-        
-        // Set text nama atlet di scoring awal
-        const selectPesertaEl = document.getElementById('select-peserta');
-        if (selectPesertaEl) {
-            selectPesertaEl.addEventListener('change', (e) => {
-                if(e.target.selectedIndex >= 0) {
-                    const selected = e.target.options[e.target.selectedIndex].text;
-                    document.getElementById('scoring-athlete-name').innerText = selected || 'Pilih atlet di panel kiri';
-                }
-            });
-        }
-    } catch (error) {
-        console.error("Gagal memuat UI:", error);
+    refreshAllData();
+    setJudges(5); 
+    
+    const selectPesertaEl = document.getElementById('select-peserta');
+    if (selectPesertaEl) {
+        selectPesertaEl.addEventListener('change', (e) => {
+            if(e.target.selectedIndex >= 0) {
+                const selected = e.target.options[e.target.selectedIndex].text;
+                document.getElementById('scoring-athlete-name').innerText = selected || 'Pilih atlet di panel kiri';
+            }
+        });
     }
 });
 
@@ -63,60 +51,36 @@ function saveToLocalStorage() {
 
 function refreshAllData() {
     renderCategoryList();
-    renderParticipantTable();
     updateAllDropdowns();
+    renderParticipantTable();
 }
 
 function switchTab(targetTab) {
-    try {
-        // 1. Sembunyikan semua section
-        UI.tabs.forEach(tab => {
-            const sectionEl = document.getElementById(`section-${tab}`);
-            const tabEl = document.getElementById(`tab-${tab}`);
-            
-            if (sectionEl) {
-                sectionEl.classList.add('hidden');
-                sectionEl.classList.remove('block');
-            }
-            if (tabEl) {
-                tabEl.classList.remove('active-tab', 'text-blue-500');
-                tabEl.classList.add('text-slate-400');
-            }
-        });
+    UI.tabs.forEach(tab => {
+        const sectionEl = document.getElementById(`section-${tab}`);
+        const tabEl = document.getElementById(`tab-${tab}`);
+        if (sectionEl) { sectionEl.classList.add('hidden'); sectionEl.classList.remove('block'); }
+        if (tabEl) { tabEl.classList.remove('active-tab', 'text-blue-500'); tabEl.classList.add('text-slate-400'); }
+    });
 
-        // 2. Tampilkan section target
-        const activeSection = document.getElementById(`section-${targetTab}`);
-        const activeTab = document.getElementById(`tab-${targetTab}`);
-        
-        if (activeSection) {
-            activeSection.classList.remove('hidden');
-            activeSection.classList.add('block');
-        }
-        if (activeTab) {
-            activeTab.classList.remove('text-slate-400');
-            activeTab.classList.add('active-tab', 'text-blue-500');
-        }
+    const activeSection = document.getElementById(`section-${targetTab}`);
+    const activeTab = document.getElementById(`tab-${targetTab}`);
+    if (activeSection) { activeSection.classList.remove('hidden'); activeSection.classList.add('block'); }
+    if (activeTab) { activeTab.classList.remove('text-slate-400'); activeTab.classList.add('active-tab', 'text-blue-500'); }
 
-        // 3. Trigger fungsi khusus
-        if(targetTab === 'ranking') renderRanking();
-        if(targetTab === 'scoring') filterPesertaScoring();
-        if(targetTab === 'drawing') updateAllDropdowns();
-
-    } catch (error) {
-        console.error("Gagal berpindah tab:", error);
-    }
+    if(targetTab === 'ranking') renderRanking();
+    if(targetTab === 'scoring') filterPesertaScoring();
+    if(targetTab === 'drawing') { updateAllDropdowns(); checkExistingDrawing(); }
 }
 
-// --- 3. TAB 1: KATEGORI LOGIC ---
+// --- TAB 1: KATEGORI ---
 document.getElementById('form-kategori').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
     const type = parseInt(document.getElementById('cat-type').value);
     
     if(!name) return;
-    if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-        return alert("Kategori dengan nama ini sudah ada!");
-    }
+    if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!");
 
     STATE.categories.push({ id: Date.now(), name, type });
     saveToLocalStorage();
@@ -126,10 +90,7 @@ document.getElementById('form-kategori').addEventListener('submit', (e) => {
 
 function renderCategoryList() {
     const container = document.getElementById('list-kategori');
-    if(STATE.categories.length === 0) {
-        container.innerHTML = `<span class="text-sm text-slate-500 italic">Belum ada kategori yang ditambahkan.</span>`;
-        return;
-    }
+    if(STATE.categories.length === 0) return container.innerHTML = `<span class="text-sm text-slate-500 italic">Belum ada kategori.</span>`;
 
     container.innerHTML = STATE.categories.map(c => `
         <div class="bg-slate-800 px-4 py-2 rounded-lg text-sm flex items-center gap-3 border border-slate-700 shadow-sm">
@@ -148,7 +109,7 @@ function deleteCategory(id) {
     }
 }
 
-// --- 4. TAB 2: ATLET LOGIC ---
+// --- TAB 2: ATLET ---
 function updateAllDropdowns() {
     const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     const emptyOpt = `<option value="">-- Pilih Kategori --</option>`;
@@ -156,7 +117,64 @@ function updateAllDropdowns() {
     document.getElementById('p-kategori').innerHTML = emptyOpt + options;
     document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options;
     document.getElementById('select-kategori').innerHTML = emptyOpt + options;
-    document.getElementById('rank-filter-kategori').innerHTML = '<option value="all">Semua Kategori</option>' + options;
+    
+    // Dropdown dengan opsi "Semua Kategori"
+    const allOpt = '<option value="all">Semua Kategori</option>';
+    document.getElementById('rank-filter-kategori').innerHTML = allOpt + options;
+    document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options;
+}
+
+// Import CSV Logic
+function handleCSVUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const rows = text.split('\n');
+        let count = 0;
+        let errors = 0;
+
+        rows.forEach((row, i) => {
+            if(i === 0 || !row.trim()) return; // Skip baris pertama (header) atau baris kosong
+            
+            // Antisipasi koma di dalam nama (jika dibungkus kutip)
+            const cols = row.split(',').map(item => item.trim().replace(/^"|"$/g, ''));
+            
+            if(cols.length >= 3) {
+                const nama = cols[0];
+                const kontingen = cols[1];
+                const kategori = cols[2];
+
+                // Validasi: Kategori harus sudah terdaftar di tab Kategori
+                if(nama && STATE.categories.some(c => c.name.toLowerCase() === kategori.toLowerCase())) {
+                    STATE.participants.push({
+                        id: Date.now() + i,
+                        nama, kontingen, kategori,
+                        urut: 0, pool: '-',
+                        scores: {
+                            b1: { raw: [], penalty: 0, final: 0, tech: 0 },
+                            b2: { raw: [], penalty: 0, final: 0, tech: 0 }
+                        },
+                        finalScore: 0, techScore: 0
+                    });
+                    count++;
+                } else {
+                    errors++;
+                }
+            }
+        });
+
+        saveToLocalStorage();
+        refreshAllData();
+        event.target.value = ''; // Reset input
+        
+        let msg = `${count} Atlet berhasil diimport.`;
+        if(errors > 0) msg += `\n(${errors} baris gagal. Pastikan nama Kategori di CSV sama persis dengan yang ada di sistem).`;
+        alert(msg);
+    };
+    reader.readAsText(file);
 }
 
 document.getElementById('form-peserta').addEventListener('submit', (e) => {
@@ -164,37 +182,37 @@ document.getElementById('form-peserta').addEventListener('submit', (e) => {
     const catName = document.getElementById('p-kategori').value;
     if(!catName) return alert("Pilih kategori terlebih dahulu!");
 
-    const newPeserta = {
+    STATE.participants.push({
         id: Date.now(),
         nama: document.getElementById('p-nama').value,
         kontingen: document.getElementById('p-kontingen').value,
         kategori: catName,
-        urut: 0,
-        pool: '-',
-        scores: {
-            b1: { raw: [], penalty: 0, final: 0, tech: 0 },
-            b2: { raw: [], penalty: 0, final: 0, tech: 0 }
-        },
-        finalScore: 0,
-        techScore: 0
-    };
+        urut: 0, pool: '-',
+        scores: { b1: { raw: [], penalty: 0, final: 0, tech: 0 }, b2: { raw: [], penalty: 0, final: 0, tech: 0 } },
+        finalScore: 0, techScore: 0
+    });
 
-    STATE.participants.push(newPeserta);
     saveToLocalStorage();
     renderParticipantTable();
-    
     document.getElementById('p-nama').value = '';
     document.getElementById('p-nama').focus();
 });
 
 function renderParticipantTable() {
     const body = document.getElementById('table-peserta-body');
-    if(STATE.participants.length === 0) {
-        body.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">Belum ada data atlet.</td></tr>`;
+    const filter = document.getElementById('filter-atlet-kategori').value;
+    
+    let list = STATE.participants;
+    if(filter && filter !== 'all') {
+        list = list.filter(p => p.kategori === filter);
+    }
+
+    if(list.length === 0) {
+        body.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">Tidak ada data atlet.</td></tr>`;
         return;
     }
 
-    let sortedList = [...STATE.participants].sort((a,b) => {
+    let sortedList = [...list].sort((a,b) => {
         if(a.kategori === b.kategori) return a.urut - b.urut;
         return a.kategori.localeCompare(b.kategori);
     });
@@ -230,7 +248,34 @@ function resetDataAtlet() {
     }
 }
 
-// --- 5. TAB 3: DRAWING LOGIC ---
+// --- TAB 3: DRAWING ---
+function checkExistingDrawing() {
+    const catName = document.getElementById('draw-select-kategori').value;
+    const resultDiv = document.getElementById('drawing-result');
+    resultDiv.innerHTML = '';
+    
+    if(!catName) return;
+
+    // Cek apakah kategori ini sudah diundi sebelumnya
+    let list = STATE.participants.filter(p => p.kategori === catName);
+    const isDrawn = list.some(p => p.urut > 0);
+
+    if (isDrawn) {
+        // Tampilkan hasil undian sebelumnya
+        list.sort((a,b) => a.urut - b.urut);
+        if(list.some(p => p.pool === 'A' || p.pool === 'B')) {
+            const poolA = list.filter(p => p.pool === 'A');
+            const poolB = list.filter(p => p.pool === 'B');
+            renderPoolUI(poolA, "POOL A (Sudah Diundi)", resultDiv);
+            renderPoolUI(poolB, "POOL B (Sudah Diundi)", resultDiv);
+        } else {
+            renderPoolUI(list, "BABAK PENYISIHAN (Sudah Diundi)", resultDiv);
+        }
+    } else {
+        resultDiv.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Kategori ini belum diundi. Klik "Acak Urutan Sekarang".</div>`;
+    }
+}
+
 function startDrawing() {
     const catName = document.getElementById('draw-select-kategori').value;
     if(!catName) return alert("Pilih kategori yang akan diundi!");
@@ -238,6 +283,14 @@ function startDrawing() {
     let list = STATE.participants.filter(p => p.kategori === catName);
     if(list.length === 0) return alert("Belum ada peserta di kategori ini!");
 
+    // Sistem Pengunci (Lock)
+    const isDrawn = list.some(p => p.urut > 0);
+    if (isDrawn) {
+        const confirmRedraw = confirm("⚠️ PERINGATAN: Kategori ini SUDAH DIUNDI.\n\nMengacak ulang akan mengubah urutan tampil dan berpotensi mengacaukan sinkronisasi nilai jika pertandingan sudah berjalan.\n\nApakah Anda YAKIN ingin mengacak ulang?");
+        if (!confirmRedraw) return;
+    }
+
+    // Algoritma Fisher-Yates
     for (let i = list.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [list[i], list[j]] = [list[j], list[i]];
@@ -296,7 +349,7 @@ function renderPoolUI(arr, title, container) {
     container.innerHTML += html;
 }
 
-// --- 6. TAB 4: SCORING & TIMER LOGIC ---
+// --- TAB 4: SCORING & TIMER LOGIC (Tetap Sama) ---
 function filterPesertaScoring() {
     const cat = document.getElementById('select-kategori').value;
     let filtered = STATE.participants.filter(p => p.kategori === cat).sort((a,b) => {
@@ -440,7 +493,7 @@ function updateTimerUI() {
     document.getElementById('timer-display').innerText = `${m}:${s}`;
 }
 
-// --- 7. TAB 5: RANKING LOGIC ---
+// --- TAB 5: RANKING LOGIC (Tetap Sama) ---
 function renderRanking() {
     const filter = document.getElementById('rank-filter-kategori').value;
     let list = STATE.participants;
