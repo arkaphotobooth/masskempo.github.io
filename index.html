@@ -140,3 +140,35 @@
     <script src="script.js"></script>
 </body>
 </html>
+<button onclick="switchTab('drawing')" id="tab-drawing" class="px-3 py-5 font-semibold text-slate-400 hover:text-white transition-all">DRAWING</button>
+
+<div class="bg-dark-card p-6 rounded-xl border border-slate-700 mt-6">
+    <h3 class="text-sm font-bold text-blue-400 mb-4 uppercase">Set Kategori & Kuota</h3>
+    <form id="form-kategori" class="flex gap-4">
+        <input type="text" id="cat-name" placeholder="Nama Kategori (ex: Tandoku Kyu Kenshi)" class="flex-1 bg-slate-800 border border-slate-600 p-3 rounded-lg outline-none">
+        <select id="cat-type" class="bg-slate-800 border border-slate-600 p-3 rounded-lg">
+            <option value="1">Tandoku (1 Orang)</option>
+            <option value="2">Berpasangan (2 Orang)</option>
+            <option value="4">Beregu (4 Orang)</option>
+            <option value="6">Beregu (6 Orang)</option>
+        </select>
+        <button type="submit" class="bg-green-600 hover:bg-green-500 px-6 rounded-lg font-bold">SIMPAN</button>
+    </form>
+    <div id="list-kategori" class="flex flex-wrap gap-2 mt-4"></div>
+</div>
+
+<section id="section-drawing" class="hidden space-y-6">
+    <div class="bg-dark-card p-6 rounded-xl border border-slate-700">
+        <h2 class="text-2xl font-bold text-purple-400 mb-4"><i class="fas fa-random mr-2"></i>Drawing & Undian Urutan</h2>
+        <div class="flex gap-4 items-end mb-6">
+            <div class="flex-1">
+                <label class="block text-xs mb-1 text-slate-400">Pilih Kategori untuk Diundi</label>
+                <select id="draw-select-kategori" class="w-full bg-slate-800 border border-slate-600 p-3 rounded-lg"></select>
+            </div>
+            <button onclick="startDrawing()" class="bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-lg font-bold">ACAK URUTAN TAMPIL</button>
+        </div>
+        
+        <div id="drawing-result" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            </div>
+    </div>
+</section>
