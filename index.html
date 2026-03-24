@@ -89,7 +89,6 @@
                 </div>
 
                 <div class="xl:col-span-3 bg-dark-card p-6 rounded-xl border border-slate-700">
-                    
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-700 pb-4">
                         <div>
                             <h3 class="text-xl font-bold flex items-center gap-2">
@@ -106,9 +105,7 @@
                             <select id="select-babak" onchange="loadExistingScores()" class="w-full sm:w-auto bg-slate-800 border border-blue-500 p-2 rounded-lg font-bold text-blue-300 outline-none"><option value="b1">Babak Penyisihan</option></select>
                             <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-600"><button onclick="setJudges(3)" id="btn-j3" class="px-4 py-1.5 rounded font-semibold text-sm transition-colors">3 Juri</button><button onclick="setJudges(5)" id="btn-j5" class="px-4 py-1.5 rounded font-semibold text-sm transition-colors bg-blue-600">5 Juri</button></div>
                         </div>
-
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-8" id="judge-inputs"></div>
-
                         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div class="text-center md:text-left flex-1">
                                 <span class="text-xs uppercase text-slate-400 font-bold tracking-widest block mb-1">Total Nilai Bersih</span>
@@ -125,50 +122,52 @@
                     </div>
 
                     <div id="panel-randori" class="hidden">
-                        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center mb-6">
-                            <span class="text-yellow-500 text-sm font-bold"><i class="fas fa-info-circle mr-1"></i> Mode Randori Diaktifkan</span>
-                            <p class="text-xs text-slate-400 mt-1">Sistem Double Elimination Bracket akan ditambahkan di pembaruan berikutnya. Untuk saat ini, ini adalah preview Papan Skor.</p>
-                        </div>
-                        
                         <div class="flex flex-col md:flex-row gap-6">
+                            
                             <div class="flex-1 bg-red-900/20 border-2 border-red-600 rounded-xl p-6 text-center">
-                                <h4 class="text-2xl font-black text-red-500 uppercase tracking-widest mb-1">AKA</h4>
-                                <p class="text-sm text-slate-300 font-bold mb-6">Atlet Sudut Merah</p>
-                                
-                                <div class="text-8xl font-black text-white mb-6">0</div>
-                                
-                                <div class="grid grid-cols-2 gap-2 mb-4">
-                                    <button class="bg-red-600 hover:bg-red-500 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus mr-1"></i> WAZA-ARI</button>
-                                    <button class="bg-red-700 hover:bg-red-600 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus-double mr-1"></i> IPPON</button>
+                                <h4 class="text-2xl font-black text-red-500 uppercase tracking-widest mb-2">PITA MERAH</h4>
+                                <div class="flex justify-center gap-3 mb-4">
+                                    <button id="warn1-merah" onclick="toggleWarning('merah', 1)" class="w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors" title="Peringatan 1"></button>
+                                    <button id="warn2-merah" onclick="toggleWarning('merah', 2)" class="w-6 h-6 rounded-full border-2 border-orange-500 transition-colors" title="Peringatan 2"></button>
                                 </div>
-                                <div class="flex justify-center gap-2">
-                                    <span class="bg-yellow-600 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-yellow-500">Chui 1</span>
-                                    <span class="bg-orange-600 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-orange-500">Chui 2</span>
-                                    <span class="bg-red-800 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-red-700">Hansoku</span>
+                                
+                                <div class="text-8xl font-black text-white mb-6" id="score-merah">0</div>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <button onclick="addRandoriScore('merah', 5)" class="bg-red-600 hover:bg-red-500 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus mr-1"></i> WAZARI (+5)</button>
+                                    <button onclick="addRandoriScore('merah', 10)" class="bg-red-700 hover:bg-red-600 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus-double mr-1"></i> IPPON (+10)</button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="addRandoriScore('putih', 5)" class="bg-red-900 border border-red-700 hover:bg-red-800 py-2 rounded-lg font-bold text-[10px] text-red-200">BATSU (Lawan +5)</button>
+                                    <button onclick="addRandoriScore('merah', -5)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg font-bold text-[10px] text-slate-400">UNDO (-5)</button>
                                 </div>
                             </div>
 
                             <div class="flex items-center justify-center font-black text-4xl text-slate-600 italic">VS</div>
 
                             <div class="flex-1 bg-slate-100/10 border-2 border-slate-300 rounded-xl p-6 text-center">
-                                <h4 class="text-2xl font-black text-white uppercase tracking-widest mb-1">SHIRO</h4>
-                                <p class="text-sm text-slate-300 font-bold mb-6">Atlet Sudut Putih</p>
-                                
-                                <div class="text-8xl font-black text-white mb-6">0</div>
-                                
-                                <div class="grid grid-cols-2 gap-2 mb-4">
-                                    <button class="bg-slate-300 text-slate-900 hover:bg-white py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus mr-1"></i> WAZA-ARI</button>
-                                    <button class="bg-slate-400 text-slate-900 hover:bg-slate-200 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus-double mr-1"></i> IPPON</button>
+                                <h4 class="text-2xl font-black text-white uppercase tracking-widest mb-2">PITA PUTIH</h4>
+                                <div class="flex justify-center gap-3 mb-4">
+                                    <button id="warn1-putih" onclick="toggleWarning('putih', 1)" class="w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors" title="Peringatan 1"></button>
+                                    <button id="warn2-putih" onclick="toggleWarning('putih', 2)" class="w-6 h-6 rounded-full border-2 border-orange-500 transition-colors" title="Peringatan 2"></button>
                                 </div>
-                                <div class="flex justify-center gap-2">
-                                    <span class="bg-yellow-600 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-yellow-500">Chui 1</span>
-                                    <span class="bg-orange-600 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-orange-500">Chui 2</span>
-                                    <span class="bg-red-800 text-xs px-2 py-1 rounded font-bold cursor-pointer hover:bg-red-700">Hansoku</span>
+                                
+                                <div class="text-8xl font-black text-white mb-6" id="score-putih">0</div>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <button onclick="addRandoriScore('putih', 5)" class="bg-slate-300 text-slate-900 hover:bg-white py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus mr-1"></i> WAZARI (+5)</button>
+                                    <button onclick="addRandoriScore('putih', 10)" class="bg-slate-400 text-slate-900 hover:bg-slate-200 py-3 rounded-lg font-bold text-xs"><i class="fas fa-plus-double mr-1"></i> IPPON (+10)</button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="addRandoriScore('merah', 5)" class="bg-slate-700 border border-slate-500 hover:bg-slate-600 py-2 rounded-lg font-bold text-[10px] text-slate-200">BATSU (Lawan +5)</button>
+                                    <button onclick="addRandoriScore('putih', -5)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg font-bold text-[10px] text-slate-400">UNDO (-5)</button>
                                 </div>
                             </div>
                         </div>
                         
-                        <button class="w-full mt-6 bg-green-600 hover:bg-green-500 py-4 rounded-xl font-black text-xl shadow-lg shadow-green-900/50 uppercase"><i class="fas fa-check-circle mr-2"></i> TENTUKAN PEMENANG (DEMO)</button>
+                        <div class="mt-6 flex justify-center gap-4">
+                            <button onclick="resetRandoriBoard()" class="bg-slate-700 hover:bg-slate-600 px-6 py-4 rounded-xl font-bold text-sm shadow-lg"><i class="fas fa-redo mr-2"></i> RESET SKOR</button>
+                        </div>
                     </div>
 
                 </div>
