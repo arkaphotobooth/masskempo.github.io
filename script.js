@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.2 (Ultimate Release: Robust Parser, Double Bronze, Balanced BYE & Auto-Wrap UI)
+ * Version 14.3 (Grid Layout Fix for Embu & Stable Core)
  */
 
 function initializeData() {
@@ -73,7 +73,6 @@ function handleCSVUpload(event) {
 
 document.getElementById('form-peserta').addEventListener('submit', (e) => { e.preventDefault(); const catName = document.getElementById('p-kategori').value; if(!catName) return alert("Pilih kategori!"); STATE.participants.push({ id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value, kategori: catName, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); saveToLocalStorage(); renderParticipantTable(); document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus(); });
 
-// --- UI UPDATE: Tabel Atlet Anti-Melar ---
 function renderParticipantTable() { 
     const body = document.getElementById('table-peserta-body'); 
     const filter = document.getElementById('filter-atlet-kategori').value; 
@@ -467,7 +466,6 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
-// --- UI UPDATE: Embu Pool Auto-Wrap Flexbox Fix ---
 function renderPoolUI(arr, title, container, isFinal) { 
     let borderColor = isFinal ? 'border-yellow-600' : 'border-slate-600'; 
     let titleColor = isFinal ? 'text-yellow-500' : 'text-purple-400'; 
@@ -503,8 +501,9 @@ function checkExistingDrawing() {
         panelEmbu.classList.remove('hidden'); 
         const isFinalMode = list.some(p => p.isFinalist); 
         
-        let resetBtnHTML = `<div class="flex justify-end items-center mb-2">
-            <button onclick="resetNilaiKategoriLokal()" class="text-slate-500 hover:text-red-500 transition-colors" title="Kosongkan Nilai (Urutan Tetap)"><i class="fas fa-eraser"></i></button>
+        // UI FIX: Tombol penghapus diberi lebar penuh agar tidak merusak grid di bawahnya
+        let resetBtnHTML = `<div class="col-span-1 md:col-span-2 flex justify-end items-center mb-2 w-full">
+            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded shadow border border-red-800 transition-colors" title="Kosongkan Nilai Saja (Urutan Tetap)"><i class="fas fa-eraser"></i></button>
         </div>`;
 
         if (isFinalMode) { 
@@ -582,6 +581,47 @@ function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0, warn1: false
 function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points; if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; updateRandoriUI(); }
 function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
+
+function saveRandoriMatchResult() {
+    if(!currentRandoriMatchId) return alert("Pilih partai!");
+    const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
+    if(!match) return;
+
+    let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
+    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
+
+    let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
+    let loserId = sMerah > sPutih ? match.putihId : match.merahId;
+    let winnerName = sMerah > sPutih ? "PITA MERAH (AKA)" : "PITA PUTIH (SHIRO)";
+
+    if(confirm(`Konfirmasi Pemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}\n\nLanjutkan?`)) {
+        match.skorMerah = sMerah; match.skorPutih = sPutih; 
+        match.winnerId = winnerId; match.loserId = loserId; 
+        match.status = 'done';
+        
+        recalculateAllLosses(match.kategori);
+        
+        let winnerP = STATE.participants.find(p => p.id === winnerId);
+
+        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
+        let isChallenger = winnerP && winnerP.losses > 0;
+        
+        if(isGrandFinal && isChallenger) {
+            alert("TIE BREAKER GRAND FINAL!\nAtlet dari jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
+            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
+            let extraMatch = { id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.merahId, putihId: match.putihId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 };
+            STATE.matches.push(extraMatch);
+        } else {
+            forwardParticipant(match.nextW, winnerId, match.kategori, match.pool); 
+            if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool); 
+        }
+
+        processAutoWins(match.kategori); 
+        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
+    }
+}
+
+document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
 
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
