@@ -941,21 +941,40 @@ function resetTimer() { clearInterval(UI.timerInterval); UI.timerInterval = null
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
 
 function calculateRandoriFinalists(catName) {
-    let list = STATE.participants.filter(p => p.kategori === catName);
     let catMatches = STATE.matches.filter(m => m.kategori === catName);
-    
-    let grandFinals = catMatches.filter(m => m.nextW === 'WINNER').sort((a,b) => b.id - a.id);
-    if(grandFinals.length === 0 || grandFinals[0].status !== 'done') return null;
-    
-    let gf = grandFinals[0];
-    let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
-    let juara2 = STATE.participants.find(p => p.id === gf.loserId);
-    let finalBawah = catMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
-    let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
-    let lbSFinal = catMatches.find(m => m.babak.toUpperCase() === "LB SEMI-FINAL" || m.babak.toUpperCase() === "LB S-FINAL" || m.babak.toUpperCase() === "LB SF" || m.babak.toUpperCase() === "LB R1");
-    let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
+    let pools = [...new Set(catMatches.map(m => m.pool))];
+    let results = [];
 
-    return { emas: juara1 ? juara1.nama : null, perak: juara2 ? juara2.nama : null, perunggu: [juara3a ? juara3a.nama : null, juara3b ? juara3b.nama : null].filter(n => n !== null) };
+    pools.forEach(poolName => {
+        let poolMatches = catMatches.filter(m => m.pool === poolName);
+        let grandFinals = poolMatches.filter(m => m.nextW === 'WINNER').sort((a,b) => b.id - a.id);
+        
+        if(grandFinals.length === 0 || grandFinals[0].status !== 'done') return;
+        
+        let gf = grandFinals[0];
+        let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
+        let juara2 = STATE.participants.find(p => p.id === gf.loserId);
+        
+        let finalBawah = poolMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
+        let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
+        
+        let lbSFinal = poolMatches.find(m => m.babak.toUpperCase() === "LB SEMI-FINAL" || m.babak.toUpperCase() === "LB S-FINAL" || m.babak.toUpperCase() === "LB SF" || m.babak.toUpperCase() === "LB R1");
+        let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
+
+        results.push({
+            pool: poolName,
+            emas: juara1 ? juara1.nama : null,
+            emasKontingen: juara1 ? juara1.kontingen : null,
+            perak: juara2 ? juara2.nama : null,
+            perakKontingen: juara2 ? juara2.kontingen : null,
+            perunggu: [
+                juara3a ? {nama: juara3a.nama, kontingen: juara3a.kontingen} : null, 
+                juara3b ? {nama: juara3b.nama, kontingen: juara3b.kontingen} : null
+            ].filter(n => n !== null)
+        });
+    });
+
+    return results.length > 0 ? results : null;
 }
 
 function cancelFinalist() {
@@ -1007,7 +1026,6 @@ function renderRanking() {
     const btnPromote = document.getElementById('btn-promote-final'); 
     const container = document.getElementById('ranking-list'); 
 
-    // Injeksi Tombol Unduh Hasil
     let microRankBtn = document.getElementById('btn-micro-rank-export');
     if (!microRankBtn && btnPromote && btnPromote.parentElement) {
         microRankBtn = document.createElement('button');
@@ -1049,7 +1067,7 @@ function renderRanking() {
     let hasData = catList.some(p => p.scores.b1.final > 0 || p.losses > 0 || (catObj.discipline === 'randori' && calculateRandoriFinalists(filter)));
 
     if(!hasData) {
-        if(catObj.discipline === 'randori') { return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl">Turnamen Randori belum selesai / belum ada medali.</div>`; } 
+        if(catObj.discipline === 'randori') { return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl">Turnamen Randori belum selesai / belum ada juara.</div>`; } 
         else { return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl">Belum ada data nilai di kategori ini.</div>`; }
     }
 
@@ -1082,13 +1100,23 @@ function renderRanking() {
             }).join(''); 
         }); 
     } else {
-        const wins = calculateRandoriFinalists(catObj.name);
-        if(!wins) { htmlOutput += `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Turnamen di kategori ini masih berlangsung.</div>`; } 
-        else {
-            htmlOutput += `<h4 class="text-md font-bold text-red-400 mt-6 mb-3 pl-2 border-l-4 border-red-500">PEMENANG MEDALI</h4>`;
-            htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${wins.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500 tracking-wider">Juara 1 (Emas)</div></div></div>`;
-            htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl drop-shadow-[0_0_10px_rgba(203,213,225,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${wins.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300 tracking-wider">Juara 2 (Perak)</div></div></div>`;
-            wins.perunggu.forEach(pName => { htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-amber-700 gap-4 mb-3 bg-amber-800/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-amber-600 text-3xl drop-shadow-[0_0_10px_rgba(217,119,6,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${pName}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-amber-600 tracking-wider">Juara 3 Bersama (Perunggu)</div></div></div>`; });
+        const poolResults = calculateRandoriFinalists(catObj.name);
+        if(!poolResults) { 
+            htmlOutput += `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Turnamen di kategori ini masih berlangsung.</div>`; 
+        } else {
+            poolResults.forEach(res => {
+                let isFinalCat = catObj.name.toUpperCase().includes('FINAL');
+                let isSinglePool = res.pool === '-';
+                let title = isFinalCat || isSinglePool ? "PEMENANG MEDALI" : `JUARA POOL ${res.pool}`;
+                let label1 = isFinalCat || isSinglePool ? "Juara 1 (Emas)" : `Juara 1 Pool ${res.pool}`;
+                let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
+                let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
+
+                htmlOutput += `<h4 class="text-md font-bold text-red-400 mt-6 mb-3 pl-2 border-l-4 border-red-500">${title}</h4>`;
+                if(res.emas) htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${res.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500 tracking-wider">${res.emasKontingen} &bull; ${label1}</div></div></div>`;
+                if(res.perak) htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl drop-shadow-[0_0_10px_rgba(203,213,225,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${res.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300 tracking-wider">${res.perakKontingen} &bull; ${label2}</div></div></div>`;
+                res.perunggu.forEach(p => { htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-amber-700 gap-4 mb-3 bg-amber-800/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-amber-600 text-3xl drop-shadow-[0_0_10px_rgba(217,119,6,0.5)]"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${p.nama}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-amber-600 tracking-wider">${p.kontingen} &bull; ${label3}</div></div></div>`; });
+            });
         }
     }
     container.innerHTML = htmlOutput; 
@@ -1106,11 +1134,13 @@ function renderJuaraUmum() {
         } else {
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             if(!isFinalCategory) return; 
-            const results = calculateRandoriFinalists(cat.name);
-            if(!results) return; 
-            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
-            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
-            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            const poolResults = calculateRandoriFinalists(cat.name);
+            if(!poolResults) return; 
+            poolResults.forEach(res => {
+                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
+                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
+                res.perunggu.forEach(p => { if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            });
         }
     }); 
 
@@ -1183,15 +1213,20 @@ function exportHasilCSV(filterCatName = null) {
                 });
             }
         } else {
-            let wins = calculateRandoriFinalists(cat.name);
-            if (wins && wins.emas) {
-                let pEmas = STATE.participants.find(x => x.nama === wins.emas && x.kategori === cat.name);
-                let pPerak = STATE.participants.find(x => x.nama === wins.perak && x.kategori === cat.name);
-                rows.push(["RANDORI", cat.name, "Emas", wins.emas, pEmas ? pEmas.kontingen : "", "Juara 1"]);
-                rows.push(["RANDORI", cat.name, "Perak", wins.perak, pPerak ? pPerak.kontingen : "", "Juara 2"]);
-                wins.perunggu.forEach(pName => {
-                    let pBrz = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name);
-                    rows.push(["RANDORI", cat.name, "Perunggu", pName, pBrz ? pBrz.kontingen : "", "Juara 3 Bersama"]);
+            let poolResults = calculateRandoriFinalists(cat.name);
+            if (poolResults) {
+                poolResults.forEach(res => {
+                    let isFinalCat = cat.name.toUpperCase().includes('FINAL');
+                    let isSinglePool = res.pool === '-';
+                    let label1 = isFinalCat || isSinglePool ? "Juara 1 (Emas)" : `Juara 1 Pool ${res.pool}`;
+                    let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
+                    let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
+
+                    if(res.emas) rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Emas":`Juara 1 P-${res.pool}`, res.emas, res.emasKontingen, label1]);
+                    if(res.perak) rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Perak":`Runner-Up P-${res.pool}`, res.perak, res.perakKontingen, label2]);
+                    res.perunggu.forEach(p => {
+                        rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Perunggu":`Juara 3 P-${res.pool}`, p.nama, p.kontingen, label3]);
+                    });
                 });
             }
         }
@@ -1212,11 +1247,13 @@ function exportMedaliCSV() {
         } else {
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             if(!isFinalCategory) return; 
-            const results = calculateRandoriFinalists(cat.name);
-            if(!results) return; 
-            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
-            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
-            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            const poolResults = calculateRandoriFinalists(cat.name);
+            if(!poolResults) return; 
+            poolResults.forEach(res => {
+                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
+                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
+                res.perunggu.forEach(p => { if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            });
         }
     }); 
 
