@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 15.0 (The Secretariat Update: Triple CSV Exporter & DOM Injection)
+ * Version 15.1 (Micro-Macro Exporter: Dynamic CSV Buttons & Secretariat Hub)
  */
 
 function initializeData() {
@@ -21,7 +21,7 @@ const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara
 let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
 let SWAP_SELECTION = null; 
 
-// INJEKSI DOM UNTUK TOMBOL EXPORT (Tanpa ubah HTML)
+// INJEKSI DOM UNTUK TOMBOL EXPORT ADMIN (Tanpa ubah HTML)
 document.addEventListener('DOMContentLoaded', () => { 
     refreshAllData(); 
     setJudges(5); 
@@ -32,20 +32,20 @@ function injectAdminExportButtons() {
     const adminExportSection = document.querySelector('#section-admin .bg-dark-card.text-center');
     if (adminExportSection) {
         adminExportSection.innerHTML = `
-            <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data Sekretariat</h2>
-            <p class="text-sm text-slate-400 mb-6">Unduh data mentah format CSV untuk disalin ke Template Excel / Laporan Resmi Pertandingan.</p>
+            <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data (Makro)</h2>
+            <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori) untuk Laporan Resmi Sekretariat.</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
                     <i class="fas fa-sitemap text-2xl"></i>
-                    <span>Jadwal & Drawing</span>
+                    <span>Semua Jadwal & Drawing</span>
                 </button>
                 <button onclick="exportHasilCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
                     <i class="fas fa-trophy text-2xl"></i>
-                    <span>Hasil & Juara Kategori</span>
+                    <span>Semua Hasil & Juara</span>
                 </button>
                 <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
                     <i class="fas fa-medal text-2xl"></i>
-                    <span>Klasemen Medali</span>
+                    <span>Klasemen Medali Akhir</span>
                 </button>
             </div>
         `;
@@ -545,11 +545,31 @@ function renderEmbuLayout(catName, container, poolsConfig) {
     container.innerHTML = html;
 }
 
+// INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
     const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
     panelEmbu.classList.add('hidden'); panelRandori.classList.add('hidden'); panelEmpty.classList.add('hidden'); resultDiv.innerHTML = ''; document.getElementById('randori-bracket-container').classList.add('hidden');
-    if(!catName) { panelEmpty.classList.remove('hidden'); return; }
+    
+    // Injeksi Tombol Unduh Jadwal
+    let drawHeader = document.querySelector('#section-drawing > div:first-child');
+    let microDrawBtn = document.getElementById('btn-micro-draw-export');
+    if (!microDrawBtn && drawHeader) {
+        microDrawBtn = document.createElement('button');
+        microDrawBtn.id = 'btn-micro-draw-export';
+        microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0';
+        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL';
+        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
+        drawHeader.appendChild(microDrawBtn);
+    }
+    
+    if(!catName) { 
+        panelEmpty.classList.remove('hidden'); 
+        if(microDrawBtn) microDrawBtn.classList.add('hidden');
+        return; 
+    }
+    
+    if(microDrawBtn) microDrawBtn.classList.remove('hidden');
     
     const categoryObj = STATE.categories.find(c => c.name === catName); let list = STATE.participants.filter(p => p.kategori === catName); 
     
@@ -818,16 +838,31 @@ function promoteToFinal() {
     }
 }
 
+// INJEKSI DOM UNTUK TOMBOL UNDUH HASIL (MIKRO)
 function renderRanking() { 
     const filter = document.getElementById('rank-filter-kategori').value; 
     const btnPromote = document.getElementById('btn-promote-final'); 
     const container = document.getElementById('ranking-list'); 
 
+    // Injeksi Tombol Unduh Hasil
+    let microRankBtn = document.getElementById('btn-micro-rank-export');
+    if (!microRankBtn && btnPromote && btnPromote.parentElement) {
+        microRankBtn = document.createElement('button');
+        microRankBtn.id = 'btn-micro-rank-export';
+        microRankBtn.className = 'whitespace-nowrap bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2';
+        microRankBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH HASIL';
+        microRankBtn.onclick = () => exportHasilCSV(document.getElementById('rank-filter-kategori').value);
+        btnPromote.parentElement.appendChild(microRankBtn);
+    }
+
     if (!filter) {
         btnPromote.classList.add('hidden');
+        if(microRankBtn) microRankBtn.classList.add('hidden');
         return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl"><i class="fas fa-filter text-3xl mb-3 text-slate-600 block"></i>Pilih kategori pertandingan di atas untuk melihat hasil klasemen.</div>`;
     }
     
+    if(microRankBtn) microRankBtn.classList.remove('hidden');
+
     let catObj = STATE.categories.find(c => c.name === filter);
     let catList = STATE.participants.filter(p => p.kategori === filter); 
     const hasPools = catList.some(p => p.pool === 'A' || p.pool === 'B' || (p.pool === 'FINAL' && p.urut > 0)); 
@@ -925,7 +960,7 @@ function renderJuaraUmum() {
 }
 
 // ---------------------------------------------------------
-// CSV EXPORT LOGIC (SEKRETARIAT MODULE)
+// CSV EXPORT LOGIC (MULTIFUNCTION: MICRO & MACRO)
 // ---------------------------------------------------------
 function downloadCSV(filename, rows) {
     let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
@@ -935,9 +970,11 @@ function downloadCSV(filename, rows) {
     link.click();
 }
 
-function exportDrawingCSV() {
+function exportDrawingCSV(filterCatName = null) {
     let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Urut / Partai", "Sudut Merah (AKA) / Atlet", "Sudut Putih (SHIRO) / Kontingen", "Status"]];
-    STATE.categories.forEach(cat => {
+    let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
+    
+    categoriesToExport.forEach(cat => {
         if (cat.discipline === 'embu') {
             let catParts = STATE.participants.filter(p => p.kategori === cat.name && p.urut > 0).sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
             catParts.forEach(p => {
@@ -958,12 +995,15 @@ function exportDrawingCSV() {
             });
         }
     });
-    downloadCSV(`Drawing_Jadwal_Pertandingan_${new Date().toISOString().slice(0,10)}.csv`, rows);
+    let prefix = filterCatName ? `Jadwal_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Jadwal_Pertandingan`;
+    downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
-function exportHasilCSV() {
+function exportHasilCSV(filterCatName = null) {
     let rows = [["Disiplin", "Kategori", "Peringkat / Medali", "Nama Atlet", "Kontingen", "Nilai Akhir / Keterangan"]];
-    STATE.categories.forEach(cat => {
+    let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
+
+    categoriesToExport.forEach(cat => {
         if (cat.discipline === 'embu') {
             let finalis = STATE.participants.filter(p => p.kategori === cat.name && p.isFinalist && p.scores.b2.final > 0);
             if(finalis.length > 0) {
@@ -993,7 +1033,8 @@ function exportHasilCSV() {
             }
         }
     });
-    downloadCSV(`Hasil_Dan_Juara_Kategori_${new Date().toISOString().slice(0,10)}.csv`, rows);
+    let prefix = filterCatName ? `Hasil_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Hasil_Pertandingan`;
+    downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
 function exportMedaliCSV() {
@@ -1024,6 +1065,7 @@ function exportMedaliCSV() {
     downloadCSV(`Klasemen_Medali_Juara_Umum_${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
 
+function exportCustomCSV() { exportHasilCSV(null); } // Legacy fallback
 function resetAllPenilaian() { if(confirm('⚠️ PERHATIAN: Ini akan MENGHAPUS SEMUA SKOR & PARTAI RANDORI. Yakin?')) { STATE.participants.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }; p.finalScore = 0; p.techScore = 0; p.isFinalist = false; p.urutFinal = 0; p.losses = 0; }); STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Nilai di-reset.'); } }
 function resetDataAtlet() { if(confirm('⚠️ PERHATIAN: Ini MENGHAPUS SEMUA ATLET. Yakin?')) { STATE.participants = []; STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Data atlet dihapus.'); } }
 function resetTotalSistem() { if(confirm('🚨 FACTORY RESET: Hapus seluruh sistem?')) { localStorage.clear(); STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } }; refreshAllData(); alert('Sistem kembali ke pengaturan awal.'); location.reload(); } }
