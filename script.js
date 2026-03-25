@@ -21,24 +21,39 @@ const database = firebase.database();
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
 
-// TAMBAHKAN KODE INI UNTUK INDIKATOR:
+// 1. INDIKATOR ONLINE/OFFLINE
 database.ref('.info/connected').on('value', (snap) => {
     if (snap.val() === true) {
-        // Jika online (Asumsi menggunakan class Tailwind)
         if(statusDot) statusDot.className = 'w-3 h-3 bg-green-500 rounded-full animate-pulse';
         if(statusText) statusText.innerText = 'Online (Firebase)';
     } else {
-        // Jika offline
         if(statusDot) statusDot.className = 'w-3 h-3 bg-red-500 rounded-full';
         if(statusText) statusText.innerText = 'Offline';
     }
 });
 
-// 3. Deklarasi State Global (Kosong di awal, akan diisi oleh Firebase)
+// 2. SINKRONISASI DATA REAL-TIME DARI SERVER
+database.ref('turnamen_data').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        STATE.categories = data.categories || [];
+        STATE.participants = data.participants || [];
+        STATE.matches = data.matches || [];
+        if(data.settings) STATE.settings = data.settings;
+    }
+    
+    refreshAllData();
+    if(document.getElementById('section-drawing') && !document.getElementById('section-drawing').classList.contains('hidden')) checkExistingDrawing();
+    if(document.getElementById('section-scoring') && !document.getElementById('section-scoring').classList.contains('hidden')) filterPesertaScoring();
+    if(document.getElementById('section-ranking') && !document.getElementById('section-ranking').classList.contains('hidden')) renderRanking();
+    if(document.getElementById('section-juara') && !document.getElementById('section-juara').classList.contains('hidden')) renderJuaraUmum();
+});
+
+// 3. Deklarasi State Global
 let STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } };
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
 let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
-let SWAP_SELECTION = null; 
+let SWAP_SELECTION = null;
 
 // 5. UBAH FUNGSI LOKAL MENJADI CLOUD
 // Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
@@ -448,12 +463,15 @@ function undoMatchResult(matchId) {
 }
 
 function forwardParticipant(targetMatchNum, participantId, catName, poolName) {
-    if(!targetMatchNum || targetMatchNum === 'WINNER' || targetMatchNum === 'SECOND' || participantId === null) return;
+    // Pakai == null agar undefined juga terdeteksi
+    if(!targetMatchNum || targetMatchNum === 'WINNER' || targetMatchNum === 'SECOND' || participantId == null) return;
     let targetMatch = STATE.matches.find(m => m.kategori === catName && m.matchNum === targetMatchNum && m.pool === poolName);
     if(targetMatch) {
         if(participantId !== -1 && (targetMatch.merahId === participantId || targetMatch.putihId === participantId)) return; 
-        if(targetMatch.merahId === null) targetMatch.merahId = participantId;
-        else if(targetMatch.putihId === null) targetMatch.putihId = participantId;
+        
+        // Perbaikan: gunakan == null (bukan === null)
+        if(targetMatch.merahId == null) targetMatch.merahId = participantId;
+        else if(targetMatch.putihId == null) targetMatch.putihId = participantId;
     }
 }
 
@@ -462,7 +480,9 @@ function processAutoWins(catName) {
     while(changed && loopGuard < 100) {
         changed = false; loopGuard++;
         STATE.matches.filter(m => m.kategori === catName && m.status === 'pending').forEach(match => {
-            if(match.merahId !== null && match.putihId !== null) {
+            
+            // Perbaikan: gunakan != null (bukan !== null)
+            if(match.merahId != null && match.putihId != null) {
                 if(match.merahId === -1 || match.putihId === -1) {
                     match.status = 'auto-win';
                     if(match.merahId === -1 && match.putihId === -1) { match.winnerId = -1; match.loserId = -1; } 
