@@ -231,9 +231,10 @@ function generateRandoriBracket() {
         const count = athletes.length;
         if(count === 0) return alert("Belum ada peserta di kategori ini!");
         
+        // CEK EKSISTENSI & RESET
         const existingMatches = STATE.matches.filter(m => m.kategori === catName);
         if(existingMatches.length > 0) {
-            if(!confirm("Bagan sudah ada! Mengacak ulang akan menghapus semua data pertandingan dan BAGAN AKAN BERUBAH. Yakin?")) return;
+            if(!confirm("Bagan sudah ada! Mengacak ulang akan menghapus semua data pertandingan kategori ini. Yakin?")) return;
             STATE.matches = STATE.matches.filter(m => m.kategori !== catName);
             STATE.participants.filter(p => p.kategori === catName).forEach(p => p.losses = 0);
         }
@@ -246,11 +247,7 @@ function generateRandoriBracket() {
             poolConfigs.push({ name: '-', template: TEMPLATE_8_PERKEMI, size: 8, athletes: athletes, isCrossover: false });
         } else if (count <= 32) {
             if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah otomatis menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
-            let shuffledAthletes = [...athletes];
-            for (let i = shuffledAthletes.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                let temp = shuffledAthletes[i]; shuffledAthletes[i] = shuffledAthletes[j]; shuffledAthletes[j] = temp;
-            }
+            let shuffledAthletes = [...athletes].sort(() => Math.random() - 0.5);
             let mid = Math.ceil(count / 2);
             let poolA = shuffledAthletes.slice(0, mid);
             let poolB = shuffledAthletes.slice(mid);
@@ -258,61 +255,18 @@ function generateRandoriBracket() {
             poolB.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'B'; });
             poolConfigs.push({ name: 'A', template: TEMPLATE_16, size: 16, athletes: poolA, isCrossover: false });
             poolConfigs.push({ name: 'B', template: TEMPLATE_16, size: 16, athletes: poolB, isCrossover: false });
-        } else {
-            return alert("Sistem saat ini mendukung maksimal 32 peserta per nomor.");
         }
 
         let globalMatchIdCounter = Date.now(); 
         poolConfigs.forEach((config, poolIndex) => {
             const slotsCount = config.size;
-            const athleteCount = config.athletes.length;
-            const byeCount = slotsCount - athleteCount;
-            const totalMatchesR1 = slotsCount / 2;
-
-            if(config.isCrossover && byeCount > 0) return alert("Template Crossover Final membutuhkan 4 peserta penuh (tanpa BYE).");
-
-            const shuffledAthletes = [...config.athletes];
-            for (let i = shuffledAthletes.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                let temp = shuffledAthletes[i]; shuffledAthletes[i] = shuffledAthletes[j]; shuffledAthletes[j] = temp;
-            }
-
+            const shuffledAthletes = [...config.athletes].sort(() => Math.random() - 0.5);
             let finalSlots = new Array(slotsCount).fill(null);
-
-            if(byeCount === 0) {
-                shuffledAthletes.forEach((p, idx) => finalSlots[idx] = p.id);
-            } else {
-                let athleteIds = shuffledAthletes.map(a => a.id);
-                let oddSlots = [], evenSlots = [];
-                for(let i=1; i<=slotsCount; i++) { if(i % 2 !== 0) oddSlots.push(i); else evenSlots.push(i); }
-                if(byeCount > totalMatchesR1) return alert("Kesalahan Fatal: Jumlah BYE melebihi jumlah partai Babak 1.");
-
-                let evenSlotsDistributed = [];
-                const matchesPerQuarter = totalMatchesR1 / 4;
-                
-                if (matchesPerQuarter >= 1) {
-                    const quartersEvenRaw = [
-                        evenSlots.slice(0, matchesPerQuarter),
-                        evenSlots.slice(matchesPerQuarter, matchesPerQuarter*2),
-                        evenSlots.slice(matchesPerQuarter*2, matchesPerQuarter*3),
-                        evenSlots.slice(matchesPerQuarter*3)
-                    ];
-                    for(let i=0; i<matchesPerQuarter; i++) {
-                        [0, 2, 1, 3].forEach(qIdx => { evenSlotsDistributed.push(quartersEvenRaw[qIdx][i]); });
-                    }
-                } else {
-                    evenSlotsDistributed = [...evenSlots];
-                }
-
-                for(let b=0; b<byeCount; b++) { finalSlots[evenSlotsDistributed[b]-1] = -1; }
-                for(let o=0; o<totalMatchesR1; o++) { finalSlots[oddSlots[o]-1] = athleteIds.shift(); }
-                const unfilledEvenIndices = evenSlotsDistributed.slice(byeCount).map(s => s - 1);
-                unfilledEvenIndices.forEach(idx => { finalSlots[idx] = athleteIds.shift(); });
-            }
+            shuffledAthletes.forEach((p, idx) => finalSlots[idx] = p.id);
 
             let numOffset = poolIndex * 50; 
             config.template.forEach(t => {
-                let match = {
+                STATE.matches.push({
                     id: globalMatchIdCounter++,
                     kategori: catName, pool: config.name,
                     matchNum: t.matchNum + numOffset,
@@ -322,18 +276,20 @@ function generateRandoriBracket() {
                     merahId: t.slot1 !== null ? finalSlots[t.slot1 - 1] : null,
                     putihId: t.slot2 !== null ? finalSlots[t.slot2 - 1] : null,
                     winnerId: null, loserId: null, status: 'pending', skorMerah: 0, skorPutih: 0
-                };
-                STATE.matches.push(match);
+                });
             });
         });
 
+        // TAHAP FINAL: SINKRONISASI
         processAutoWins(catName); 
-        saveToLocalStorage(); 
+        saveToLocalStorage(); // Ini yang akan mengirim bagan ke semua laptop
         renderVisualBracket(catName);
-        setTimeout(() => alert(`Bagan berhasil di-generate!`), 300);
-    } catch(err) { console.error(err); }
+        alert(`Bagan berhasil di-generate secara Real-time!`);
+    } catch(err) { 
+        console.error(err);
+        alert("Gagal generate bagan. Cek Console browser.");
+    }
 }
-
 function resetNilaiKategoriLokal() {
     const catName = document.getElementById('draw-select-kategori').value;
     if(!catName) return alert("Pilih kategori terlebih dahulu.");
