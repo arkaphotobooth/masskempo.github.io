@@ -7,29 +7,19 @@
 let database_instance = null;
 let isCloudReady = false;
 
+// --- 1. FUNGSI INDIKATOR & FIREBASE ---
 async function initFirebase() {
-    // 1. BUAT INDIKATOR SECARA MANUAL
+    // Buat indikator secara paksa di pojok layar agar pasti muncul
     let badge = document.getElementById('cloud-status');
     if (!badge) {
         badge = document.createElement('div');
         badge.id = 'cloud-status';
-        // Gaya styling agar muncul di pojok kiri atas dekat logo
-        badge.style = "position: fixed; top: 10px; left: 10px; z-index: 9999; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid #334155;";
-        badge.innerHTML = '<span style="color: #f59e0b">● MENYAMBUNG...</span>';
-        document.body.appendChild(badge); // Tempel langsung ke body agar pasti muncul
+        badge.style = "position: fixed; top: 1rem; left: 1rem; z-index: 9999; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 99px; background: #0f172a; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); pointer-events: none;";
+        badge.innerHTML = '<span style="color: #f59e0b">● CONNECTING...</span>';
+        document.body.appendChild(badge);
     }
-    try {
-        // Injeksi Indikator ke UI
-        const header = document.querySelector('header h1')?.parentElement;
-        if (header) {
-            const badge = document.createElement('div');
-            badge.id = 'cloud-status';
-            badge.className = 'mt-1 text-[10px] font-bold text-orange-400';
-            badge.innerHTML = '● MENYAMBUNG...';
-            header.appendChild(badge);
-        }
 
-        // Import Firebase secara aman
+    try {
         const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
         const { getDatabase, ref, onValue, set } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js");
 
@@ -47,25 +37,21 @@ async function initFirebase() {
         database_instance = getDatabase(app);
         const dataRef = ref(database_instance, 'mass_data');
 
-        // Listen data dari Cloud
         onValue(dataRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 STATE = data;
-                refreshAllData(); // Update tampilan saat ada data baru masuk
+                refreshAllData();
             }
             isCloudReady = true;
-            const b = document.getElementById('cloud-status');
-            if(b) { b.innerHTML = '● CLOUD ONLINE'; b.className = 'mt-1 text-[10px] font-bold text-green-500'; }
+            badge.innerHTML = '<span style="color: #22c55e">● CLOUD ONLINE</span>';
         });
 
-        // Simpan fungsi set ke global agar bisa dipakai di saveToLocalStorage
         window.cloudSave = (data) => set(ref(database_instance, 'mass_data'), data);
 
     } catch (e) {
         console.error("Cloud Error:", e);
-        const b = document.getElementById('cloud-status');
-        if(b) { b.innerHTML = '○ OFFLINE'; b.className = 'mt-1 text-[10px] font-bold text-red-500'; }
+        badge.innerHTML = '<span style="color: #ef4444">○ OFFLINE</span>';
     }
 }
 
@@ -103,16 +89,31 @@ const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara
 let RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } };
 let SWAP_SELECTION = null; 
 
-document.addEventListener('DOMContentLoaded', () => { 
-    // Render UI Offline dulu agar tombol BISA DIKLIK segera
-    refreshAllData(); 
-    setJudges(5); 
-    if (typeof injectAdminExportButtons === "function") injectAdminExportButtons();
+function injectAdminExportButtons() {
+    const adminExportSection = document.querySelector('#section-admin .bg-dark-card.text-center');
+    if (adminExportSection) {
+        adminExportSection.innerHTML = `
+            <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <button onclick="exportDrawingCSV()" class="bg-blue-600 p-4 rounded-xl font-bold">Jadwal Global</button>
+                <button onclick="exportHasilCSV()" class="bg-purple-600 p-4 rounded-xl font-bold">Hasil Global</button>
+                <button onclick="exportMedaliCSV()" class="bg-yellow-600 p-4 rounded-xl font-bold text-black">Medali Umum</button>
+            </div>`;
+    }
+}
 
-    // Jalankan Cloud di latar belakang (setelah 1 detik agar tidak bikin lag)
+document.addEventListener('DOMContentLoaded', () => { 
+    // 1. Jalankan fungsi dasar dulu (Offline Mode)
+    refreshAllData(); 
+    if (typeof setJudges === "function") setJudges(5); 
+    
+    // 2. Suntik tombol admin secara aman
+    injectAdminExportButtons();
+
+    // 3. Jalankan Cloud tanpa menunggu/memblokir UI
     setTimeout(() => {
         initFirebase(); 
-    }, 1000);
+    }, 500);
 });
 
 // Masukkan kembali semua fungsi V15.1 Anda secara utuh di bawah ini
