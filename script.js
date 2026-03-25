@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 13.5 (Flexible Reset Mode: Clear Scores Without Shuffling)
+ * Version 13.6 (Compact UI: Minimalist Reset Buttons & Space Saver)
  */
 
 function initializeData() {
@@ -49,73 +49,10 @@ function openEditModal(id) { const p = STATE.participants.find(x => x.id === id)
 function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
 document.getElementById('form-edit-peserta').addEventListener('submit', (e) => { e.preventDefault(); const id = parseInt(document.getElementById('edit-id').value); const newKategori = document.getElementById('edit-kategori').value; const idx = STATE.participants.findIndex(p => p.id === id); if(idx > -1) { if(STATE.participants[idx].kategori !== newKategori) { STATE.participants[idx].urut = 0; STATE.participants[idx].pool = '-'; STATE.participants[idx].isFinalist = false; STATE.participants[idx].losses = 0; STATE.participants[idx].scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; STATE.participants[idx].finalScore = 0; STATE.participants[idx].techScore = 0; } STATE.participants[idx].nama = document.getElementById('edit-nama').value; STATE.participants[idx].kontingen = document.getElementById('edit-kontingen').value; STATE.participants[idx].kategori = newKategori; saveToLocalStorage(); renderParticipantTable(); closeEditModal(); alert("Data diperbarui."); } });
 
-const TEMPLATE_4_STANDARD = [
-    { matchNum: 1, babak: "WB S-Final", col: 1, slot1: 1, slot2: 2, nextW: 3, nextL: 4 },
-    { matchNum: 2, babak: "WB S-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextL: 4 },
-    { matchNum: 3, babak: "Final Atas", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 },
-    { matchNum: 4, babak: "LB S-Final", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null },
-    { matchNum: 5, babak: "Final Bawah", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null },
-    { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
-];
-
-const TEMPLATE_4_CROSS = [
-    { matchNum: 1, babak: "S-Final Crossover", col: 1, slot1: 1, slot2: 4, nextW: 3, nextL: 4 },
-    { matchNum: 2, babak: "S-Final Crossover", col: 1, slot1: 3, slot2: 2, nextW: 3, nextL: 4 },
-    { matchNum: 3, babak: "Final Atas", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 },
-    { matchNum: 4, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null },
-    { matchNum: 5, babak: "Final Bawah", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null },
-    { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
-];
-
-const TEMPLATE_8_PERKEMI = [
-    { matchNum: 1, babak: "Penyisihan 1", col: 1, slot1: 1, slot2: 2, nextW: 7, nextL: 5 },
-    { matchNum: 2, babak: "Penyisihan 2", col: 1, slot1: 3, slot2: 4, nextW: 7, nextL: 5 },
-    { matchNum: 3, babak: "Penyisihan 3", col: 1, slot1: 5, slot2: 6, nextW: 8, nextL: 6 },
-    { matchNum: 4, babak: "Penyisihan 4", col: 1, slot1: 7, slot2: 8, nextW: 8, nextL: 6 },
-    { matchNum: 7, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 10 },
-    { matchNum: 8, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 9 },
-    { matchNum: 11, babak: "FINAL ATAS", col: 3, slot1: null, slot2: null, nextW: 14, nextL: 13 },
-    { matchNum: 5, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 9, nextL: null },
-    { matchNum: 6, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 10, nextL: null },
-    { matchNum: 9, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null },
-    { matchNum: 10, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null },
-    { matchNum: 12, babak: "LB S-Final", col: 3, slot1: null, slot2: null, nextW: 13, nextL: null },
-    { matchNum: 13, babak: "FINAL BAWAH", col: 4, slot1: null, slot2: null, nextW: 14, nextL: null },
-    { matchNum: 14, babak: "GRAND FINAL", col: 5, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
-];
-
-const TEMPLATE_16 = [
-    { matchNum: 1, babak: "WB R1", col: 1, slot1: 1, slot2: 2, nextW: 9, nextL: 13 },
-    { matchNum: 2, babak: "WB R1", col: 1, slot1: 3, slot2: 4, nextW: 9, nextL: 13 },
-    { matchNum: 3, babak: "WB R1", col: 1, slot1: 5, slot2: 6, nextW: 10, nextL: 14 },
-    { matchNum: 4, babak: "WB R1", col: 1, slot1: 7, slot2: 8, nextW: 10, nextL: 14 },
-    { matchNum: 5, babak: "WB R1", col: 1, slot1: 9, slot2: 10, nextW: 11, nextL: 15 },
-    { matchNum: 6, babak: "WB R1", col: 1, slot1: 11, slot2: 12, nextW: 11, nextL: 15 },
-    { matchNum: 7, babak: "WB R1", col: 1, slot1: 13, slot2: 14, nextW: 12, nextL: 16 },
-    { matchNum: 8, babak: "WB R1", col: 1, slot1: 15, slot2: 16, nextW: 12, nextL: 16 },
-    { matchNum: 9, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 20 },
-    { matchNum: 10, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 19 },
-    { matchNum: 11, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 18 },
-    { matchNum: 12, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 17 },
-    { matchNum: 13, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 17, nextL: null },
-    { matchNum: 14, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 18, nextL: null },
-    { matchNum: 15, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 19, nextL: null },
-    { matchNum: 16, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 20, nextL: null },
-    { matchNum: 17, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null },
-    { matchNum: 18, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null },
-    { matchNum: 19, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null },
-    { matchNum: 20, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null },
-    { matchNum: 21, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 26 },
-    { matchNum: 22, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 25 },
-    { matchNum: 23, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 25, nextL: null },
-    { matchNum: 24, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 26, nextL: null },
-    { matchNum: 25, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null },
-    { matchNum: 26, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null },
-    { matchNum: 28, babak: "LB SF", col: 6, slot1: null, slot2: null, nextW: 29, nextL: null },
-    { matchNum: 27, babak: "WB Final", col: 6, slot1: null, slot2: null, nextW: 30, nextL: 29 },
-    { matchNum: 29, babak: "LB Final", col: 7, slot1: null, slot2: null, nextW: 30, nextL: null },
-    { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
-];
+const TEMPLATE_4_STANDARD = [ { matchNum: 1, babak: "WB S-Final", col: 1, slot1: 1, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "WB S-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "Final Atas", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 }, { matchNum: 4, babak: "LB S-Final", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "Final Bawah", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null }, { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_4_CROSS = [ { matchNum: 1, babak: "S-Final Crossover", col: 1, slot1: 1, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "S-Final Crossover", col: 1, slot1: 3, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "Final Atas", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 }, { matchNum: 4, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "Final Bawah", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null }, { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_8_PERKEMI = [ { matchNum: 1, babak: "Penyisihan 1", col: 1, slot1: 1, slot2: 2, nextW: 7, nextL: 5 }, { matchNum: 2, babak: "Penyisihan 2", col: 1, slot1: 3, slot2: 4, nextW: 7, nextL: 5 }, { matchNum: 3, babak: "Penyisihan 3", col: 1, slot1: 5, slot2: 6, nextW: 8, nextL: 6 }, { matchNum: 4, babak: "Penyisihan 4", col: 1, slot1: 7, slot2: 8, nextW: 8, nextL: 6 }, { matchNum: 7, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 10 }, { matchNum: 8, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 9 }, { matchNum: 11, babak: "FINAL ATAS", col: 3, slot1: null, slot2: null, nextW: 14, nextL: 13 }, { matchNum: 5, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 9, nextL: null }, { matchNum: 6, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 10, nextL: null }, { matchNum: 9, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 10, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 12, babak: "LB S-Final", col: 3, slot1: null, slot2: null, nextW: 13, nextL: null }, { matchNum: 13, babak: "FINAL BAWAH", col: 4, slot1: null, slot2: null, nextW: 14, nextL: null }, { matchNum: 14, babak: "GRAND FINAL", col: 5, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_16 = [ { matchNum: 1, babak: "WB R1", col: 1, slot1: 1, slot2: 2, nextW: 9, nextL: 13 }, { matchNum: 2, babak: "WB R1", col: 1, slot1: 3, slot2: 4, nextW: 9, nextL: 13 }, { matchNum: 3, babak: "WB R1", col: 1, slot1: 5, slot2: 6, nextW: 10, nextL: 14 }, { matchNum: 4, babak: "WB R1", col: 1, slot1: 7, slot2: 8, nextW: 10, nextL: 14 }, { matchNum: 5, babak: "WB R1", col: 1, slot1: 9, slot2: 10, nextW: 11, nextL: 15 }, { matchNum: 6, babak: "WB R1", col: 1, slot1: 11, slot2: 12, nextW: 11, nextL: 15 }, { matchNum: 7, babak: "WB R1", col: 1, slot1: 13, slot2: 14, nextW: 12, nextL: 16 }, { matchNum: 8, babak: "WB R1", col: 1, slot1: 15, slot2: 16, nextW: 12, nextL: 16 }, { matchNum: 9, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 20 }, { matchNum: 10, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 19 }, { matchNum: 11, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 18 }, { matchNum: 12, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 17 }, { matchNum: 13, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 17, nextL: null }, { matchNum: 14, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 18, nextL: null }, { matchNum: 15, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 19, nextL: null }, { matchNum: 16, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 20, nextL: null }, { matchNum: 17, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 18, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 19, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 20, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 21, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 26 }, { matchNum: 22, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 25 }, { matchNum: 23, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 25, nextL: null }, { matchNum: 24, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 26, nextL: null }, { matchNum: 25, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 26, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 28, babak: "LB SF", col: 6, slot1: null, slot2: null, nextW: 29, nextL: null }, { matchNum: 27, babak: "WB Final", col: 6, slot1: null, slot2: null, nextW: 30, nextL: 29 }, { matchNum: 29, babak: "LB Final", col: 7, slot1: null, slot2: null, nextW: 30, nextL: null }, { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
 
 function generateRandoriBracket() {
     const container = document.getElementById('randori-bracket-view');
@@ -141,7 +78,6 @@ function generateRandoriBracket() {
         }
 
         let poolConfigs = [];
-
         if(count <= 4) {
             if(isFinalCategory) poolConfigs.push({ name: '-', template: TEMPLATE_4_CROSS, size: 4, athletes: athletes, isCrossover: true });
             else poolConfigs.push({ name: '-', template: TEMPLATE_4_STANDARD, size: 4, athletes: athletes, isCrossover: false });
@@ -149,20 +85,16 @@ function generateRandoriBracket() {
             poolConfigs.push({ name: '-', template: TEMPLATE_8_PERKEMI, size: 8, athletes: athletes, isCrossover: false });
         } else if (count <= 32) {
             if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah otomatis menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
-            
             let shuffledAthletes = [...athletes];
             for (let i = shuffledAthletes.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 let temp = shuffledAthletes[i]; shuffledAthletes[i] = shuffledAthletes[j]; shuffledAthletes[j] = temp;
             }
-            
             let mid = Math.ceil(count / 2);
             let poolA = shuffledAthletes.slice(0, mid);
             let poolB = shuffledAthletes.slice(mid);
-            
             poolA.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'A'; });
             poolB.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'B'; });
-            
             poolConfigs.push({ name: 'A', template: TEMPLATE_16, size: 16, athletes: poolA, isCrossover: false });
             poolConfigs.push({ name: 'B', template: TEMPLATE_16, size: 16, athletes: poolB, isCrossover: false });
         } else {
@@ -170,20 +102,16 @@ function generateRandoriBracket() {
         }
 
         let globalMatchIdCounter = Date.now(); 
-
         poolConfigs.forEach((config, poolIndex) => {
             let slots = config.athletes.map(a => a.id);
             while(slots.length < config.size) slots.push(-1); 
-
             if (!config.isCrossover) {
                 for (let i = slots.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     let temp = slots[i]; slots[i] = slots[j]; slots[j] = temp;
                 }
             }
-
             let numOffset = poolIndex * 50; 
-
             config.template.forEach(t => {
                 let match = {
                     id: globalMatchIdCounter++,
@@ -202,21 +130,11 @@ function generateRandoriBracket() {
 
         processAutoWins(catName); 
         saveToLocalStorage(); 
-        
         renderVisualBracket(catName);
         setTimeout(() => alert(`Bagan berhasil di-generate!`), 300);
-
-    } catch(err) {
-        console.error("CRITICAL ERROR IN GENERATE:", err);
-        wrapper.classList.remove('hidden');
-        container.innerHTML = `<div class="bg-red-900 border-2 border-red-500 text-white p-6 rounded-lg w-full">
-            <h3 class="font-black text-xl mb-2"><i class="fas fa-bug"></i> SYSTEM CRASH:</h3>
-            <p class="font-mono text-sm">${err.message}</p>
-        </div>`;
-    }
+    } catch(err) { console.error(err); }
 }
 
-// --- FITUR BARU: RESET NILAI TANPA MERUSAK BAGAN/URUTAN ---
 function resetNilaiKategoriLokal() {
     const catName = document.getElementById('draw-select-kategori').value;
     if(!catName) return alert("Pilih kategori terlebih dahulu.");
@@ -226,10 +144,7 @@ function resetNilaiKategoriLokal() {
     if(!confirm(`⚠️ PERHATIAN!\nAnda akan MENGHAPUS SEMUA HASIL NILAI di kategori "${catName}".\n\nBagan (Randori) atau Urutan Tampil (Embu) TIDAK AKAN BERUBAH.\n\nApakah Anda yakin ingin mengosongkan nilai?`)) return;
 
     if(categoryObj.discipline === 'randori') {
-        // Hapus match tambahan (Sudden Death)
         STATE.matches = STATE.matches.filter(m => !(m.kategori === catName && m.babak === "SUDDEN DEATH"));
-        
-        // Reset partai ke pending
         let catMatches = STATE.matches.filter(m => m.kategori === catName);
         catMatches.forEach(m => {
             if(m.col > 1) { m.merahId = null; m.putihId = null; }
@@ -238,7 +153,6 @@ function resetNilaiKategoriLokal() {
         STATE.participants.filter(p => p.kategori === catName).forEach(p => p.losses = 0);
         processAutoWins(catName); 
     } else {
-        // Reset nilai Embu
         STATE.participants.filter(p => p.kategori === catName).forEach(p => {
             p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } };
             p.finalScore = 0; p.techScore = 0;
@@ -362,7 +276,6 @@ function processAutoWins(catName) {
                     match.status = 'auto-win';
                     if(match.merahId === -1 && match.putihId === -1) { match.winnerId = -1; match.loserId = -1; } 
                     else { match.winnerId = match.merahId === -1 ? match.putihId : match.merahId; match.loserId = -1; }
-                    
                     forwardParticipant(match.nextW, match.winnerId, catName, match.pool);
                     if(match.nextL) forwardParticipant(match.nextL, match.loserId, catName, match.pool);
                     changed = true; 
@@ -373,6 +286,7 @@ function processAutoWins(catName) {
     recalculateAllLosses(catName);
 }
 
+// --- MINIMALIST UI UPDATE: renderVisualBracket ---
 function renderVisualBracket(catName) {
     const container = document.getElementById('randori-bracket-view');
     const wrapper = document.getElementById('randori-bracket-container');
@@ -382,9 +296,11 @@ function renderVisualBracket(catName) {
         const catMatches = STATE.matches.filter(m => m.kategori === catName);
         if(catMatches.length === 0) return;
         
-        let tipHTML = `<div class="bg-blue-900/30 border border-blue-500/50 p-3 rounded-lg text-xs text-blue-300 mb-6 font-mono flex flex-col md:flex-row justify-between items-center gap-4">
-            <div><i class="fas fa-info-circle mr-1"></i> DIRECTOR MODE: Di Babak 1, Klik nama atlet untuk <span class="font-bold text-yellow-400">TUKAR POSISI</span>. Klik <i class="fas fa-undo text-red-400 mx-1"></i> batalkan hasil.</div>
-            <button onclick="resetNilaiKategoriLokal()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded shadow text-xs font-bold flex-shrink-0"><i class="fas fa-eraser"></i> Kosongkan Nilai Saja (Bagan Tetap)</button>
+        let tipHTML = `<div class="flex justify-between items-center mb-6 bg-slate-800/30 p-2 rounded border border-slate-700">
+            <div class="text-[10px] text-slate-400 font-mono"><i class="fas fa-info-circle text-blue-400"></i> Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400"></i></div>
+            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-7 h-7 rounded flex items-center justify-center transition-colors" title="Kosongkan Nilai Saja (Bagan Tetap)">
+                <i class="fas fa-eraser text-xs"></i>
+            </button>
         </div>`;
         container.innerHTML = tipHTML;
 
@@ -454,6 +370,7 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
+// --- MINIMALIST UI UPDATE: checkExistingDrawing (Embu) ---
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
     const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
@@ -468,18 +385,24 @@ function checkExistingDrawing() {
     } else { 
         panelEmbu.classList.remove('hidden'); 
         const isFinalMode = list.some(p => p.isFinalist); 
+        
+        let resetBtnHTML = `<div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+            <span class="text-[10px] text-slate-400 font-mono">Urutan telah diundi.</span>
+            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded shadow border border-red-800 transition-colors" title="Kosongkan Nilai Saja (Urutan Tetap)"><i class="fas fa-eraser"></i></button>
+        </div>`;
+
         if (isFinalMode) { 
             let finalL = list.filter(p => p.isFinalist); 
             if (finalL.some(p => p.urutFinal > 0)) { 
                 finalL.sort((a,b) => a.urutFinal - b.urutFinal); 
-                resultDiv.innerHTML = `<div class="flex justify-end mb-4"><button onclick="resetNilaiKategoriLokal()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg shadow text-xs font-bold"><i class="fas fa-eraser"></i> Kosongkan Nilai Saja (Urutan Tetap)</button></div>`;
+                resultDiv.innerHTML = resetBtnHTML;
                 renderPoolUI(finalL, "POOL FINAL", resultDiv, true); 
             } else { 
                 resultDiv.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; 
             } 
         } else if (list.some(p => p.urut > 0)) { 
             list.sort((a,b) => a.urut - b.urut); 
-            resultDiv.innerHTML = `<div class="flex justify-end mb-4"><button onclick="resetNilaiKategoriLokal()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg shadow text-xs font-bold"><i class="fas fa-eraser"></i> Kosongkan Nilai Saja (Urutan Tetap)</button></div>`;
+            resultDiv.innerHTML = resetBtnHTML;
             if(list.some(p => p.pool === 'A' || p.pool === 'B')) { 
                 renderPoolUI(list.filter(p => p.pool === 'A'), "POOL A", resultDiv, false); 
                 renderPoolUI(list.filter(p => p.pool === 'B'), "POOL B", resultDiv, false); 
