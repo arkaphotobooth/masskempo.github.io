@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.8 (Ranking Logic Mastery: Complete History & Focus Mode)
+ * Version 14.9 (The Healer Update: Dynamic Finalist Toggle & Detective Logic)
  */
 
 function initializeData() {
@@ -48,11 +48,7 @@ function updateAllDropdowns() {
     document.getElementById('edit-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('select-kategori').innerHTML = emptyOpt + options; 
-    
-    // UPDATE: Opsi 'Semua Kategori' dihapus dari tab Ranking untuk Fokus Mode
     document.getElementById('rank-filter-kategori').innerHTML = emptyOpt + options; 
-    
-    // Tab Atlet tetap punya opsi 'Semua Kategori'
     const allOpt = '<option value="all">Semua Kategori</option>'; 
     document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options; 
 }
@@ -749,7 +745,44 @@ function calculateRandoriFinalists(catName) {
     return { emas: juara1 ? juara1.nama : null, perak: juara2 ? juara2.nama : null, perunggu: [juara3a ? juara3a.nama : null, juara3b ? juara3b.nama : null].filter(n => n !== null) };
 }
 
-// LOGIKA TETAPKAN FINALIS (DIPINDAHKAN KE SINI AGAR BERSIH)
+// ---------------------------------------------------------
+// THE HEALER LOGIC (Penyembuh Data Finalis Lama)
+// ---------------------------------------------------------
+function cancelFinalist() {
+    const filter = document.getElementById('rank-filter-kategori').value;
+    if(!filter) return;
+    if(!confirm("⚠️ Batalkan status finalis untuk kategori ini?\nData akan dikembalikan ke Pool awal.")) return;
+
+    let catParts = STATE.participants.filter(p => p.kategori === filter);
+    let changed = false;
+
+    catParts.forEach(p => {
+        if (p.isFinalist) {
+            p.isFinalist = false;
+            p.urutFinal = 0;
+            
+            // LOGIKA DETEKTIF: Menyembuhkan KTP yang terlanjur tertulis "FINAL"
+            if (p.pool === 'FINAL') {
+                let takenA = catParts.some(x => x.pool === 'A' && x.urut === p.urut && x.id !== p.id);
+                let takenB = catParts.some(x => x.pool === 'B' && x.urut === p.urut && x.id !== p.id);
+                
+                if (takenA && !takenB) p.pool = 'B'; // Jika di A sudah ada yang punya nomor urut ini, pasti dia dari B
+                else if (takenB && !takenA) p.pool = 'A'; // Begitu juga sebaliknya
+                else p.pool = 'A'; // Fallback aman
+            }
+            changed = true;
+        }
+    });
+
+    if(changed) {
+        saveToLocalStorage();
+        alert("Status Finalis berhasil dibatalkan dan atlet dikembalikan ke Pool asal!");
+        renderRanking();
+        checkExistingDrawing();
+        filterPesertaScoring();
+    }
+}
+
 function promoteToFinal() {
     const filter = document.getElementById('rank-filter-kategori').value;
     if(!filter) return alert("Pilih kategori spesifik terlebih dahulu!");
@@ -777,13 +810,12 @@ function promoteToFinal() {
     }
 }
 
-// LOGIKA RANKING BARU (FOKUS MODE & OPSI 1 HISTORI LENGKAP)
+// LOGIKA RANKING (FOKUS MODE + DYNAMIC BUTTON)
 function renderRanking() { 
     const filter = document.getElementById('rank-filter-kategori').value; 
     const btnPromote = document.getElementById('btn-promote-final'); 
     const container = document.getElementById('ranking-list'); 
 
-    // JIKA TIDAK ADA KATEGORI YANG DIPILIH (MODE KOSONG AWAL)
     if (!filter) {
         btnPromote.classList.add('hidden');
         return container.innerHTML = `<div class="p-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl"><i class="fas fa-filter text-3xl mb-3 text-slate-600 block"></i>Pilih kategori pertandingan di atas untuk melihat hasil klasemen.</div>`;
@@ -791,10 +823,24 @@ function renderRanking() {
     
     let catObj = STATE.categories.find(c => c.name === filter);
     let catList = STATE.participants.filter(p => p.kategori === filter); 
-    const hasPools = catList.some(p => p.pool === 'A' || p.pool === 'B'); 
+    const hasPools = catList.some(p => p.pool === 'A' || p.pool === 'B' || (p.pool === 'FINAL' && p.urut > 0)); 
     const hasFinal = catList.some(p => p.isFinalist); 
     
-    if(catObj && catObj.discipline === 'embu' && hasPools && !hasFinal) btnPromote.classList.remove('hidden'); else btnPromote.classList.add('hidden'); 
+    // JS MAGIC: Mengubah tombol Tetapkan menjadi Batalkan Finalis
+    if(catObj && catObj.discipline === 'embu' && hasPools) {
+        btnPromote.classList.remove('hidden');
+        if(!hasFinal) {
+            btnPromote.innerHTML = '<i class="fas fa-arrow-up mr-2"></i>TETAPKAN FINALIS';
+            btnPromote.className = "whitespace-nowrap bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm";
+            btnPromote.onclick = promoteToFinal;
+        } else {
+            btnPromote.innerHTML = '<i class="fas fa-undo mr-2"></i>BATALKAN FINALIS';
+            btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm";
+            btnPromote.onclick = cancelFinalist;
+        }
+    } else {
+        btnPromote.classList.add('hidden'); 
+    }
 
     let hasData = catList.some(p => p.scores.b1.final > 0 || p.losses > 0 || (catObj.discipline === 'randori' && calculateRandoriFinalists(filter)));
 
@@ -815,18 +861,15 @@ function renderRanking() {
         ['FINAL', 'SINGLE', 'A', 'B'].forEach(poolKey => { 
             let poolList = []; 
             if(poolKey === 'FINAL') {
-                // Semua finalis dimunculkan di tabel FINAL, terlepas sudah ada nilai (b2) atau belum
                 poolList = catList.filter(p => p.isFinalist); 
             } else if(poolKey === 'SINGLE') {
                 poolList = catList.filter(p => p.pool === 'SINGLE' && p.scores.b1.final > 0); 
             } else {
-                // Semua atlet di Pool A/B tetap ada di tabel Pool-nya (histori tidak terhapus)
                 poolList = catList.filter(p => p.pool === poolKey && p.scores.b1.final > 0); 
             }
 
             if(poolList.length === 0) return; 
             
-            // Pengurutan
             if(poolKey === 'FINAL') poolList.sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
             else poolList.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech); 
             
@@ -839,7 +882,7 @@ function renderRanking() {
 
                 let medal = '';
                 if (isWaiting) {
-                    medal = `<span class="text-xl font-bold text-slate-600">-</span>`; // Strip jika belum dinilai di final
+                    medal = `<span class="text-xl font-bold text-slate-600">-</span>`; 
                 } else {
                     medal = i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
                 }
