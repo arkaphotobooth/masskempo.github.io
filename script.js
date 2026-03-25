@@ -128,15 +128,34 @@ function renderCategoryList() { const container = document.getElementById('list-
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
 
 function updateAllDropdowns() { 
+    // 1. Simpan memori pilihan user saat ini sebelum di-reset
+    const valP = document.getElementById('p-kategori').value;
+    const valEdit = document.getElementById('edit-kategori').value;
+    const valDraw = document.getElementById('draw-select-kategori').value;
+    const valSelect = document.getElementById('select-kategori').value;
+    const valRank = document.getElementById('rank-filter-kategori').value;
+    const valFilterAtlet = document.getElementById('filter-atlet-kategori').value;
+
+    // 2. Buat ulang daftar `<option>`
     const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); 
     const emptyOpt = `<option value="">-- Pilih Kategori --</option>`; 
+    const allOpt = '<option value="all">Semua Kategori</option>'; 
+    
+    // 3. Masukkan daftar baru ke dalam HTML
     document.getElementById('p-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('edit-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('select-kategori').innerHTML = emptyOpt + options; 
     document.getElementById('rank-filter-kategori').innerHTML = emptyOpt + options; 
-    const allOpt = '<option value="all">Semua Kategori</option>'; 
     document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options; 
+
+    // 4. Kembalikan pilihan user yang tadi disimpan (jika ada)
+    if (valP) document.getElementById('p-kategori').value = valP;
+    if (valEdit) document.getElementById('edit-kategori').value = valEdit;
+    if (valDraw) document.getElementById('draw-select-kategori').value = valDraw;
+    if (valSelect) document.getElementById('select-kategori').value = valSelect;
+    if (valRank) document.getElementById('rank-filter-kategori').value = valRank;
+    if (valFilterAtlet) document.getElementById('filter-atlet-kategori').value = valFilterAtlet;
 }
 
 function handleCSVUpload(event) { 
