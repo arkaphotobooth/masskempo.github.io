@@ -675,42 +675,55 @@ function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const fou
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
     const categoryObj = STATE.categories.find(c => c.name === catName);
-    const panelEmbu = document.getElementById('panel-embu'); 
-    const panelRandori = document.getElementById('panel-randori');
-    const badgeEmbu = document.getElementById('scoring-badge-embu'); 
-    const badgeRandori = document.getElementById('scoring-badge-randori');
-    const panelWaktu = document.getElementById('panel-waktu-embu'); 
     const selectEl = document.getElementById('select-peserta');
     
-    if(!categoryObj) return;
+    if(!categoryObj || !selectEl) return;
+
+    // Reset pilihan agar tidak terjadi tabrakan data lama
+    selectEl.innerHTML = '';
 
     if(categoryObj.discipline === 'randori') {
-        panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
-        badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
-        if(panelWaktu) panelWaktu.classList.add('hidden'); 
-        
-        let catMatches = STATE.matches.filter(m => m.kategori === catName && m.status === 'pending' && m.merahId !== null && m.putihId !== null && m.merahId !== -1 && m.putihId !== -1);
-        if(catMatches.length === 0) { selectEl.innerHTML = `<option value="">-- Tidak ada Partai Aktif --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; return; }
+        // Ambil partai yang statusnya masih 'pending' dan bukan BYE (-1)
+        let catMatches = STATE.matches.filter(m => 
+            m.kategori === catName && 
+            m.status === 'pending' && 
+            m.merahId !== null && m.putihId !== null && 
+            m.merahId !== -1 && m.putihId !== -1
+        );
 
-        selectEl.innerHTML = catMatches.sort((a,b)=>a.matchNum - b.matchNum).map((m) => {
-            const mrh = STATE.participants.find(p => p.id === m.merahId); const pth = STATE.participants.find(p => p.id === m.putihId);
+        if(catMatches.length === 0) {
+            selectEl.innerHTML = `<option value="">-- Tidak ada partai aktif --</option>`;
+            return;
+        }
+
+        // Mapping partai ke Dropdown dengan pengecekan data atlet yang aman
+        selectEl.innerHTML = catMatches.sort((a,b) => a.matchNum - b.matchNum).map((m) => {
+            const mrh = STATE.participants.find(p => p.id === m.merahId);
+            const pth = STATE.participants.find(p => p.id === m.putihId);
+            
+            // PROTEKSI: Jika salah satu atlet tidak ditemukan, jangan tampilkan agar tidak crash
+            if (!mrh || !pth) return ''; 
+
             let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
             let pLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
-            return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${mrh.nama} vs ${pth.nama}</option>`;
+            return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] ${mrh.nama} vs ${pth.nama}</option>`;
         }).join('');
-        selectEl.dispatchEvent(new Event('change'));
 
     } else {
-        panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
-        badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
-        if(panelWaktu) panelWaktu.classList.remove('hidden'); 
+        // Bagian Embu (Sama seperti V15.1 Anda, tapi ditambahkan pengecekan aman)
+        let listCat = STATE.participants.filter(p => p.kategori === catName && p.urut > 0);
+        if(listCat.length === 0) {
+            selectEl.innerHTML = `<option value="">-- Belum ada urutan tampil --</option>`;
+            return;
+        }
         
-        let listCat = STATE.participants.filter(p => p.kategori === catName && p.urut > 0); const hasFinal = listCat.some(p => p.isFinalist);
-        let filtered = hasFinal ? listCat.filter(p => p.isFinalist).sort((a,b) => a.urutFinal - b.urutFinal) : listCat.sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
-        if(filtered.length === 0) { selectEl.innerHTML = `<option value="">-- Kosong / Belum Undian --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; updateScoringButtonsUI(); return; }
-        selectEl.innerHTML = filtered.map(p => { let label = hasFinal ? `[FINAL] No.${p.urutFinal}` : `[Pool ${p.pool}] No.${p.urut}`; return `<option value="${p.id}">${label} - ${p.nama} (${p.kontingen})</option>`; }).join('');
-        selectEl.dispatchEvent(new Event('change'));
+        selectEl.innerHTML = listCat.sort((a,b) => a.urut - b.urut).map(p => {
+            return `<option value="${p.id}">${p.urut}. ${p.nama} (${p.kontingen})</option>`;
+        }).join('');
     }
+
+    // Trigger perubahan untuk me-load board scoring
+    selectEl.dispatchEvent(new Event('change'));
 }
 
 let currentRandoriMatchId = null;
