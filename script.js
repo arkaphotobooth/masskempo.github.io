@@ -1,9 +1,4 @@
 /**
- * MASS - Martial Arts Scoring System
- * Version 15.1 (Micro-Macro Exporter: Dynamic CSV Buttons & Secretariat Hub)
- */
-
-/**
  * MASS - Martial Arts Scoring System (FIREBASE ONLINE VERSION)
  */
 
@@ -21,6 +16,29 @@ const firebaseConfig = {
 // 2. Inisialisasi Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
+
+// --- SENSOR KONEKSI FIREBASE ---
+const statusDot = document.getElementById('koneksi-dot');
+const statusText = document.getElementById('koneksi-text');
+
+// Firebase memiliki path khusus '.info/connected' untuk mengecek status internet
+database.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+        // Jika Online
+        if(statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]';
+        if(statusText) {
+            statusText.innerText = 'ONLINE (SINKRON)';
+            statusText.className = 'text-[9px] font-bold text-green-400 uppercase tracking-widest';
+        }
+    } else {
+        // Jika Offline / Putus
+        if(statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]';
+        if(statusText) {
+            statusText.innerText = 'OFFLINE (TERPUTUS)';
+            statusText.className = 'text-[9px] font-bold text-red-400 uppercase tracking-widest';
+        }
+    }
+});
 
 // 3. Deklarasi State Global (Kosong di awal, akan diisi oleh Firebase)
 let STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } };
