@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.4 (Embu UI Mastery: Header Card Layout & Wrap Fixes)
+ * Version 14.5 (Ironclad Release: Bulletproof Core, Double Bronze, Auto-Wrap UI)
  */
 
 function initializeData() {
@@ -467,7 +467,6 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
-// --- MASTER EMBU LAYOUT (HEADER + GRID POOLS) ---
 function renderEmbuLayout(catName, container, poolsConfig) {
     let gridCols = poolsConfig.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1';
     
@@ -635,11 +634,120 @@ function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points
 function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
 
+function saveRandoriMatchResult() {
+    if(!currentRandoriMatchId) return alert("Pilih partai!");
+    const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
+    if(!match) return;
+
+    let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
+    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
+
+    let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
+    let loserId = sMerah > sPutih ? match.putihId : match.merahId;
+    let winnerName = sMerah > sPutih ? "PITA MERAH (AKA)" : "PITA PUTIH (SHIRO)";
+
+    if(confirm(`Konfirmasi Pemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}\n\nLanjutkan?`)) {
+        match.skorMerah = sMerah; match.skorPutih = sPutih; 
+        match.winnerId = winnerId; match.loserId = loserId; 
+        match.status = 'done';
+        
+        recalculateAllLosses(match.kategori);
+        
+        let winnerP = STATE.participants.find(p => p.id === winnerId);
+
+        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
+        let isChallenger = winnerP && winnerP.losses > 0;
+        
+        if(isGrandFinal && isChallenger) {
+            alert("TIE BREAKER GRAND FINAL!\nAtlet dari jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
+            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
+            let extraMatch = { id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.merahId, putihId: match.putihId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 };
+            STATE.matches.push(extraMatch);
+        } else {
+            forwardParticipant(match.nextW, winnerId, match.kategori, match.pool); 
+            if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool); 
+        }
+
+        processAutoWins(match.kategori); 
+        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
+    }
+}
+
+document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
+
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
-function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { document.getElementById(`score-${i}`).value = scoreData.raw[i-1] || ''; document.getElementById(`tech-${i}`).value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { document.getElementById(`score-${i}`).value = ''; document.getElementById(`tech-${i}`).value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
-function calculateLive() { let raw = []; let techRaw = []; for(let i=1; i<=STATE.settings.numJudges; i++) { raw.push(parseFloat(document.getElementById(`score-${i}`).value) || 0); techRaw.push(parseFloat(document.getElementById(`tech-${i}`).value) || 0); } let sum = 0; if(STATE.settings.numJudges === 5) { let sorted = [...raw].sort((a,b) => a-b); sorted.pop(); sorted.shift(); sum = sorted.reduce((a,b) => a+b, 0); } else { sum = raw.reduce((a,b) => a+b, 0); } const minT = parseInt(document.getElementById('min-time').value) || 0; const maxT = parseInt(document.getElementById('max-time').value) || 0; let penalty = 0; if(UI.timerSeconds > 0 && UI.timerSeconds < minT) penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5; else if (UI.timerSeconds > maxT) penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5; const final = Math.max(0, sum - penalty); document.getElementById('live-final-score').innerText = final.toFixed(1); document.getElementById('live-penalty').innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`; return { final, penalty, raw, techRaw, tieBreaker: techRaw[0] }; }
-function saveScore(babakOverride) { const pId = parseInt(document.getElementById('select-peserta').value); if(!pId) return alert('Pilih atlet!'); let babak = document.getElementById('select-babak').value; if(babakOverride === 1 || babakOverride === 2) babak = `b${babakOverride}`; for(let i=1; i<=STATE.settings.numJudges; i++) if(document.getElementById(`score-${i}`).value === "") return alert(`TOTAL NILAI kosong!`); const calc = calculateLive(); const p = STATE.participants.find(i => i.id === pId); p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; if (p.pool === 'FINAL') { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } else { if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } } saveToLocalStorage(); alert(`SKOR TERSIMPAN!`); clearInterval(UI.timerInterval); UI.timerInterval = null; document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; }
+function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
+
+// --- BULLETPROOF CALCULATE LOGIC (ANTI-CRASH) ---
+function calculateLive() { 
+    let raw = []; let techRaw = []; 
+    for(let i=1; i<=STATE.settings.numJudges; i++) { 
+        let sEl = document.getElementById(`score-${i}`); 
+        let tEl = document.getElementById(`tech-${i}`);
+        raw.push(sEl ? (parseFloat(sEl.value) || 0) : 0); 
+        techRaw.push(tEl ? (parseFloat(tEl.value) || 0) : 0); 
+    } 
+    
+    let sum = 0; 
+    if(STATE.settings.numJudges === 5) { 
+        let sorted = [...raw].sort((a,b) => a-b); 
+        sorted.pop(); sorted.shift(); 
+        sum = sorted.reduce((a,b) => a+b, 0); 
+    } else { 
+        sum = raw.reduce((a,b) => a+b, 0); 
+    } 
+    
+    // SAFE ELEMENT FETCHING
+    let minEl = document.getElementById('min-time'); 
+    let maxEl = document.getElementById('max-time');
+    const minT = minEl ? (parseInt(minEl.value) || 0) : 0; 
+    const maxT = maxEl ? (parseInt(maxEl.value) || 0) : 0; 
+    
+    let penalty = 0; 
+    if(UI.timerSeconds > 0 && minT > 0 && UI.timerSeconds < minT) {
+        penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5; 
+    } else if (maxT > 0 && UI.timerSeconds > maxT) {
+        penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5; 
+    }
+    
+    const final = Math.max(0, sum - penalty); 
+    
+    let finalEl = document.getElementById('live-final-score'); 
+    if(finalEl) finalEl.innerText = final.toFixed(1); 
+    
+    let penEl = document.getElementById('live-penalty'); 
+    if(penEl) penEl.innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`; 
+    
+    return { final, penalty, raw, techRaw, tieBreaker: techRaw[0] }; 
+}
+
+function saveScore(babakOverride) { 
+    const pId = parseInt(document.getElementById('select-peserta').value); 
+    if(!pId) return alert('Pilih atlet!'); 
+    let babak = document.getElementById('select-babak').value; 
+    if(babakOverride === 1 || babakOverride === 2) babak = `b${babakOverride}`; 
+    
+    for(let i=1; i<=STATE.settings.numJudges; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        if(sEl && sEl.value === "") return alert(`TOTAL NILAI Wasit ${i} masih kosong!`); 
+    }
+        
+    const calc = calculateLive(); 
+    const p = STATE.participants.find(i => i.id === pId); 
+    p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; 
+    
+    if (p.pool === 'FINAL') { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
+    else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } 
+    else { 
+        if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } 
+        else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } 
+    } 
+    saveToLocalStorage(); alert(`SKOR TERSIMPAN!`); 
+    clearInterval(UI.timerInterval); UI.timerInterval = null; 
+    document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; 
+}
+
 function toggleTimer() { const btn = document.getElementById('btn-timer'); if(UI.timerInterval) { clearInterval(UI.timerInterval); UI.timerInterval = null; btn.innerText = 'LANJUTKAN'; btn.classList.replace('bg-red-600', 'bg-yellow-600'); btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); } else { UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); btn.innerText = 'STOP'; btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold'; } }
 function resetTimer() { clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; calculateLive(); }
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
