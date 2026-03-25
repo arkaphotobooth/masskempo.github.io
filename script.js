@@ -727,25 +727,41 @@ function filterPesertaScoring() {
 }
 
 let currentRandoriMatchId = null;
-function loadRandoriMatch() {
-    const val = document.getElementById('select-peserta').value;
-    if(!val || !val.startsWith('match-')) return;
+function loadRandoriMatch(forcedValue = null) {
+    // Ambil nilai dari parameter atau langsung dari dropdown
+    const val = forcedValue || document.getElementById('select-peserta').value;
+    
+    if(!val || !val.startsWith('match-')) {
+        console.error("Format ID salah atau kosong");
+        return;
+    }
     
     const matchId = parseInt(val.replace('match-', ''));
     const match = STATE.matches.find(m => m.id === matchId);
     
-    // INI KUNCINYA: Menampilkan panel yang benar
-    document.getElementById('panel-randori').classList.remove('hidden');
-    document.getElementById('panel-embu').classList.add('hidden');
+    // TAMPILKAN PANEL & SEMBUNYIKAN EMBU
+    const pRandori = document.getElementById('panel-randori');
+    const pEmbu = document.getElementById('panel-embu');
+    
+    if(pRandori) pRandori.classList.remove('hidden');
+    if(pEmbu) pEmbu.classList.add('hidden');
 
     if(match) {
+        // Cari nama peserta berdasarkan ID di dalam partai
         const merah = STATE.participants.find(p => p.id === match.merahId);
         const putih = STATE.participants.find(p => p.id === match.putihId);
         
-        document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-";
-        document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-";
+        // Update teks di papan skor
+        document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "BYE";
+        document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
+        document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "BYE";
+        document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
         
+        // Reset angka di papan menjadi 0
         resetRandoriBoard(); 
+        console.log("Papan Randori Berhasil Dimuat untuk Match ID:", matchId);
+    } else {
+        console.error("Match tidak ditemukan di database");
     }
 }
 
