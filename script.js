@@ -754,52 +754,51 @@ function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; }
 
 function saveRandoriMatchResult() {
-    // 1. Ambil ID langsung dari Dropdown peserta saat ini
     const selectEl = document.getElementById('select-peserta');
     const val = selectEl.value;
 
-    // 2. Validasi ketat: Harus ada kata 'match-'
-    if(!val || !val.startsWith('match-')) {
-        return alert("Pilih partai/pertandingan terlebih dahulu!");
+    // Log untuk debugging (Cek di Console F12)
+    console.log("Nilai Dropdown yang dibaca:", val);
+
+    // Jika dropdown kosong atau tidak diawali 'match-'
+    if (!val || val === "" || !val.includes('match-')) {
+        alert("Sistem membaca: Partai belum dipilih. Silakan pilih ulang partai di dropdown.");
+        return;
     }
 
-    // 3. Ekstrak ID Pertandingan
     const matchId = parseInt(val.replace('match-', ''));
     const match = STATE.matches.find(m => m.id === matchId);
 
-    if(!match) {
-        return alert("Data pertandingan tidak ditemukan!");
+    if (!match) {
+        alert("Eror: ID Pertandingan tidak ditemukan di database.");
+        return;
     }
 
-    // 4. Ambil skor dari layar
+    // Ambil skor
     let sMerah = RANDORI_STATE.merah.score;
     let sPutih = RANDORI_STATE.putih.score;
 
-    if(sMerah === sPutih) {
-        return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin kemenangan.");
+    if (sMerah === sPutih) {
+        return alert("Skor seri! Randori tidak bisa berakhir seri.");
     }
 
-    // 5. Konfirmasi & Simpan
     let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
-    let winnerName = sMerah > sPutih ? "MERAH (AKA)" : "PUTIH (SHIRO)";
 
-    if(confirm(`Selesaikan pertandingan?\nPemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}`)) {
+    if (confirm(`Simpan hasil G-${match.matchNum % 50 || 50}?`)) {
         match.skorMerah = sMerah;
         match.skorPutih = sPutih;
         match.winnerId = winnerId;
         match.loserId = (winnerId === match.merahId) ? match.putihId : match.merahId;
         match.status = 'done';
 
-        // Update bracket & kirim ke Cloud
-        recalculateAllLosses(match.kategori);
+        // Update Logika Tournament
+        if (typeof recalculateAllLosses === "function") recalculateAllLosses(match.kategori);
         forwardParticipant(match.nextW, match.winnerId, match.kategori, match.pool);
-        if(match.nextL) forwardParticipant(match.nextL, match.loserId, match.kategori, match.pool);
+        if (match.nextL) forwardParticipant(match.nextL, match.loserId, match.kategori, match.pool);
 
         saveToLocalStorage(); 
-        alert("Partai Berhasil Disimpan & Disinkronkan!");
-        
-        // Refresh dropdown agar partai yang sudah selesai hilang
-        filterPesertaScoring();
+        alert("Berhasil disimpan ke Cloud!");
+        filterPesertaScoring(); // Refresh daftar
     }
 }
 
