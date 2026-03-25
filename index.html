@@ -31,7 +31,7 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">MASS <span class="text-blue-500">PRO</span></h1>
-                        <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase">Martial Arts System V14.7</span>
+                        <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase">Martial Arts System V14.8</span>
                     </div>
                 </div>
                 
@@ -270,8 +270,8 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700 pb-4 mb-4">
                     <div class="flex items-center gap-3"><i class="fas fa-trophy text-yellow-500 text-2xl"></i><h2 class="text-xl font-black text-white">Klasemen & Peringkat</h2></div>
                     <div class="flex items-center gap-3 w-full md:w-auto">
-                        <select id="rank-filter-kategori" onchange="renderRanking()" class="w-full md:w-64 bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm outline-none"></select>
-                        <button id="btn-promote-final" onclick="promoteToFinal()" class="hidden bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg text-sm"><i class="fas fa-arrow-up mr-2"></i>TETAPKAN FINALIS</button>
+                        <select id="rank-filter-kategori" onchange="renderRanking()" class="w-full md:w-64 bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm outline-none focus:border-blue-500 transition-colors"></select>
+                        <button id="btn-promote-final" onclick="promoteToFinal()" class="hidden bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition-transform hover:scale-105 shadow-md"><i class="fas fa-arrow-up mr-2"></i>TETAPKAN FINALIS</button>
                     </div>
                 </div>
                 <div id="ranking-list" class="space-y-4"></div>
@@ -332,26 +332,5 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        function promoteToFinal() {
-            const filter = document.getElementById('rank-filter-kategori').value;
-            if(filter === 'all' || !filter) return alert("Pilih kategori spesifik terlebih dahulu!");
-            const catObj = STATE.categories.find(c => c.name === filter);
-            if(catObj && catObj.discipline === 'randori') return alert("Tindakan ini hanya untuk nomor Embu.");
-            let list = STATE.participants.filter(p => p.kategori === filter && (p.pool === 'A' || p.pool === 'B'));
-            if(list.length === 0) return alert("Kategori ini tidak memiliki sistem Pool penyisihan.");
-            if(list.some(p => p.isFinalist)) return alert("Finalis sudah ditetapkan!");
-            let numFinalists = parseInt(prompt("Masukkan JUMLAH finalis DARI MASING-MASING POOL (misal: 3):", "3"));
-            if(!numFinalists || isNaN(numFinalists) || numFinalists <= 0) return;
-            let poolA = list.filter(p => p.pool === 'A' && p.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-            let poolB = list.filter(p => p.pool === 'B' && p.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-            let combined = [...poolA.slice(0, numFinalists), ...poolB.slice(0, numFinalists)];
-            if(combined.length === 0) return alert("Tidak ada data nilai.");
-            if(confirm("Tetapkan " + combined.length + " peserta ini sebagai Finalis?")) {
-                combined.forEach(w => { let p = STATE.participants.find(x => x.id === w.id); if(p) { p.isFinalist = true; p.pool = 'FINAL'; p.urutFinal = 0; } });
-                saveToLocalStorage(); alert("Finalis ditetapkan!"); renderRanking(); checkExistingDrawing(); filterPesertaScoring();
-            }
-        }
-    </script>
 </body>
 </html>
