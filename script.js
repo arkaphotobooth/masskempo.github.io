@@ -40,15 +40,26 @@ async function initFirebase() {
         onValue(dataRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                STATE = data;
+                // SINKRONISASI PINTAR: Update hanya jika datanya ada
+                STATE.categories = data.categories || [];
+                STATE.participants = data.participants || [];
+                STATE.matches = data.matches || [];
+                STATE.settings = data.settings || { numJudges: 5 };
+                
+                isCloudReady = true;
+                if(badge) badge.innerHTML = '<span style="color: #22c55e">● CLOUD ONLINE</span>';
+                
+                // Refresh tampilan setelah data cloud masuk
                 refreshAllData();
+                updateActiveViewsSilent(); 
+            } else {
+                // Jika Cloud kosong, jangan biarkan STATE jadi undefined
+                isCloudReady = true;
+                if(badge) badge.innerHTML = '<span style="color: #3b82f6">● CLOUD READY (EMPTY)</span>';
             }
-            isCloudReady = true;
-            badge.innerHTML = '<span style="color: #22c55e">● CLOUD ONLINE</span>';
         });
 
         window.cloudSave = (data) => set(ref(database_instance, 'mass_data'), data);
-
     } catch (e) {
         console.error("Cloud Error:", e);
         badge.innerHTML = '<span style="color: #ef4444">○ OFFLINE</span>';
@@ -70,21 +81,31 @@ function saveToLocalStorage() {
 
 // --- 3. FONDASI V15.1 (Logika Asli Anda) ---
 
+let STATE = {
+    categories: [],
+    participants: [],
+    matches: [],
+    settings: { numJudges: 5 }
+};
+
+// 2. Fungsi inisialisasi lokal tetap dijalankan untuk backup
 function initializeData() {
     try {
         let cats = JSON.parse(localStorage.getItem('mass_categories')) || [];
         let parts = JSON.parse(localStorage.getItem('mass_participants')) || [];
         let matches = JSON.parse(localStorage.getItem('mass_matches')) || []; 
-        return { 
-            categories: cats.map(c => ({...c, discipline: c.discipline || 'embu'})), 
-            participants: parts.map(p => ({...p, losses: p.losses || 0})), 
-            matches: matches, 
-            settings: { numJudges: 5 } 
-        };
-    } catch (e) { return { categories: [], participants: [], matches: [], settings: { numJudges: 5 } }; }
+        // Update STATE global dengan data dari LocalStorage
+        STATE.categories = cats;
+        STATE.participants = parts;
+        STATE.matches = matches;
+    } catch (e) {
+        console.log("Local storage kosong, menunggu Cloud...");
+    }
 }
 
-let STATE = initializeData();
+// Panggil fungsinya
+initializeData();
+
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
 let RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } };
 let SWAP_SELECTION = null; 
