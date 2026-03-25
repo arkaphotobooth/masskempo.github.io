@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.3 (Grid Layout Fix for Embu & Stable Core)
+ * Version 14.4 (Embu UI Mastery: Header Card Layout & Wrap Fixes)
  */
 
 function initializeData() {
@@ -257,6 +257,7 @@ function resetNilaiKategoriLokal() {
     
     saveToLocalStorage();
     checkExistingDrawing();
+    alert('Data nilai berhasil dikosongkan. Susunan bagan/urutan tetap aman!');
 }
 
 function handleSwap(matchId, corner, participantId, event) {
@@ -466,24 +467,50 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
-function renderPoolUI(arr, title, container, isFinal) { 
-    let borderColor = isFinal ? 'border-yellow-600' : 'border-slate-600'; 
-    let titleColor = isFinal ? 'text-yellow-500' : 'text-purple-400'; 
-    let html = `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-lg w-full h-full flex flex-col"><h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${title}</h3><div class="space-y-3 flex-1">`; 
-    arr.forEach((p, i) => { 
-        let noUrut = isFinal ? p.urutFinal : p.urut; 
-        html += `<div class="flex flex-col md:flex-row items-start md:items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 gap-3 hover:bg-slate-700/30 transition-colors">
-            <div class="flex gap-3 items-start w-full">
-                <span class="font-mono text-slate-500 w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
-                <span class="font-bold text-white whitespace-normal break-words leading-snug">${p.nama}</span>
+// --- MASTER EMBU LAYOUT (HEADER + GRID POOLS) ---
+function renderEmbuLayout(catName, container, poolsConfig) {
+    let gridCols = poolsConfig.length > 1 ? 'md:grid-cols-2' : 'grid-cols-1';
+    
+    let html = `
+    <div class="col-span-full w-full shadow-lg rounded-xl overflow-hidden border border-slate-700">
+        <div class="flex justify-between items-center bg-slate-800 p-4 border-b border-slate-700">
+            <div class="flex items-center gap-3">
+                <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-black tracking-wider">DRAWING EMBU</span>
+                <span class="text-sm font-bold text-yellow-400 truncate">${catName}</span>
             </div>
-            <div class="flex justify-end w-full md:w-auto">
-                <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-1 rounded border border-slate-700 whitespace-nowrap shadow-sm">${p.kontingen}</span>
-            </div>
-        </div>`; 
-    }); 
-    html += `</div></div>`; 
-    container.innerHTML += html; 
+            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded flex items-center justify-center transition-colors shadow-sm" title="Kosongkan Nilai (Urutan Tetap)">
+                <i class="fas fa-eraser text-sm"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 ${gridCols} gap-6 bg-slate-900 p-5">
+    `;
+
+    poolsConfig.forEach(pool => {
+        let borderColor = pool.isFinal ? 'border-yellow-600' : 'border-slate-600'; 
+        let titleColor = pool.isFinal ? 'text-yellow-500' : 'text-purple-400'; 
+        
+        html += `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-sm w-full h-full flex flex-col">
+            <h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${pool.title}</h3>
+            <div class="space-y-3 flex-1">`; 
+        
+        pool.data.forEach((p) => { 
+            let noUrut = pool.isFinal ? p.urutFinal : p.urut; 
+            html += `<div class="flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 gap-3 hover:bg-slate-700/30 transition-colors">
+                <div class="flex gap-3 items-start w-full">
+                    <span class="font-mono text-slate-500 w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
+                    <span class="font-bold text-white whitespace-normal break-words leading-snug">${p.nama}</span>
+                </div>
+                <div class="flex justify-start xl:justify-end w-full xl:w-auto pl-8 xl:pl-0">
+                    <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-1 rounded border border-slate-700 whitespace-nowrap shadow-sm">${p.kontingen}</span>
+                </div>
+            </div>`; 
+        }); 
+        html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+    container.innerHTML = html;
 }
 
 function checkExistingDrawing() {
@@ -501,36 +528,62 @@ function checkExistingDrawing() {
         panelEmbu.classList.remove('hidden'); 
         const isFinalMode = list.some(p => p.isFinalist); 
         
-        // UI FIX: Tombol penghapus diberi lebar penuh agar tidak merusak grid di bawahnya
-        let resetBtnHTML = `<div class="col-span-1 md:col-span-2 flex justify-end items-center mb-2 w-full">
-            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded shadow border border-red-800 transition-colors" title="Kosongkan Nilai Saja (Urutan Tetap)"><i class="fas fa-eraser"></i></button>
-        </div>`;
-
         if (isFinalMode) { 
             let finalL = list.filter(p => p.isFinalist); 
             if (finalL.some(p => p.urutFinal > 0)) { 
                 finalL.sort((a,b) => a.urutFinal - b.urutFinal); 
-                resultDiv.innerHTML = resetBtnHTML;
-                renderPoolUI(finalL, "POOL FINAL", resultDiv, true); 
+                renderEmbuLayout(catName, resultDiv, [{data: finalL, title: "POOL FINAL", isFinal: true}]);
             } else { 
-                resultDiv.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; 
+                resultDiv.innerHTML = `<div class="col-span-full text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; 
             } 
         } else if (list.some(p => p.urut > 0)) { 
             list.sort((a,b) => a.urut - b.urut); 
-            resultDiv.innerHTML = resetBtnHTML;
             if(list.some(p => p.pool === 'A' || p.pool === 'B')) { 
-                renderPoolUI(list.filter(p => p.pool === 'A'), "POOL A", resultDiv, false); 
-                renderPoolUI(list.filter(p => p.pool === 'B'), "POOL B", resultDiv, false); 
+                renderEmbuLayout(catName, resultDiv, [
+                    {data: list.filter(p => p.pool === 'A'), title: "POOL A", isFinal: false},
+                    {data: list.filter(p => p.pool === 'B'), title: "POOL B", isFinal: false}
+                ]);
             } else { 
-                renderPoolUI(list, "BABAK PENYISIHAN", resultDiv, false); 
+                renderEmbuLayout(catName, resultDiv, [{data: list, title: "BABAK PENYISIHAN", isFinal: false}]);
             } 
         } else { 
-            resultDiv.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; 
+            resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; 
         } 
     }
 }
 
-function startDrawing() { const catName = document.getElementById('draw-select-kategori').value; if(!catName) return alert("Pilih kategori!"); let list = STATE.participants.filter(p => p.kategori === catName); if(list.length === 0) return alert("Belum ada peserta!"); const resultDiv = document.getElementById('drawing-result'); resultDiv.innerHTML = ''; const isFinalMode = list.some(p => p.isFinalist); if (isFinalMode) { let finalL = list.filter(p => p.isFinalist); if (finalL.some(p => p.urutFinal > 0)) if (!confirm("⚠️ Finalis SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; shuffleArray(finalL); finalL.forEach((p, index) => { const idx = STATE.participants.findIndex(x => x.id === p.id); STATE.participants[idx].urutFinal = index + 1; }); renderPoolUI(finalL, "POOL FINAL", resultDiv, true); } else { if (list.some(p => p.urut > 0)) { if (!confirm("⚠️ Kategori ini SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; list.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; p.finalScore = 0; p.techScore = 0; }); } shuffleArray(list); if (list.length > 6) { const half = Math.ceil(list.length / 2); const poolA = list.slice(0, half); const poolB = list.slice(half); applyDrawingData(poolA, 'A'); applyDrawingData(poolB, 'B'); renderPoolUI(poolA, "POOL A", resultDiv, false); renderPoolUI(poolB, "POOL B", resultDiv, false); } else { applyDrawingData(list, 'SINGLE'); renderPoolUI(list, "BABAK PENYISIHAN", resultDiv, false); } } saveToLocalStorage(); checkExistingDrawing(); renderParticipantTable(); }
+function startDrawing() { 
+    const catName = document.getElementById('draw-select-kategori').value; 
+    if(!catName) return alert("Pilih kategori!"); 
+    let list = STATE.participants.filter(p => p.kategori === catName); 
+    if(list.length === 0) return alert("Belum ada peserta!"); 
+    
+    const isFinalMode = list.some(p => p.isFinalist); 
+    if (isFinalMode) { 
+        let finalL = list.filter(p => p.isFinalist); 
+        if (finalL.some(p => p.urutFinal > 0)) if (!confirm("⚠️ Finalis SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; 
+        shuffleArray(finalL); 
+        finalL.forEach((p, index) => { const idx = STATE.participants.findIndex(x => x.id === p.id); STATE.participants[idx].urutFinal = index + 1; }); 
+    } else { 
+        if (list.some(p => p.urut > 0)) { 
+            if (!confirm("⚠️ Kategori ini SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; 
+            list.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; p.finalScore = 0; p.techScore = 0; }); 
+        } 
+        shuffleArray(list); 
+        if (list.length > 6) { 
+            const half = Math.ceil(list.length / 2); 
+            const poolA = list.slice(0, half); 
+            const poolB = list.slice(half); 
+            applyDrawingData(poolA, 'A'); applyDrawingData(poolB, 'B'); 
+        } else { 
+            applyDrawingData(list, 'SINGLE'); 
+        } 
+    } 
+    saveToLocalStorage(); 
+    checkExistingDrawing(); 
+    renderParticipantTable(); 
+}
+
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
 
@@ -581,47 +634,6 @@ function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0, warn1: false
 function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points; if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; updateRandoriUI(); }
 function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
-
-function saveRandoriMatchResult() {
-    if(!currentRandoriMatchId) return alert("Pilih partai!");
-    const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
-    if(!match) return;
-
-    let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
-    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
-
-    let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
-    let loserId = sMerah > sPutih ? match.putihId : match.merahId;
-    let winnerName = sMerah > sPutih ? "PITA MERAH (AKA)" : "PITA PUTIH (SHIRO)";
-
-    if(confirm(`Konfirmasi Pemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}\n\nLanjutkan?`)) {
-        match.skorMerah = sMerah; match.skorPutih = sPutih; 
-        match.winnerId = winnerId; match.loserId = loserId; 
-        match.status = 'done';
-        
-        recalculateAllLosses(match.kategori);
-        
-        let winnerP = STATE.participants.find(p => p.id === winnerId);
-
-        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
-        let isChallenger = winnerP && winnerP.losses > 0;
-        
-        if(isGrandFinal && isChallenger) {
-            alert("TIE BREAKER GRAND FINAL!\nAtlet dari jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
-            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
-            let extraMatch = { id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.merahId, putihId: match.putihId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 };
-            STATE.matches.push(extraMatch);
-        } else {
-            forwardParticipant(match.nextW, winnerId, match.kategori, match.pool); 
-            if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool); 
-        }
-
-        processAutoWins(match.kategori); 
-        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
-    }
-}
-
-document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
 
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
