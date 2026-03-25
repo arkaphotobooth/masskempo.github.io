@@ -725,18 +725,34 @@ function filterPesertaScoring() {
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
         
-        let catMatches = STATE.matches.filter(m => m.kategori === catName && m.status === 'pending' && m.merahId !== null && m.putihId !== null && m.merahId !== -1 && m.putihId !== -1);
-        if(catMatches.length === 0) { selectEl.innerHTML = `<option value="">-- Tidak ada Partai Aktif --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; return; }
+        // PERBAIKAN 1: Gunakan != null (bukan !== null) untuk menangkap null DAN undefined dari Firebase
+        let catMatches = STATE.matches.filter(m => 
+            m.kategori === catName && 
+            m.status === 'pending' && 
+            m.merahId != null && m.putihId != null && 
+            m.merahId !== -1 && m.putihId !== -1
+        );
+
+        if(catMatches.length === 0) { 
+            selectEl.innerHTML = `<option value="">-- Tidak ada Partai Aktif --</option>`; 
+            document.getElementById('scoring-athlete-name').innerText = "-"; 
+            return; 
+        }
 
         selectEl.innerHTML = catMatches.sort((a,b)=>a.matchNum - b.matchNum).map((m) => {
-            const mrh = STATE.participants.find(p => p.id === m.merahId); const pth = STATE.participants.find(p => p.id === m.putihId);
+            // PERBAIKAN 2: Berikan nilai default objek kosong agar tidak CRASH saat membaca .nama
+            const mrh = STATE.participants.find(p => p.id === m.merahId) || { nama: "Menunggu..." }; 
+            const pth = STATE.participants.find(p => p.id === m.putihId) || { nama: "Menunggu..." };
+            
             let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
             let pLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
             return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${mrh.nama} vs ${pth.nama}</option>`;
         }).join('');
+        
         selectEl.dispatchEvent(new Event('change'));
 
     } else {
+        // --- BAGIAN EMBU TETAP SAMA KARENA SUDAH AMAN ---
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
