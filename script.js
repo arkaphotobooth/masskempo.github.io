@@ -817,7 +817,28 @@ function saveRandoriMatchResult() {
     }
 }
 
-document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
+document.getElementById('select-peserta').addEventListener('change', (e) => { 
+    if(e.target.selectedIndex >= 0) { 
+        // Ubah judul nama atlet di atas
+        document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
+        
+        if(e.target.value.startsWith('match-')) {
+            // LANJUT OTOMATIS: Jika ini Randori dan partai belum habis, langsung muat data partai selanjutnya
+            loadRandoriMatch(); 
+        } else { 
+            // TUTUP OTOMATIS: Jika partai Randori sudah habis, bersihkan papan skor sepenuhnya
+            document.getElementById('randori-nama-merah').innerText = "-"; 
+            document.getElementById('randori-kont-merah').innerText = "-";
+            document.getElementById('randori-nama-putih').innerText = "-"; 
+            document.getElementById('randori-kont-putih').innerText = "-";
+            currentRandoriMatchId = null;
+            resetRandoriBoard(); 
+            
+            // JALUR EMBU: Embu tidak terpengaruh oleh pembersihan di atas dan akan tetap terbuka/bisa diedit
+            updateScoringButtonsUI(); 
+        }
+    }
+});
 document.getElementById('select-kategori').addEventListener('change', filterPesertaScoring);
 
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
