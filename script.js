@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 13.8 (Super Minimalist UI + Balanced BYE Dist + Randori Double Perunggu)
+ * Version 13.9 (Hotfix: Syntax Error Resolution & Stable Core)
  */
 
 function initializeData() {
@@ -102,18 +102,15 @@ function generateRandoriBracket() {
 
         let globalMatchIdCounter = Date.now(); 
         poolConfigs.forEach((config, poolIndex) => {
-            // --- BALANCED BYE DISTRIBUTION LOGIC ---
             const slotsCount = config.size;
             const athleteCount = config.athletes.length;
             const byeCount = slotsCount - athleteCount;
             const totalMatchesR1 = slotsCount / 2;
 
-            // Pastikan Crossover tidak memiliki BYE di template yang merusak logat
             if(config.isCrossover && byeCount > 0) {
                 return alert("Template Crossover Final membutuhkan 4 peserta penuh (tanpa BYE).");
             }
 
-            // Shuffle Atlet
             const shuffledAthletes = [...config.athletes];
             for (let i = shuffledAthletes.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -123,61 +120,39 @@ function generateRandoriBracket() {
             let finalSlots = new Array(slotsCount).fill(null);
 
             if(byeCount === 0) {
-                // No BYEs, simple fill
                 shuffledAthletes.forEach((p, idx) => finalSlots[idx] = p.id);
             } else {
-                // BALANCED DISTRIBUTION
-                // Aturan: Satu partai Babak 1 maksimal satu BYE.
-                // BYE akan ditaruh di slot genap (2, 4, 6, dst).
                 let athleteIds = shuffledAthletes.map(a => a.id);
-                
-                // Pisahkan slot menjadi Odd (pasti Atlet) dan Even (Atlet atau BYE)
                 let oddSlots = [], evenSlots = [];
                 for(let i=1; i<=slotsCount; i++) {
                     if(i % 2 !== 0) oddSlots.push(i); else evenSlots.push(i);
                 }
 
-                // BYE tidak boleh lebih banyak dari total partai Babak 1 (setengah slots)
-                // Jika ya, itu bagan template yang salah ukuran.
                 if(byeCount > totalMatchesR1) {
                     return alert("Kesalahan Fatal: Jumlah BYE melebihi jumlah partai Babak 1.");
                 }
 
-                // Spread BYEs across quarters within even slots
-                // Quarter 1: Even Slots, Quarter 2: Even Slots, dst.
-                // Misal 16 slots, totalMatchesR1=8. Even slots: 2,4,6,8,10,12,14,16.
-                // BYEs assigned to e.g., Slot 2, Slot 10 (Q3), Slot 6 (Q2), Slot 14 (Q4), Slot 4 (Q1)...
-                
                 let evenSlotsDistributed = [];
                 const matchesPerQuarter = totalMatchesR1 / 4;
-                const quartersEvenRaw = [
-                    evenSlots.slice(0, matchesPerQuarter),
-                    evenSlots.slice(matchesPerQuarter, matchesPerQuarter*2),
-                    evenSlots.slice(matchesPerQuarter*2, matchesPerQuarter*3),
-                    evenSlots.slice(matchesPerQuarter*3)
-                ];
-
-                for(let i=0; i<matchesPerQuarter; i++) {
-                    [0, 2, 1, 3].forEach(qIdx => { // Quarter order: Upper, Lower, Middle-Upper, Middle-Lower
-                        evenSlotsDistributed.push(quartersEvenRaw[qIdx][i]);
-                    });
+                
+                if (matchesPerQuarter >= 1) {
+                    const quartersEvenRaw = [
+                        evenSlots.slice(0, matchesPerQuarter),
+                        evenSlots.slice(matchesPerQuarter, matchesPerQuarter*2),
+                        evenSlots.slice(matchesPerQuarter*2, matchesPerQuarter*3),
+                        evenSlots.slice(matchesPerQuarter*3)
+                    ];
+                    for(let i=0; i<matchesPerQuarter; i++) {
+                        [0, 2, 1, 3].forEach(qIdx => { evenSlotsDistributed.push(quartersEvenRaw[qIdx][i]); });
+                    }
+                } else {
+                    evenSlotsDistributed = [...evenSlots];
                 }
 
-                // Assign BYE (-1) to distributed even slots
-                for(let b=0; b<byeCount; b++) {
-                    finalSlots[evenSlotsDistributed[b]-1] = -1;
-                }
-
-                // Fill odd slots with athletes
-                for(let o=0; o<totalMatchesR1; o++) {
-                    finalSlots[oddSlots[o]-1] = athleteIds.shift();
-                }
-
-                // Fill remaining even slots (not taken by BYE) with remaining athletes
+                for(let b=0; b<byeCount; b++) { finalSlots[evenSlotsDistributed[b]-1] = -1; }
+                for(let o=0; o<totalMatchesR1; o++) { finalSlots[oddSlots[o]-1] = athleteIds.shift(); }
                 const unfilledEvenIndices = evenSlotsDistributed.slice(byeCount).map(s => s - 1);
-                unfilledEvenIndices.forEach(idx => {
-                    finalSlots[idx] = athleteIds.shift();
-                });
+                unfilledEvenIndices.forEach(idx => { finalSlots[idx] = athleteIds.shift(); });
             }
 
             let numOffset = poolIndex * 50; 
@@ -355,7 +330,6 @@ function processAutoWins(catName) {
     recalculateAllLosses(catName);
 }
 
-// --- MINIMALIST UI UPDATE FOR RANDORI ---
 function renderVisualBracket(catName) {
     const container = document.getElementById('randori-bracket-view');
     const wrapper = document.getElementById('randori-bracket-container');
@@ -370,12 +344,12 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            // TOMBOL RESET MINIMALIS MENEMPEL PADA JUDUL BAGAN
             let poolHTML = `<div class="mb-10 w-full min-w-max">
                 <div class="flex items-center gap-3 mb-4 border-b border-slate-700 pb-2">
                     <h3 class="text-xl font-black text-yellow-400 m-0">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
-                    <button onclick="resetNilaiKategoriLokal()" class="text-slate-500 hover:text-red-500 transition-colors" title="Kosongkan Nilai (Bagan Tetap)">
-                        <i class="fas fa-eraser"></i>
+                    <span class="text-[10px] text-slate-500 font-mono ml-2 border-l border-slate-700 pl-3">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
+                    <button onclick="resetNilaiKategoriLokal()" class="ml-auto bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-7 h-7 rounded flex items-center justify-center transition-colors" title="Kosongkan Nilai Saja (Bagan Tetap)">
+                        <i class="fas fa-eraser text-xs"></i>
                     </button>
                 </div>
                 <div class="flex gap-8 pb-4">`;
@@ -440,7 +414,6 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
-// --- MINIMALIST UI UPDATE FOR EMBU ---
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
     const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
@@ -512,7 +485,7 @@ function filterPesertaScoring() {
         selectEl.dispatchEvent(new Event('change'));
 
     } else {
-        panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); badgeEmbu.classList.remove('hidden'); badgeRandori.classList.remove('hidden');
+        panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         let listCat = STATE.participants.filter(p => p.kategori === catName && p.urut > 0); const hasFinal = listCat.some(p => p.isFinalist);
         let filtered = hasFinal ? listCat.filter(p => p.isFinalist).sort((a,b) => a.urutFinal - b.urutFinal) : listCat.sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
         if(filtered.length === 0) { selectEl.innerHTML = `<option value="">-- Kosong / Belum Undian --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; updateScoringButtonsUI(); return; }
@@ -582,7 +555,7 @@ function updateScoringButtonsUI() { const pId = parseInt(document.getElementById
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { document.getElementById(`score-${i}`).value = scoreData.raw[i-1] || ''; document.getElementById(`tech-${i}`).value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { document.getElementById(`score-${i}`).value = ''; document.getElementById(`tech-${i}`).value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
 function calculateLive() { let raw = []; let techRaw = []; for(let i=1; i<=STATE.settings.numJudges; i++) { raw.push(parseFloat(document.getElementById(`score-${i}`).value) || 0); techRaw.push(parseFloat(document.getElementById(`tech-${i}`).value) || 0); } let sum = 0; if(STATE.settings.numJudges === 5) { let sorted = [...raw].sort((a,b) => a-b); sorted.pop(); sorted.shift(); sum = sorted.reduce((a,b) => a+b, 0); } else { sum = raw.reduce((a,b) => a+b, 0); } const minT = parseInt(document.getElementById('min-time').value) || 0; const maxT = parseInt(document.getElementById('max-time').value) || 0; let penalty = 0; if(UI.timerSeconds > 0 && UI.timerSeconds < minT) penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5; else if (UI.timerSeconds > maxT) penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5; const final = Math.max(0, sum - penalty); document.getElementById('live-final-score').innerText = final.toFixed(1); document.getElementById('live-penalty').innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`; return { final, penalty, raw, techRaw, tieBreaker: techRaw[0] }; }
-function saveScore(babakOverride) { const pId = parseInt(document.getElementById('select-peserta').value); if(!pId) return alert('Pilih atlet!'); let babak = document.getElementById('select-babak').value; if(bab Override === 1 || bab Override === 2) babak = `b${bab Override}`; for(let i=1; i<=STATE.settings.numJudges; i++) if(document.getElementById(`score-${i}`).value === "") return alert(`TOTAL NILAI kosong!`); const calc = calculateLive(); const p = STATE.participants.find(i => i.id === pId); p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; if (p.pool === 'FINAL') { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } else { if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } } saveToLocalStorage(); alert(`SKOR TERSIMPAN!`); clearInterval(UI.timerInterval); UI.timerInterval = null; document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; }
+function saveScore(babakOverride) { const pId = parseInt(document.getElementById('select-peserta').value); if(!pId) return alert('Pilih atlet!'); let babak = document.getElementById('select-babak').value; if(babakOverride === 1 || babakOverride === 2) babak = `b${babakOverride}`; for(let i=1; i<=STATE.settings.numJudges; i++) if(document.getElementById(`score-${i}`).value === "") return alert(`TOTAL NILAI kosong!`); const calc = calculateLive(); const p = STATE.participants.find(i => i.id === pId); p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; if (p.pool === 'FINAL') { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } else { if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } } saveToLocalStorage(); alert(`SKOR TERSIMPAN!`); clearInterval(UI.timerInterval); UI.timerInterval = null; document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; }
 function toggleTimer() { const btn = document.getElementById('btn-timer'); if(UI.timerInterval) { clearInterval(UI.timerInterval); UI.timerInterval = null; btn.innerText = 'LANJUTKAN'; btn.classList.replace('bg-red-600', 'bg-yellow-600'); btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); } else { UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); btn.innerText = 'STOP'; btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold'; } }
 function resetTimer() { clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; calculateLive(); }
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
@@ -592,7 +565,6 @@ function calculateRandoriFinalists(catName) {
     let list = STATE.participants.filter(p => p.kategori === catName);
     let catMatches = STATE.matches.filter(m => m.kategori === catName);
     
-    // Cari partai puncak (Grand Final / Sudden Death terakhir)
     let grandFinals = catMatches.filter(m => m.nextW === 'WINNER').sort((a,b) => b.id - a.id);
     if(grandFinals.length === 0 || grandFinals[0].status !== 'done') return null;
     
@@ -600,11 +572,9 @@ function calculateRandoriFinalists(catName) {
     let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
     let juara2 = STATE.participants.find(p => p.id === gf.loserId);
     
-    // Cari partai Final Bawah (Penentuan Juara 3 ke-1)
     let finalBawah = catMatches.find(m => m.babak === "FINAL BAWAH");
     let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
 
-    // Cari partai semi-final penentuan jalur bawah (LB S-Final) (Penentuan Juara 3 ke-2)
     let lbSFinal = catMatches.find(m => m.babak === "LB Semi-Final");
     let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
 
@@ -615,7 +585,6 @@ function calculateRandoriFinalists(catName) {
     };
 }
 
-// --- MIXED RANKING MODE ---
 function renderRanking() { 
     const filter = document.getElementById('rank-filter-kategori').value; 
     let list = STATE.participants; 
@@ -627,7 +596,6 @@ function renderRanking() {
         const hasPools = catParticipants.some(p => p.pool === 'A' || p.pool === 'B'); 
         const hasFinal = catParticipants.some(p => p.isFinalist); 
         
-        // Promote button logic (Embu Only)
         if(catObj && catObj.discipline === 'embu' && hasPools && !hasFinal) btnPromote.classList.remove('hidden'); else btnPromote.classList.add('hidden'); 
         list = catParticipants; 
     } else btnPromote.classList.add('hidden'); 
@@ -679,17 +647,13 @@ function renderRanking() {
                 }).join(''); 
             }); 
         } else {
-            // RANDORI RANKING (Professional Tally)
             const wins = calculateRandoriFinalists(cat.name);
             if(!wins) {
                 htmlOutput += `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Turnamen di kategori ini masih berlangsung.</div>`;
             } else {
                 htmlOutput += `<h4 class="text-md font-bold text-red-400 mt-4 mb-2 pl-2 border-l-4 border-red-500">PEMENANG MEDALI</h4>`;
-                // Emas
                 htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${wins.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500">Juara 1 (Emas)</div></div></div>`;
-                // Perak
                 htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${wins.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300">Juara 2 (Perak)</div></div></div>`;
-                // Double Perunggu
                 wins.perunggu.forEach(pName => {
                     htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-amber-700 gap-4 mb-3 bg-amber-800/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-amber-600 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${pName}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-amber-600">Juara 3 Bersama (Perunggu)</div></div></div>`;
                 });
@@ -699,24 +663,21 @@ function renderRanking() {
     container.innerHTML = htmlOutput; 
 }
 
-// --- JUARA UMUM TALLY (Mixed Logic) ---
 function renderJuaraUmum() { 
     let tally = {}; 
     STATE.categories.forEach(cat => { 
         if(cat.discipline === 'embu') {
-            // Embu Tally (Standard 1G, 1S, 1B per FINAL)
             let listCat = STATE.participants.filter(p => p.kategori === cat.name && p.isFinalist); 
             let wins = listCat.filter(p => p.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
             if(wins[0]) { tally[wins[0].kontingen] = tally[wins[0].kontingen] || {g:0, s:0, b:0}; tally[wins[0].kontingen].g++; } 
             if(wins[1]) { tally[wins[1].kontingen] = tally[wins[1].kontingen] || {g:0, s:0, b:0}; tally[wins[1].kontingen].s++; } 
             if(wins[2]) { tally[wins[2].kontingen] = tally[wins[2].kontingen] || {g:0, s:0, b:0}; tally[wins[2].kontingen].b++; } 
         } else {
-            // Randori Tally (1G, 1S, 2B per FINAL category)
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
-            if(!isFinalCategory) return; // Only count finalized categories
+            if(!isFinalCategory) return; 
 
             const results = calculateRandoriFinalists(cat.name);
-            if(!results) return; // Bracket not finished
+            if(!results) return; 
 
             if(results.emas) {
                 let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name);
