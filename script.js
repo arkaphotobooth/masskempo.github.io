@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 13.9 (Hotfix: Syntax Error Resolution & Stable Core)
+ * Version 14.0 (Final Polish: Flexible Bronze Tracking & Minimalist UI)
  */
 
 function initializeData() {
@@ -49,10 +49,10 @@ function openEditModal(id) { const p = STATE.participants.find(x => x.id === id)
 function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
 document.getElementById('form-edit-peserta').addEventListener('submit', (e) => { e.preventDefault(); const id = parseInt(document.getElementById('edit-id').value); const newKategori = document.getElementById('edit-kategori').value; const idx = STATE.participants.findIndex(p => p.id === id); if(idx > -1) { if(STATE.participants[idx].kategori !== newKategori) { STATE.participants[idx].urut = 0; STATE.participants[idx].pool = '-'; STATE.participants[idx].isFinalist = false; STATE.participants[idx].losses = 0; STATE.participants[idx].scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; STATE.participants[idx].finalScore = 0; STATE.participants[idx].techScore = 0; } STATE.participants[idx].nama = document.getElementById('edit-nama').value; STATE.participants[idx].kontingen = document.getElementById('edit-kontingen').value; STATE.participants[idx].kategori = newKategori; saveToLocalStorage(); renderParticipantTable(); closeEditModal(); alert("Data diperbarui."); } });
 
-const TEMPLATE_4_STANDARD = [ { matchNum: 1, babak: "Semi-Final", col: 1, slot1: 1, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "Semi-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "GRAND FINAL", col: 2, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }, { matchNum: 4, babak: "LB S-Final", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "FINAL BAWAH", col: 3, slot1: null, slot2: null, nextW: 3, nextL: null } ];
-const TEMPLATE_4_CROSS = [ { matchNum: 1, babak: "S-Final Crossover", col: 1, slot1: 1, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "S-Final Crossover", col: 1, slot1: 3, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "GRAND FINAL", col: 2, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }, { matchNum: 4, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "FINAL BAWAH", col: 3, slot1: null, slot2: null, nextW: 3, nextL: null } ];
-const TEMPLATE_8_PERKEMI = [ { matchNum: 1, babak: "Penyisihan 1", col: 1, slot1: 1, slot2: 2, nextW: 7, nextL: 5 }, { matchNum: 2, babak: "Penyisihan 2", col: 1, slot1: 3, slot2: 4, nextW: 7, nextL: 5 }, { matchNum: 3, babak: "Penyisihan 3", col: 1, slot1: 5, slot2: 6, nextW: 8, nextL: 6 }, { matchNum: 4, babak: "Penyisihan 4", col: 1, slot1: 7, slot2: 8, nextW: 8, nextL: 6 }, { matchNum: 7, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 10 }, { matchNum: 8, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 9 }, { matchNum: 11, babak: "FINAL ATAS", col: 3, slot1: null, slot2: null, nextW: 14, nextL: 13 }, { matchNum: 5, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 9, nextL: null }, { matchNum: 6, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 10, nextL: null }, { matchNum: 9, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 10, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 12, babak: "LB Semi-Final", col: 3, slot1: null, slot2: null, nextW: 13, nextL: null }, { matchNum: 13, babak: "FINAL BAWAH", col: 4, slot1: null, slot2: null, nextW: 14, nextL: null }, { matchNum: 14, babak: "GRAND FINAL", col: 5, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
-const TEMPLATE_16 = [ { matchNum: 1, babak: "WB R1", col: 1, slot1: 1, slot2: 2, nextW: 9, nextL: 13 }, { matchNum: 2, babak: "WB R1", col: 1, slot1: 3, slot2: 4, nextW: 9, nextL: 13 }, { matchNum: 3, babak: "WB R1", col: 1, slot1: 5, slot2: 6, nextW: 10, nextL: 14 }, { matchNum: 4, babak: "WB R1", col: 1, slot1: 7, slot2: 8, nextW: 10, nextL: 14 }, { matchNum: 5, babak: "WB R1", col: 1, slot1: 9, slot2: 10, nextW: 11, nextL: 15 }, { matchNum: 6, babak: "WB R1", col: 1, slot1: 11, slot2: 12, nextW: 11, nextL: 15 }, { matchNum: 7, babak: "WB R1", col: 1, slot1: 13, slot2: 14, nextW: 12, nextL: 16 }, { matchNum: 8, babak: "WB R1", col: 1, slot1: 15, slot2: 16, nextW: 12, nextL: 16 }, { matchNum: 9, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 20 }, { matchNum: 10, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 19 }, { matchNum: 11, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 18 }, { matchNum: 12, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 17 }, { matchNum: 13, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 17, nextL: null }, { matchNum: 14, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 18, nextL: null }, { matchNum: 15, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 19, nextL: null }, { matchNum: 16, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 20, nextL: null }, { matchNum: 17, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 18, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 19, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 20, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 21, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 26 }, { matchNum: 22, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 25 }, { matchNum: 23, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 25, nextL: null }, { matchNum: 24, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 26, nextL: null }, { matchNum: 25, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 26, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 28, babak: "LB Semi-Final", col: 6, slot1: null, slot2: null, nextW: 29, nextL: null }, { matchNum: 27, babak: "WB Final", col: 6, slot1: null, slot2: null, nextW: 30, nextL: 29 }, { matchNum: 29, babak: "FINAL BAWAH", col: 7, slot1: null, slot2: null, nextW: 30, nextL: null }, { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_4_STANDARD = [ { matchNum: 1, babak: "WB S-Final", col: 1, slot1: 1, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "WB S-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "FINAL ATAS", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 }, { matchNum: 4, babak: "LB S-FINAL", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "FINAL BAWAH", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null }, { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_4_CROSS = [ { matchNum: 1, babak: "S-Final Crossover", col: 1, slot1: 1, slot2: 4, nextW: 3, nextL: 4 }, { matchNum: 2, babak: "S-Final Crossover", col: 1, slot1: 3, slot2: 2, nextW: 3, nextL: 4 }, { matchNum: 3, babak: "FINAL ATAS", col: 2, slot1: null, slot2: null, nextW: 6, nextL: 5 }, { matchNum: 4, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 5, nextL: null }, { matchNum: 5, babak: "FINAL BAWAH", col: 3, slot1: null, slot2: null, nextW: 6, nextL: null }, { matchNum: 6, babak: "GRAND FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_8_PERKEMI = [ { matchNum: 1, babak: "Penyisihan 1", col: 1, slot1: 1, slot2: 2, nextW: 7, nextL: 5 }, { matchNum: 2, babak: "Penyisihan 2", col: 1, slot1: 3, slot2: 4, nextW: 7, nextL: 5 }, { matchNum: 3, babak: "Penyisihan 3", col: 1, slot1: 5, slot2: 6, nextW: 8, nextL: 6 }, { matchNum: 4, babak: "Penyisihan 4", col: 1, slot1: 7, slot2: 8, nextW: 8, nextL: 6 }, { matchNum: 7, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 10 }, { matchNum: 8, babak: "Semi-Final W", col: 2, slot1: null, slot2: null, nextW: 11, nextL: 9 }, { matchNum: 11, babak: "FINAL ATAS", col: 3, slot1: null, slot2: null, nextW: 14, nextL: 13 }, { matchNum: 5, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 9, nextL: null }, { matchNum: 6, babak: "LB R1", col: 1, slot1: null, slot2: null, nextW: 10, nextL: null }, { matchNum: 9, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 10, babak: "LB R2", col: 2, slot1: null, slot2: null, nextW: 12, nextL: null }, { matchNum: 12, babak: "LB S-FINAL", col: 3, slot1: null, slot2: null, nextW: 13, nextL: null }, { matchNum: 13, babak: "FINAL BAWAH", col: 4, slot1: null, slot2: null, nextW: 14, nextL: null }, { matchNum: 14, babak: "GRAND FINAL", col: 5, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
+const TEMPLATE_16 = [ { matchNum: 1, babak: "WB R1", col: 1, slot1: 1, slot2: 2, nextW: 9, nextL: 13 }, { matchNum: 2, babak: "WB R1", col: 1, slot1: 3, slot2: 4, nextW: 9, nextL: 13 }, { matchNum: 3, babak: "WB R1", col: 1, slot1: 5, slot2: 6, nextW: 10, nextL: 14 }, { matchNum: 4, babak: "WB R1", col: 1, slot1: 7, slot2: 8, nextW: 10, nextL: 14 }, { matchNum: 5, babak: "WB R1", col: 1, slot1: 9, slot2: 10, nextW: 11, nextL: 15 }, { matchNum: 6, babak: "WB R1", col: 1, slot1: 11, slot2: 12, nextW: 11, nextL: 15 }, { matchNum: 7, babak: "WB R1", col: 1, slot1: 13, slot2: 14, nextW: 12, nextL: 16 }, { matchNum: 8, babak: "WB R1", col: 1, slot1: 15, slot2: 16, nextW: 12, nextL: 16 }, { matchNum: 9, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 20 }, { matchNum: 10, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 21, nextL: 19 }, { matchNum: 11, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 18 }, { matchNum: 12, babak: "WB QF", col: 2, slot1: null, slot2: null, nextW: 22, nextL: 17 }, { matchNum: 13, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 17, nextL: null }, { matchNum: 14, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 18, nextL: null }, { matchNum: 15, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 19, nextL: null }, { matchNum: 16, babak: "LB R1", col: 2, slot1: null, slot2: null, nextW: 20, nextL: null }, { matchNum: 17, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 18, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 23, nextL: null }, { matchNum: 19, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 20, babak: "LB R2", col: 3, slot1: null, slot2: null, nextW: 24, nextL: null }, { matchNum: 21, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 26 }, { matchNum: 22, babak: "WB SF", col: 4, slot1: null, slot2: null, nextW: 27, nextL: 25 }, { matchNum: 23, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 25, nextL: null }, { matchNum: 24, babak: "LB R3", col: 4, slot1: null, slot2: null, nextW: 26, nextL: null }, { matchNum: 25, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 26, babak: "LB QF", col: 5, slot1: null, slot2: null, nextW: 28, nextL: null }, { matchNum: 28, babak: "LB SF", col: 6, slot1: null, slot2: null, nextW: 29, nextL: null }, { matchNum: 27, babak: "FINAL ATAS", col: 6, slot1: null, slot2: null, nextW: 30, nextL: 29 }, { matchNum: 29, babak: "FINAL BAWAH", col: 7, slot1: null, slot2: null, nextW: 30, nextL: null }, { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } ];
 
 function generateRandoriBracket() {
     const container = document.getElementById('randori-bracket-view');
@@ -65,6 +65,7 @@ function generateRandoriBracket() {
         
         const isFinalCategory = catName.toUpperCase().includes('FINAL');
         let athletes = STATE.participants.filter(p => p.kategori === catName);
+        if(isFinalCategory) athletes = athletes.sort((a,b) => a.id - b.id);
         
         const count = athletes.length;
         if(count === 0) return alert("Belum ada peserta di kategori ini!");
@@ -107,9 +108,7 @@ function generateRandoriBracket() {
             const byeCount = slotsCount - athleteCount;
             const totalMatchesR1 = slotsCount / 2;
 
-            if(config.isCrossover && byeCount > 0) {
-                return alert("Template Crossover Final membutuhkan 4 peserta penuh (tanpa BYE).");
-            }
+            if(config.isCrossover && byeCount > 0) return alert("Template Crossover Final membutuhkan 4 peserta penuh (tanpa BYE).");
 
             const shuffledAthletes = [...config.athletes];
             for (let i = shuffledAthletes.length - 1; i > 0; i--) {
@@ -124,13 +123,8 @@ function generateRandoriBracket() {
             } else {
                 let athleteIds = shuffledAthletes.map(a => a.id);
                 let oddSlots = [], evenSlots = [];
-                for(let i=1; i<=slotsCount; i++) {
-                    if(i % 2 !== 0) oddSlots.push(i); else evenSlots.push(i);
-                }
-
-                if(byeCount > totalMatchesR1) {
-                    return alert("Kesalahan Fatal: Jumlah BYE melebihi jumlah partai Babak 1.");
-                }
+                for(let i=1; i<=slotsCount; i++) { if(i % 2 !== 0) oddSlots.push(i); else evenSlots.push(i); }
+                if(byeCount > totalMatchesR1) return alert("Kesalahan Fatal: Jumlah BYE melebihi jumlah partai Babak 1.");
 
                 let evenSlotsDistributed = [];
                 const matchesPerQuarter = totalMatchesR1 / 4;
@@ -430,7 +424,7 @@ function checkExistingDrawing() {
         const isFinalMode = list.some(p => p.isFinalist); 
         
         let resetBtnHTML = `<div class="flex justify-end items-center mb-2">
-            <button onclick="resetNilaiKategoriLokal()" class="text-slate-500 hover:text-red-500 transition-colors" title="Kosongkan Nilai (Urutan Tetap)"><i class="fas fa-eraser"></i></button>
+            <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-7 h-7 rounded flex items-center justify-center transition-colors" title="Kosongkan Nilai (Urutan Tetap)"><i class="fas fa-eraser text-xs"></i></button>
         </div>`;
 
         if (isFinalMode) { 
@@ -510,47 +504,6 @@ function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points
 function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
 
-function saveRandoriMatchResult() {
-    if(!currentRandoriMatchId) return alert("Pilih partai!");
-    const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
-    if(!match) return;
-
-    let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
-    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
-
-    let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
-    let loserId = sMerah > sPutih ? match.putihId : match.merahId;
-    let winnerName = sMerah > sPutih ? "PITA MERAH (AKA)" : "PITA PUTIH (SHIRO)";
-
-    if(confirm(`Konfirmasi Pemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}\n\nLanjutkan?`)) {
-        match.skorMerah = sMerah; match.skorPutih = sPutih; 
-        match.winnerId = winnerId; match.loserId = loserId; 
-        match.status = 'done';
-        
-        recalculateAllLosses(match.kategori);
-        
-        let winnerP = STATE.participants.find(p => p.id === winnerId);
-
-        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
-        let isChallenger = winnerP && winnerP.losses > 0;
-        
-        if(isGrandFinal && isChallenger) {
-            alert("TIE BREAKER GRAND FINAL!\nAtlet dari jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
-            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
-            let extraMatch = { id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.merahId, putihId: match.putihId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 };
-            STATE.matches.push(extraMatch);
-        } else {
-            forwardParticipant(match.nextW, winnerId, match.kategori, match.pool); 
-            if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool); 
-        }
-
-        processAutoWins(match.kategori); 
-        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
-    }
-}
-
-document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
-
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { document.getElementById(`score-${i}`).value = scoreData.raw[i-1] || ''; document.getElementById(`tech-${i}`).value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { document.getElementById(`score-${i}`).value = ''; document.getElementById(`tech-${i}`).value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
@@ -560,7 +513,7 @@ function toggleTimer() { const btn = document.getElementById('btn-timer'); if(UI
 function resetTimer() { clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; calculateLive(); }
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
 
-// --- PROFESSIONAL TALLY LOGIC FOR RANDORI ---
+// --- PROFESSIONAL TALLY LOGIC FOR RANDORI (FLEXIBLE FINDER) ---
 function calculateRandoriFinalists(catName) {
     let list = STATE.participants.filter(p => p.kategori === catName);
     let catMatches = STATE.matches.filter(m => m.kategori === catName);
@@ -572,10 +525,20 @@ function calculateRandoriFinalists(catName) {
     let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
     let juara2 = STATE.participants.find(p => p.id === gf.loserId);
     
-    let finalBawah = catMatches.find(m => m.babak === "FINAL BAWAH");
+    // Pencari Fleksibel untuk Final Bawah (Juara 3 Pertama)
+    let finalBawah = catMatches.find(m => 
+        m.babak.toUpperCase() === "FINAL BAWAH" || 
+        m.babak.toUpperCase() === "LB FINAL"
+    );
     let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
 
-    let lbSFinal = catMatches.find(m => m.babak === "LB Semi-Final");
+    // Pencari Fleksibel untuk Semi-Final Bawah (Juara 3 Kedua)
+    let lbSFinal = catMatches.find(m => 
+        m.babak.toUpperCase() === "LB SEMI-FINAL" || 
+        m.babak.toUpperCase() === "LB S-FINAL" || 
+        m.babak.toUpperCase() === "LB SF" || 
+        m.babak.toUpperCase() === "LB R1"
+    );
     let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
 
     return { 
