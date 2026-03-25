@@ -8,6 +8,16 @@ let database_instance = null;
 let isCloudReady = false;
 
 async function initFirebase() {
+    // 1. BUAT INDIKATOR SECARA MANUAL
+    let badge = document.getElementById('cloud-status');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'cloud-status';
+        // Gaya styling agar muncul di pojok kiri atas dekat logo
+        badge.style = "position: fixed; top: 10px; left: 10px; z-index: 9999; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid #334155;";
+        badge.innerHTML = '<span style="color: #f59e0b">● MENYAMBUNG...</span>';
+        document.body.appendChild(badge); // Tempel langsung ke body agar pasti muncul
+    }
     try {
         // Injeksi Indikator ke UI
         const header = document.querySelector('header h1')?.parentElement;
@@ -94,12 +104,15 @@ let RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } };
 let SWAP_SELECTION = null; 
 
 document.addEventListener('DOMContentLoaded', () => { 
-    // Pastikan UI di-render dulu agar bisa diklik
+    // Render UI Offline dulu agar tombol BISA DIKLIK segera
     refreshAllData(); 
     setJudges(5); 
-    injectAdminExportButtons();
-    // Baru kemudian jalankan koneksi Cloud
-    initFirebase(); 
+    if (typeof injectAdminExportButtons === "function") injectAdminExportButtons();
+
+    // Jalankan Cloud di latar belakang (setelah 1 detik agar tidak bikin lag)
+    setTimeout(() => {
+        initFirebase(); 
+    }, 1000);
 });
 
 // Masukkan kembali semua fungsi V15.1 Anda secara utuh di bawah ini
