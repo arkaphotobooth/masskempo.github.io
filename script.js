@@ -814,54 +814,60 @@ function saveRandoriMatchResult() {
     }
 
     const matchId = parseInt(val.replace('match-', ''));
-    const match = STATE.matches.find(m => m.id === matchId);
+    
+    // Cari index agar kita mengubah data langsung di array pusat (STATE)
+    const matchIdx = STATE.matches.findIndex(m => m.id === matchId);
+    if (matchIdx === -1) return alert("Partai tidak ditemukan!");
 
-    if (!match) return;
+    const match = STATE.matches[matchIdx];
 
     let sMerah = RANDORI_STATE.merah.score;
     let sPutih = RANDORI_STATE.putih.score;
 
     if (sMerah === sPutih) {
-        return alert("Skor seri! Berikan poin kemenangan (Hantei/Batsu/Ippon) sebelum simpan.");
+        return alert("Skor seri! Randori tidak bisa berakhir seri.");
     }
 
     let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
     let loserId = sMerah > sPutih ? match.putihId : match.merahId;
 
-    if (confirm(`Simpan hasil pertandingan?`)) {
-        // 1. Update status partai ini
-        match.skorMerah = sMerah;
-        match.skorPutih = sPutih;
-        match.winnerId = winnerId;
-        match.loserId = loserId;
-        match.status = 'done';
+    if (confirm(`Simpan hasil G-${match.matchNum % 50 || 50}?`)) {
+        // 1. UPDATE DATA PUSAT (Harus Langsung ke Array)
+        STATE.matches[matchIdx].skorMerah = sMerah;
+        STATE.matches[matchIdx].skorPutih = sPutih;
+        STATE.matches[matchIdx].winnerId = winnerId;
+        STATE.matches[matchIdx].loserId = loserId;
+        STATE.matches[matchIdx].status = 'done'; // Ini yang bikin partai hilang dari dropdown
 
-        // 2. MAJUKAN PEMENANG KE PARTAI BERIKUTNYA
-        // Fungsi forwardParticipant harus bekerja di sini
+        // 2. MAJUKAN PEMENANG
         forwardParticipant(match.nextW, winnerId, match.kategori, match.pool);
         if (match.nextL) {
             forwardParticipant(match.nextL, loserId, match.kategori, match.pool);
         }
 
-        // 3. CEK BYE OTOMATIS (Jika lawan partai berikutnya adalah BYE)
+        // 3. HITUNG KERUGIAN (Losses)
+        if (typeof recalculateAllLosses === "function") {
+            recalculateAllLosses(match.kategori);
+        }
+
+        // 4. CEK AUTO-WIN (BYE)
         if (typeof processAutoWins === "function") {
             processAutoWins(match.kategori);
         }
 
-        // 4. KIRIM KE CLOUD & LOKAL
+        // 5. PAKSA KIRIM KE CLOUD
         saveToLocalStorage(); 
         
-        alert("Data Tersimpan & Pemenang Lanjut ke Babak Berikutnya!");
-
-        // 5. MEMBERSIHKAN DROPDOWN (Penting!)
-        filterPesertaScoring(); 
+        // 6. REFRESH UI
+        alert("Berhasil! Data telah tersinkronisasi ke Cloud.");
         
-        // Sembunyikan papan skor setelah selesai agar bersih
+        filterPesertaScoring(); // Ini akan membersihkan dropdown karena status sudah 'done'
+        
+        // Sembunyikan panel
         document.getElementById('panel-randori').classList.add('hidden');
         document.getElementById('scoring-athlete-name').innerText = "-";
     }
 }
-
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
