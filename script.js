@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 13.3 (Tournament Director + Absolute Losses Audit)
+ * Version 13.4 (Tournament Director + Smart Migration Audit for Old Data)
  */
 
 function initializeData() {
@@ -253,15 +253,27 @@ function recalculateBracket(catName) {
     renderVisualBracket(catName);
 }
 
-// --- ABSOLUTE LOSS AUDIT (PENGHITUNG ULANG KEKALAHAN) ---
+// --- ABSOLUTE LOSS AUDIT (PENGHITUNG ULANG KEKALAHAN CERDAS) ---
 function recalculateAllLosses(catName) {
-    // 1. Reset semua nyawa (losses) atlet di kategori ini menjadi 0
+    // 1. Reset semua nyawa atlet di kategori ini menjadi 0
     STATE.participants.filter(p => p.kategori === catName).forEach(p => p.losses = 0);
     
-    // 2. Sapu bersih dan hitung siapa saja yang benar-benar kalah di partai yang sudah selesai (done / auto-win)
+    // 2. Sapu bersih dan hitung siapa saja yang kalah di partai yang selesai
     STATE.matches.filter(m => m.kategori === catName && (m.status === 'done' || m.status === 'auto-win')).forEach(m => {
-        if(m.loserId && m.loserId !== -1) {
-            let loserP = STATE.participants.find(p => p.id === m.loserId);
+        
+        let actualLoserId = m.loserId;
+        
+        // Deteksi Cerdas: Jika data dari versi lama yang tidak punya 'loserId'
+        if (actualLoserId === undefined || actualLoserId === null) {
+            if (m.winnerId !== null) {
+                if (m.winnerId === m.merahId) actualLoserId = m.putihId;
+                else if (m.winnerId === m.putihId) actualLoserId = m.merahId;
+            }
+        }
+
+        // Tambahkan 1 kekalahan ke data atlet
+        if(actualLoserId && actualLoserId !== -1) {
+            let loserP = STATE.participants.find(p => p.id === actualLoserId);
             if (loserP) loserP.losses += 1;
         }
     });
@@ -286,23 +298,25 @@ function undoMatchResult(matchId) {
         if(nextWMatch.merahId === match.winnerId) nextWMatch.merahId = null;
         if(nextWMatch.putihId === match.winnerId) nextWMatch.putihId = null;
     }
-    if(nextLMatch && match.loserId) {
-        if(nextLMatch.merahId === match.loserId) nextLMatch.merahId = null;
-        if(nextLMatch.putihId === match.loserId) nextLMatch.putihId = null;
+    
+    // Gunakan Deteksi Cerdas untuk UNDO jika data berasal dari sistem lama
+    let loserId = match.loserId;
+    if (!loserId) { loserId = (match.winnerId === match.merahId) ? match.putihId : match.merahId; }
+    
+    if(nextLMatch && loserId) {
+        if(nextLMatch.merahId === loserId) nextLMatch.merahId = null;
+        if(nextLMatch.putihId === loserId) nextLMatch.putihId = null;
     }
 
-    // Jika ini adalah pemicu Sudden Death, hapus partainya
     if(match.nextW === 'WINNER') {
         STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
     }
 
-    // Kembalikan partai ke status Menunggu
     match.status = 'pending'; match.winnerId = null; match.loserId = null; match.skorMerah = 0; match.skorPutih = 0;
     
-    // AUDIT ULANG REALITAS KEKALAHAN
     recalculateAllLosses(match.kategori);
-    
     processAutoWins(match.kategori);
+    
     saveToLocalStorage(); renderVisualBracket(match.kategori); filterPesertaScoring();
 }
 
@@ -334,7 +348,6 @@ function processAutoWins(catName) {
             }
         });
     }
-    // Update realitas kehilangan poin akibat WO di awal
     recalculateAllLosses(catName);
 }
 
@@ -492,7 +505,6 @@ function saveRandoriMatchResult() {
         match.winnerId = winnerId; match.loserId = loserId; 
         match.status = 'done';
         
-        // AUDIT ULANG NYAWA REAL-TIME (Menggantikan pola tambah-kurang manual)
         recalculateAllLosses(match.kategori);
         
         let winnerP = STATE.participants.find(p => p.id === winnerId);
