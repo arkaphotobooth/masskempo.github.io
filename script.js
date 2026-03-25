@@ -22,22 +22,25 @@ const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
 
 // Firebase memiliki path khusus '.info/connected' untuk mengecek status internet
-database.ref('.info/connected').on('value', (snap) => {
-    if (snap.val() === true) {
-        // Jika Online
-        if(statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]';
-        if(statusText) {
-            statusText.innerText = 'ONLINE (SINKRON)';
-            statusText.className = 'text-[9px] font-bold text-green-400 uppercase tracking-widest';
-        }
+database.ref('turnamen_data').on('value', (snapshot) => {
+    console.log("Berhasil terhubung. Menarik data dari Firebase...");
+    const data = snapshot.val();
+    
+    if (data) {
+        console.log("Data ditemukan:", data);
+        STATE.categories = data.categories || [];
+        STATE.participants = data.participants || [];
+        STATE.matches = data.matches || [];
+        if(data.settings) STATE.settings = data.settings;
     } else {
-        // Jika Offline / Putus
-        if(statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#ef4444]';
-        if(statusText) {
-            statusText.innerText = 'OFFLINE (TERPUTUS)';
-            statusText.className = 'text-[9px] font-bold text-red-400 uppercase tracking-widest';
-        }
+        console.log("Database Firebase masih kosong.");
     }
+    
+    refreshAllData();
+    if(document.getElementById('section-drawing') && !document.getElementById('section-drawing').classList.contains('hidden')) checkExistingDrawing();
+    if(document.getElementById('section-scoring') && !document.getElementById('section-scoring').classList.contains('hidden')) filterPesertaScoring();
+    if(document.getElementById('section-ranking') && !document.getElementById('section-ranking').classList.contains('hidden')) renderRanking();
+    if(document.getElementById('section-juara') && !document.getElementById('section-juara').classList.contains('hidden')) renderJuaraUmum();
 });
 
 // 3. Deklarasi State Global (Kosong di awal, akan diisi oleh Firebase)
@@ -70,11 +73,17 @@ database.ref('turnamen_data').on('value', (snapshot) => {
 // 5. UBAH FUNGSI LOKAL MENJADI CLOUD
 // Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
 function saveToLocalStorage() { 
+    console.log("Mencoba menyimpan data ke Firebase...", STATE);
     database.ref('turnamen_data').set({
         categories: STATE.categories,
         participants: STATE.participants,
         matches: STATE.matches,
         settings: STATE.settings
+    }).then(() => {
+        console.log("SUKSES: Data berhasil disimpan ke server Google!");
+    }).catch((error) => {
+        console.error("GAGAL SIMPAN:", error);
+        alert("Gagal menyimpan data ke database. Cek pengaturan 'Rules' di Firebase Console.");
     });
 }
 
