@@ -734,21 +734,16 @@ function loadRandoriMatch() {
     const matchId = parseInt(val.replace('match-', ''));
     const match = STATE.matches.find(m => m.id === matchId);
     
-    const panelRandori = document.getElementById('panel-randori');
-    const panelEmbu = document.getElementById('panel-embu');
+    // INI KUNCINYA: Menampilkan panel yang benar
+    document.getElementById('panel-randori').classList.remove('hidden');
+    document.getElementById('panel-embu').classList.add('hidden');
 
     if(match) {
-        // Tampilkan panel Randori, sembunyikan Embu
-        panelRandori.classList.remove('hidden');
-        panelEmbu.classList.add('hidden');
-
         const merah = STATE.participants.find(p => p.id === match.merahId);
         const putih = STATE.participants.find(p => p.id === match.putihId);
         
         document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-";
-        document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
         document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-";
-        document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
         
         resetRandoriBoard(); 
     }
@@ -795,7 +790,7 @@ function saveRandoriMatchResult() {
     }
 }
 
-ocument.getElementById('select-peserta').addEventListener('change', (e) => {
+document.getElementById('select-peserta').addEventListener('change', (e) => {
     const val = e.target.value;
     const scoringNameDisplay = document.getElementById('scoring-athlete-name');
     
