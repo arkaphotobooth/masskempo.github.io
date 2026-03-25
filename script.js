@@ -725,6 +725,34 @@ function filterPesertaScoring() {
     // Trigger perubahan untuk me-load board scoring
     selectEl.dispatchEvent(new Event('change'));
 }
+document.addEventListener('change', function(e) {
+    if(e.target && e.target.id === 'select-peserta') {
+        const val = e.target.value;
+        const scoringNameDisplay = document.getElementById('scoring-athlete-name');
+        
+        console.log("User memilih:", val); // Cek di Console F12
+
+        if (e.target.selectedIndex >= 0) {
+            // Update teks nama di atas papan skor
+            if(scoringNameDisplay) {
+                scoringNameDisplay.innerText = e.target.options[e.target.selectedIndex].text;
+            }
+            
+            // SAKLAR OTOMATIS TAMPILKAN PAPAN
+            if (val.startsWith('match-')) {
+                // Jika Randori
+                loadRandoriMatch(val); 
+            } else if (val !== "") {
+                // Jika Embu
+                const pRandori = document.getElementById('panel-randori');
+                const pEmbu = document.getElementById('panel-embu');
+                if(pRandori) pRandori.classList.add('hidden');
+                if(pEmbu) pEmbu.classList.remove('hidden');
+                if(typeof updateScoringButtonsUI === "function") updateScoringButtonsUI();
+            }
+        }
+    }
+});
 
 let currentRandoriMatchId = null;
 function loadRandoriMatch(forcedValue = null) {
