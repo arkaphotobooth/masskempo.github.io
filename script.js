@@ -720,12 +720,14 @@ function filterPesertaScoring() {
     
     if(!categoryObj) return;
 
+    // SIMPAN MEMORI: Ingat partai apa yang sedang dinilai saat ini
+    const currentSelectedMatchOrAthlete = selectEl.value; 
+
     if(categoryObj.discipline === 'randori') {
         panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
         
-        // PERBAIKAN 1: Gunakan != null (bukan !== null) untuk menangkap null DAN undefined dari Firebase
         let catMatches = STATE.matches.filter(m => 
             m.kategori === catName && 
             m.status === 'pending' && 
@@ -736,23 +738,38 @@ function filterPesertaScoring() {
         if(catMatches.length === 0) { 
             selectEl.innerHTML = `<option value="">-- Tidak ada Partai Aktif --</option>`; 
             document.getElementById('scoring-athlete-name').innerText = "-"; 
+            
+            // Bersihkan layar murni saat semua partai Randori di kategori ini habis
+            document.getElementById('randori-nama-merah').innerText = "-"; 
+            document.getElementById('randori-kont-merah').innerText = "-";
+            document.getElementById('randori-nama-putih').innerText = "-"; 
+            document.getElementById('randori-kont-putih').innerText = "-";
+            currentRandoriMatchId = null;
+            resetRandoriBoard(); 
             return; 
         }
 
         selectEl.innerHTML = catMatches.sort((a,b)=>a.matchNum - b.matchNum).map((m) => {
-            // PERBAIKAN 2: Berikan nilai default objek kosong agar tidak CRASH saat membaca .nama
             const mrh = STATE.participants.find(p => p.id === m.merahId) || { nama: "Menunggu..." }; 
             const pth = STATE.participants.find(p => p.id === m.putihId) || { nama: "Menunggu..." };
-            
             let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
             let pLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
             return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${mrh.nama} vs ${pth.nama}</option>`;
         }).join('');
+
+        // LOGIKA CERDAS: Cek apakah partai yang tadi dipilih masih ada di daftar
+        let stillExists = Array.from(selectEl.options).some(opt => opt.value === currentSelectedMatchOrAthlete);
         
-        selectEl.dispatchEvent(new Event('change'));
+        if (stillExists) {
+            selectEl.value = currentSelectedMatchOrAthlete;
+            // Jika partai masih sama, diam saja (jangan reset skornya)
+        } else {
+            // Jika partai sebelumnya sudah selesai/hilang, baru pindah ke partai selanjutnya
+            selectEl.dispatchEvent(new Event('change'));
+        }
 
     } else {
-        // --- BAGIAN EMBU TETAP SAMA KARENA SUDAH AMAN ---
+        // --- BAGIAN EMBU ---
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
@@ -761,18 +778,38 @@ function filterPesertaScoring() {
         let filtered = hasFinal ? listCat.filter(p => p.isFinalist).sort((a,b) => a.urutFinal - b.urutFinal) : listCat.sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
         if(filtered.length === 0) { selectEl.innerHTML = `<option value="">-- Kosong / Belum Undian --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; updateScoringButtonsUI(); return; }
         selectEl.innerHTML = filtered.map(p => { let label = hasFinal ? `[FINAL] No.${p.urutFinal}` : `[Pool ${p.pool}] No.${p.urut}`; return `<option value="${p.id}">${label} - ${p.nama} (${p.kontingen})</option>`; }).join('');
-        selectEl.dispatchEvent(new Event('change'));
+        
+        // Embu juga harus ingat pilihan sebelumnya
+        let stillExists = Array.from(selectEl.options).some(opt => opt.value === currentSelectedMatchOrAthlete);
+        if(stillExists) {
+            selectEl.value = currentSelectedMatchOrAthlete;
+        } else {
+            selectEl.dispatchEvent(new Event('change'));
+        }
     }
 }
 
 let currentRandoriMatchId = null;
 function loadRandoriMatch() {
-    const val = document.getElementById('select-peserta').value; if(!val || !val.startsWith('match-')) return;
-    currentRandoriMatchId = parseInt(val.replace('match-', '')); const match = STATE.matches.find(m => m.id === currentRandoriMatchId); if(!match) return;
+    const val = document.getElementById('select-peserta').value; 
+    if(!val || !val.startsWith('match-')) return;
+    
+    const newMatchId = parseInt(val.replace('match-', '')); 
+    
+    // KUNCI PENGAMAN: Cegah reset skor jika match yang dimuat masih sama!
+    if (currentRandoriMatchId === newMatchId) return; 
 
-    const merah = STATE.participants.find(p => p.id === match.merahId); const putih = STATE.participants.find(p => p.id === match.putihId);
-    document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-"; document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
-    document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-"; document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+    currentRandoriMatchId = newMatchId; 
+    const match = STATE.matches.find(m => m.id === currentRandoriMatchId); 
+    if(!match) return;
+
+    const merah = STATE.participants.find(p => p.id === match.merahId); 
+    const putih = STATE.participants.find(p => p.id === match.putihId);
+    document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-"; 
+    document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
+    document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-"; 
+    document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+    
     resetRandoriBoard(); 
 }
 
