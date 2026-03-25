@@ -728,13 +728,30 @@ function filterPesertaScoring() {
 
 let currentRandoriMatchId = null;
 function loadRandoriMatch() {
-    const val = document.getElementById('select-peserta').value; if(!val || !val.startsWith('match-')) return;
-    currentRandoriMatchId = parseInt(val.replace('match-', '')); const match = STATE.matches.find(m => m.id === currentRandoriMatchId); if(!match) return;
+    const val = document.getElementById('select-peserta').value;
+    if(!val || !val.startsWith('match-')) return;
+    
+    const matchId = parseInt(val.replace('match-', ''));
+    const match = STATE.matches.find(m => m.id === matchId);
+    
+    const panelRandori = document.getElementById('panel-randori');
+    const panelEmbu = document.getElementById('panel-embu');
 
-    const merah = STATE.participants.find(p => p.id === match.merahId); const putih = STATE.participants.find(p => p.id === match.putihId);
-    document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-"; document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
-    document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-"; document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
-    resetRandoriBoard(); 
+    if(match) {
+        // Tampilkan panel Randori, sembunyikan Embu
+        panelRandori.classList.remove('hidden');
+        panelEmbu.classList.add('hidden');
+
+        const merah = STATE.participants.find(p => p.id === match.merahId);
+        const putih = STATE.participants.find(p => p.id === match.putihId);
+        
+        document.getElementById('randori-nama-merah').innerText = merah ? merah.nama : "-";
+        document.getElementById('randori-kont-merah').innerText = merah ? merah.kontingen : "-";
+        document.getElementById('randori-nama-putih').innerText = putih ? putih.nama : "-";
+        document.getElementById('randori-kont-putih').innerText = putih ? putih.kontingen : "-";
+        
+        resetRandoriBoard(); 
+    }
 }
 
 function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
@@ -778,7 +795,23 @@ function saveRandoriMatchResult() {
     }
 }
 
-document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
+ocument.getElementById('select-peserta').addEventListener('change', (e) => {
+    const val = e.target.value;
+    const scoringNameDisplay = document.getElementById('scoring-athlete-name');
+    
+    if (e.target.selectedIndex >= 0) {
+        scoringNameDisplay.innerText = e.target.options[e.target.selectedIndex].text;
+        
+        // SAKLAR OTOMATIS:
+        if (val.startsWith('match-')) {
+            // Jika yang dipilih adalah partai Randori
+            loadRandoriMatch(); 
+        } else if (val !== "") {
+            // Jika yang dipilih adalah atlet Embu
+            updateScoringButtonsUI();
+        }
+    }
+});
 
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
