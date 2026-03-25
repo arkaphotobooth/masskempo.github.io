@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 13.1 (Tournament Director Mode + Sudden Death Loop Fix)
+ * Version 13.3 (Tournament Director + Absolute Losses Audit)
  */
 
 function initializeData() {
@@ -194,7 +194,7 @@ function generateRandoriBracket() {
                     nextL: typeof t.nextL === 'number' ? t.nextL + numOffset : t.nextL,
                     merahId: t.slot1 !== null ? slots[t.slot1 - 1] : null,
                     putihId: t.slot2 !== null ? slots[t.slot2 - 1] : null,
-                    winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0
+                    winnerId: null, loserId: null, status: 'pending', skorMerah: 0, skorPutih: 0
                 };
                 STATE.matches.push(match);
             });
@@ -216,16 +216,12 @@ function generateRandoriBracket() {
     }
 }
 
-// --- FITUR TOURNAMENT DIRECTOR 1: TUKAR POSISI (SWAP) ---
 function handleSwap(matchId, corner, participantId, event) {
     if(event) event.stopPropagation();
-    
     let match = STATE.matches.find(m => m.id === matchId);
     if(!match) return;
-
     let hasStarted = STATE.matches.some(x => x.kategori === match.kategori && x.status === 'done');
     if(hasStarted) return alert("❌ PERINGATAN DIRECTOR:\nTidak bisa menukar posisi! Turnamen di kategori ini sudah berjalan.\n\nBatalkan (Undo) seluruh hasil partai yang sudah dinilai jika Anda harus menukar posisi.");
-
     if(!SWAP_SELECTION) {
         SWAP_SELECTION = { matchId, corner, participantId };
         renderVisualBracket(match.kategori); 
@@ -250,14 +246,29 @@ function recalculateBracket(catName) {
     let catMatches = STATE.matches.filter(m => m.kategori === catName);
     catMatches.forEach(m => {
         if(m.col > 1) { m.merahId = null; m.putihId = null; }
-        m.status = 'pending'; m.winnerId = null; m.skorMerah = 0; m.skorPutih = 0;
+        m.status = 'pending'; m.winnerId = null; m.loserId = null; m.skorMerah = 0; m.skorPutih = 0;
     });
     processAutoWins(catName);
     saveToLocalStorage();
     renderVisualBracket(catName);
 }
 
-// --- FITUR TOURNAMENT DIRECTOR 2: BATALKAN HASIL (UNDO) ---
+// --- ABSOLUTE LOSS AUDIT (PENGHITUNG ULANG KEKALAHAN) ---
+function recalculateAllLosses(catName) {
+    // 1. Reset semua nyawa (losses) atlet di kategori ini menjadi 0
+    STATE.participants.filter(p => p.kategori === catName).forEach(p => p.losses = 0);
+    
+    // 2. Sapu bersih dan hitung siapa saja yang benar-benar kalah di partai yang sudah selesai (done / auto-win)
+    STATE.matches.filter(m => m.kategori === catName && (m.status === 'done' || m.status === 'auto-win')).forEach(m => {
+        if(m.loserId && m.loserId !== -1) {
+            let loserP = STATE.participants.find(p => p.id === m.loserId);
+            if (loserP) loserP.losses += 1;
+        }
+    });
+    
+    saveToLocalStorage();
+}
+
 function undoMatchResult(matchId) {
     let match = STATE.matches.find(m => m.id === matchId);
     if(!match || match.status !== 'done') return;
@@ -270,26 +281,27 @@ function undoMatchResult(matchId) {
     if(nextWMatch && nextWMatch.status !== 'pending' && nextWMatch.status !== 'auto-win') { return alert("❌ UNDO DITOLAK:\nPartai lanjutan dari pemenang sudah terlanjur dimainkan/dinilai. Batalkan partai tersebut terlebih dahulu."); }
     if(nextLMatch && nextLMatch.status !== 'pending' && nextLMatch.status !== 'auto-win') { return alert("❌ UNDO DITOLAK:\nPartai Loser Bracket dari atlet yang kalah sudah terlanjur dimainkan/dinilai. Batalkan partai tersebut terlebih dahulu."); }
 
+    // Kosongkan slot penerima
     if(nextWMatch) {
         if(nextWMatch.merahId === match.winnerId) nextWMatch.merahId = null;
         if(nextWMatch.putihId === match.winnerId) nextWMatch.putihId = null;
     }
-    
-    let loserId = match.winnerId === match.merahId ? match.putihId : match.merahId;
-    if(nextLMatch) {
-        if(nextLMatch.merahId === loserId) nextLMatch.merahId = null;
-        if(nextLMatch.putihId === loserId) nextLMatch.putihId = null;
+    if(nextLMatch && match.loserId) {
+        if(nextLMatch.merahId === match.loserId) nextLMatch.merahId = null;
+        if(nextLMatch.putihId === match.loserId) nextLMatch.putihId = null;
     }
 
-    let loserP = STATE.participants.find(p => p.id === loserId);
-    if(loserP && loserP.losses > 0) loserP.losses -= 1;
-
-    // Jika ini adalah trigger Sudden Death, hapus partai tambahannya
+    // Jika ini adalah pemicu Sudden Death, hapus partainya
     if(match.nextW === 'WINNER') {
         STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
     }
 
-    match.status = 'pending'; match.winnerId = null; match.skorMerah = 0; match.skorPutih = 0;
+    // Kembalikan partai ke status Menunggu
+    match.status = 'pending'; match.winnerId = null; match.loserId = null; match.skorMerah = 0; match.skorPutih = 0;
+    
+    // AUDIT ULANG REALITAS KEKALAHAN
+    recalculateAllLosses(match.kategori);
+    
     processAutoWins(match.kategori);
     saveToLocalStorage(); renderVisualBracket(match.kategori); filterPesertaScoring();
 }
@@ -314,6 +326,7 @@ function processAutoWins(catName) {
                     match.status = 'auto-win';
                     if(match.merahId === -1 && match.putihId === -1) { match.winnerId = -1; match.loserId = -1; } 
                     else { match.winnerId = match.merahId === -1 ? match.putihId : match.merahId; match.loserId = -1; }
+                    
                     forwardParticipant(match.nextW, match.winnerId, catName, match.pool);
                     if(match.nextL) forwardParticipant(match.nextL, match.loserId, catName, match.pool);
                     changed = true; 
@@ -321,6 +334,8 @@ function processAutoWins(catName) {
             }
         });
     }
+    // Update realitas kehilangan poin akibat WO di awal
+    recalculateAllLosses(catName);
 }
 
 function renderVisualBracket(catName) {
@@ -460,7 +475,6 @@ function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points
 function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
 function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
 
-// --- LOGIKA FIX: CEGAH INFINITE LOOP SUDDEN DEATH ---
 function saveRandoriMatchResult() {
     if(!currentRandoriMatchId) return alert("Pilih partai!");
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
@@ -474,15 +488,21 @@ function saveRandoriMatchResult() {
     let winnerName = sMerah > sPutih ? "PITA MERAH (AKA)" : "PITA PUTIH (SHIRO)";
 
     if(confirm(`Konfirmasi Pemenang: ${winnerName}\nSkor: ${sMerah} - ${sPutih}\n\nLanjutkan?`)) {
-        match.skorMerah = sMerah; match.skorPutih = sPutih; match.winnerId = winnerId; match.status = 'done';
+        match.skorMerah = sMerah; match.skorPutih = sPutih; 
+        match.winnerId = winnerId; match.loserId = loserId; 
+        match.status = 'done';
         
-        let loserP = STATE.participants.find(p => p.id === loserId);
+        // AUDIT ULANG NYAWA REAL-TIME (Menggantikan pola tambah-kurang manual)
+        recalculateAllLosses(match.kategori);
+        
         let winnerP = STATE.participants.find(p => p.id === winnerId);
-        if(loserP) loserP.losses += 1;
 
-        // SYARAT BARU: HANYA BUKA JIKA BUKAN SUDDEN DEATH
-        if(match.nextW === 'WINNER' && winnerP.losses === 1 && match.babak !== "SUDDEN DEATH") {
-            alert("TIE BREAKER GRAND FINAL!\nAtlet jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
+        let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
+        let isChallenger = winnerP && winnerP.losses > 0;
+        
+        if(isGrandFinal && isChallenger) {
+            alert("TIE BREAKER GRAND FINAL!\nAtlet dari jalur bawah memenangkan pertandingan. Sistem akan otomatis membuka Partai Sudden Death!");
+            STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
             let extraMatch = { id: Date.now(), kategori: match.kategori, pool: match.pool, matchNum: match.matchNum + 1, babak: "SUDDEN DEATH", col: match.col + 1, nextW: 'WINNER', nextL: 'SECOND', merahId: match.merahId, putihId: match.putihId, winnerId: null, status: 'pending', skorMerah: 0, skorPutih: 0 };
             STATE.matches.push(extraMatch);
         } else {
