@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 12.1 (Auto-Split 16, Safe Fallbacks, Anti-Crash IDs)
+ * Version 12.2 (Auto-Split 16 + Safe Mode & On-Screen Diagnostics)
  */
 
 function initializeData() {
@@ -36,7 +36,7 @@ function switchTab(targetTab) {
     if(targetTab === 'ranking') renderRanking(); if(targetTab === 'scoring') filterPesertaScoring(); if(targetTab === 'drawing') { updateAllDropdowns(); checkExistingDrawing(); } if(targetTab === 'juara') renderJuaraUmum();
 }
 
-// --- KATEGORI & ATLET LOGIC ---
+// --- KATEGORI & ATLET LOGIC (MINIFIED) ---
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if(!name) return; if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
 function renderCategoryList() { const container = document.getElementById('list-kategori'); if(STATE.categories.length === 0) return container.innerHTML = `<span class="text-sm text-slate-500 italic">Belum ada kategori.</span>`; container.innerHTML = STATE.categories.map(c => { let badgeColor = c.discipline === 'randori' ? 'bg-red-700' : 'bg-blue-600'; let disciplineText = c.discipline ? c.discipline.toUpperCase() : 'EMBU'; return `<div class="bg-slate-800 px-4 py-2 rounded-lg text-sm flex items-center gap-3 border border-slate-700 shadow-sm"><span class="${badgeColor} text-[9px] px-1.5 py-0.5 rounded font-bold">${disciplineText}</span><span class="font-bold text-white">${c.name}</span><span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300">${c.type} Org</span><button onclick="deleteCategory(${c.id})" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-times"></i></button></div>` }).join(''); }
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
@@ -112,8 +112,12 @@ const TEMPLATE_16 = [
     { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
 ];
 
-// --- GENERATOR MULTI-POOL (AUTO-SPLIT 16) ---
+
+// --- GENERATOR MULTI-POOL DENGAN PROTEKSI ERROR (V12.2) ---
 function generateRandoriBracket() {
+    const container = document.getElementById('randori-bracket-view');
+    const wrapper = document.getElementById('randori-bracket-container');
+
     try {
         const catName = document.getElementById('draw-select-kategori').value;
         if(!catName) return alert("Pilih kategori Randori terlebih dahulu!");
@@ -137,14 +141,18 @@ function generateRandoriBracket() {
         } else if (count <= 32) {
             if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah otomatis menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
             
-            for (let i = athletes.length - 1; i > 0; i--) {
+            // Pengacakan Array yang Super Aman
+            let shuffledAthletes = [...athletes];
+            for (let i = shuffledAthletes.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [athletes[i], athletes[j]] = [athletes[j], athletes[i]];
+                let temp = shuffledAthletes[i];
+                shuffledAthletes[i] = shuffledAthletes[j];
+                shuffledAthletes[j] = temp;
             }
             
             let mid = Math.ceil(count / 2);
-            let poolA = athletes.slice(0, mid);
-            let poolB = athletes.slice(mid);
+            let poolA = shuffledAthletes.slice(0, mid);
+            let poolB = shuffledAthletes.slice(mid);
             
             poolA.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'A'; });
             poolB.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'B'; });
@@ -155,22 +163,22 @@ function generateRandoriBracket() {
             return alert("Sistem saat ini mendukung maksimal 32 peserta per nomor.");
         }
 
-        let globalMatchIdCounter = Date.now(); // Mencegah ID kembar atau desimal
+        let globalMatchIdCounter = Date.now(); 
 
         poolConfigs.forEach((config, poolIndex) => {
             let slots = config.athletes.map(a => a.id);
-            while(slots.length < config.size) slots.push(-1); // Padding BYE
+            while(slots.length < config.size) slots.push(-1); 
 
             for (let i = slots.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [slots[i], slots[j]] = [slots[j], slots[i]];
+                let temp = slots[i]; slots[i] = slots[j]; slots[j] = temp;
             }
 
             let numOffset = poolIndex * 50; 
 
             config.template.forEach(t => {
                 let match = {
-                    id: globalMatchIdCounter++, // ID Berupa Angka Bulat Utuh
+                    id: globalMatchIdCounter++,
                     kategori: catName, pool: config.name,
                     matchNum: t.matchNum + numOffset,
                     babak: t.babak, col: t.col,
@@ -186,12 +194,21 @@ function generateRandoriBracket() {
 
         processAutoWins(catName); 
         saveToLocalStorage(); 
-        checkExistingDrawing(); 
-        alert(`Bagan Double Elimination berhasil di-generate!`);
+        
+        // Panggil render secara eksplisit agar bebas hambatan
+        renderVisualBracket(catName);
+        
+        // Jika sukses, beri tahu!
+        setTimeout(() => alert(`Bagan Double Elimination berhasil di-generate!`), 300);
 
     } catch(err) {
-        console.error(err);
-        alert("Terjadi kegagalan sistem saat generate: " + err.message);
+        console.error("CRITICAL ERROR IN GENERATE:", err);
+        wrapper.classList.remove('hidden');
+        container.innerHTML = `<div class="bg-red-900 border-2 border-red-500 text-white p-6 rounded-lg w-full">
+            <h3 class="font-black text-xl mb-2"><i class="fas fa-bug"></i> SYSTEM CRASH:</h3>
+            <p class="font-mono text-sm">${err.message}</p>
+            <p class="text-xs text-slate-300 mt-2">${err.stack}</p>
+        </div>`;
     }
 }
 
@@ -224,69 +241,83 @@ function processAutoWins(catName) {
     }
 }
 
-// RENDER UI BAGAN BERTINGKAT (ANTI-CRASH UNTUK BROWSER LAMA)
+// RENDER UI BAGAN BERTINGKAT (SAFE MODE)
 function renderVisualBracket(catName) {
     const container = document.getElementById('randori-bracket-view');
-    document.getElementById('randori-bracket-container').classList.remove('hidden');
-    container.innerHTML = ''; 
-    const catMatches = STATE.matches.filter(m => m.kategori === catName);
-    if(catMatches.length === 0) return;
-
-    let pools = [];
-    catMatches.forEach(m => { if(pools.indexOf(m.pool) === -1) pools.push(m.pool); });
+    const wrapper = document.getElementById('randori-bracket-container');
     
-    pools.forEach(poolName => {
-        let poolMatches = catMatches.filter(m => m.pool === poolName);
-        let poolHTML = `<div class="mb-10 w-full min-w-max"><h3 class="text-xl font-black text-yellow-400 mb-4 border-b border-slate-700 pb-2 inline-block pr-10">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3><div class="flex gap-8 pb-4">`;
+    try {
+        wrapper.classList.remove('hidden');
+        container.innerHTML = ''; 
         
-        let columns = [];
-        poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
-        columns.sort((a,b) => a-b);
-        let maxCol = columns[columns.length - 1];
+        const catMatches = STATE.matches.filter(m => m.kategori === catName);
+        if(catMatches.length === 0) return;
 
-        columns.forEach(colNum => {
-            let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
-            if(colMatches.length === 0) return;
-
-            let colHTML = `<div class="flex flex-col gap-6 justify-center min-w-[240px]">`;
-            colHTML += `<h4 class="text-center text-xs font-bold uppercase text-slate-500 mb-2">Babak ${colNum}</h4>`;
+        let pools = [];
+        catMatches.forEach(m => { if(pools.indexOf(m.pool) === -1) pools.push(m.pool); });
+        
+        pools.forEach(poolName => {
+            let poolMatches = catMatches.filter(m => m.pool === poolName);
+            let poolHTML = `<div class="mb-10 w-full min-w-max"><h3 class="text-xl font-black text-yellow-400 mb-4 border-b border-slate-700 pb-2 inline-block pr-10">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3><div class="flex gap-8 pb-4">`;
             
-            colMatches.forEach(m => {
-                let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
-                
-                // Sintaks aman untuk Browser Lama (Tidak menggunakan tanda "?.")
-                let pMerah = STATE.participants.find(p => p.id === m.merahId);
-                let nMerah = m.merahId === -1 ? "BYE" : (m.merahId ? (pMerah ? pMerah.nama : "Unknown") : "Menunggu...");
-                
-                let pPutih = STATE.participants.find(p => p.id === m.putihId);
-                let nPutih = m.putihId === -1 ? "BYE" : (m.putihId ? (pPutih ? pPutih.nama : "Unknown") : "Menunggu...");
-                
-                let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-blue-500 bg-slate-800';
-                let wMerah = m.winnerId === m.merahId ? 'text-green-400' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-500 line-through' : 'text-red-400';
-                let wPutih = m.winnerId === m.putihId ? 'text-green-400' : m.winnerId && m.winnerId !== m.putihId ? 'text-slate-500 line-through' : 'text-white';
+            let columns = [];
+            poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
+            columns.sort((a,b) => a-b);
+            let maxCol = columns[columns.length - 1];
 
-                colHTML += `
-                    <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg">
-                        <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500">G${displayNum}</span>
-                        <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
-                        <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
-                            <span class="${wMerah} truncate w-32">${nMerah}</span>
-                            <span class="text-xs text-slate-500">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+            columns.forEach(colNum => {
+                let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
+                if(colMatches.length === 0) return;
+
+                let colHTML = `<div class="flex flex-col gap-6 justify-center min-w-[240px]">`;
+                colHTML += `<h4 class="text-center text-xs font-bold uppercase text-slate-500 mb-2">Babak ${colNum}</h4>`;
+                
+                colMatches.forEach(m => {
+                    let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
+                    
+                    // Ekstra Aman: Pengecekan Eksistensi Atlet
+                    let pMerah = STATE.participants.find(p => p.id === m.merahId);
+                    let nMerah = m.merahId === -1 ? "BYE" : (pMerah ? pMerah.nama : (m.merahId ? "Hantu" : "Menunggu..."));
+                    
+                    let pPutih = STATE.participants.find(p => p.id === m.putihId);
+                    let nPutih = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
+                    
+                    let bgStyle = m.status === 'done' ? 'border-green-500 bg-slate-800' : m.status === 'auto-win' ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-blue-500 bg-slate-800';
+                    let wMerah = m.winnerId === m.merahId ? 'text-green-400' : m.winnerId && m.winnerId !== m.merahId ? 'text-slate-500 line-through' : 'text-red-400';
+                    let wPutih = m.winnerId === m.putihId ? 'text-green-400' : m.winnerId && m.winnerId !== m.putihId ? 'text-slate-500 line-through' : 'text-white';
+
+                    colHTML += `
+                        <div class="bracket-match p-3 rounded-lg border-2 ${bgStyle} relative shadow-lg">
+                            <span class="absolute -top-3 -left-3 bg-slate-700 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-500">G${displayNum}</span>
+                            <span class="text-[9px] uppercase text-slate-400 block mb-2 font-bold">${m.babak}</span>
+                            <div class="flex justify-between items-center text-sm font-bold border-b border-slate-700 pb-1 mb-1">
+                                <span class="${wMerah} truncate w-32">${nMerah}</span>
+                                <span class="text-xs text-slate-500">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm font-bold">
+                                <span class="${wPutih} truncate w-32">${nPutih}</span>
+                                <span class="text-xs text-slate-500">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center text-sm font-bold">
-                            <span class="${wPutih} truncate w-32">${nPutih}</span>
-                            <span class="text-xs text-slate-500">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
-                        </div>
-                    </div>
-                `;
+                    `;
+                });
+                colHTML += `</div>`;
+                if(colNum < maxCol) colHTML += `<div class="flex flex-col justify-center"><div class="w-8 border-b-2 border-slate-600"></div></div>`;
+                poolHTML += colHTML;
             });
-            colHTML += `</div>`;
-            if(colNum < maxCol) colHTML += `<div class="flex flex-col justify-center"><div class="w-8 border-b-2 border-slate-600"></div></div>`;
-            poolHTML += colHTML;
+            poolHTML += `</div></div>`;
+            container.innerHTML += poolHTML;
         });
-        poolHTML += `</div></div>`;
-        container.innerHTML += poolHTML;
-    });
+
+    } catch (err) {
+        console.error("CRITICAL ERROR IN RENDER:", err);
+        wrapper.classList.remove('hidden');
+        container.innerHTML = `<div class="bg-red-900 border-2 border-red-500 text-white p-6 rounded-lg w-full">
+            <h3 class="font-black text-xl mb-2"><i class="fas fa-bug"></i> RENDER CRASH:</h3>
+            <p class="font-mono text-sm">${err.message}</p>
+            <p class="text-xs text-slate-300 mt-2">${err.stack}</p>
+        </div>`;
+    }
 }
 
 function checkExistingDrawing() {
@@ -359,7 +390,7 @@ function saveRandoriMatchResult() {
     if(!match) return;
 
     let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
-    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri.");
+    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
 
     let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
     let loserId = sMerah > sPutih ? match.putihId : match.merahId;
@@ -382,7 +413,7 @@ function saveRandoriMatchResult() {
         }
 
         processAutoWins(match.kategori); 
-        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); 
+        saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
     }
 }
 document.getElementById('select-peserta').addEventListener('change', (e) => { if(e.target.selectedIndex >= 0) { document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; if(e.target.value.startsWith('match-')) loadRandoriMatch(); else updateScoringButtonsUI(); }});
