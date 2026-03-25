@@ -1108,3 +1108,22 @@ function exportCustomCSV() { exportHasilCSV(null); } // Legacy fallback
 function resetAllPenilaian() { if(confirm('⚠️ PERHATIAN: Ini akan MENGHAPUS SEMUA SKOR & PARTAI RANDORI. Yakin?')) { STATE.participants.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }; p.finalScore = 0; p.techScore = 0; p.isFinalist = false; p.urutFinal = 0; p.losses = 0; }); STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Nilai di-reset.'); } }
 function resetDataAtlet() { if(confirm('⚠️ PERHATIAN: Ini MENGHAPUS SEMUA ATLET. Yakin?')) { STATE.participants = []; STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Data atlet dihapus.'); } }
 function resetTotalSistem() { if(confirm('🚨 FACTORY RESET: Hapus seluruh sistem?')) { localStorage.clear(); STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } }; refreshAllData(); alert('Sistem kembali ke pengaturan awal.'); location.reload(); } }
+// FUNGSI PENYEMBUH: Memperbarui tampilan secara otomatis saat data Cloud masuk
+function updateActiveViewsSilent() {
+    // Cari tahu tab mana yang sedang dibuka oleh user
+    const activeTab = UI.tabs.find(t => {
+        const el = document.getElementById(`section-${t}`);
+        return el && el.classList.contains('block');
+    });
+
+    // Perbarui hanya tampilan yang relevan agar tidak berat
+    if (activeTab === 'ranking') {
+        if (typeof renderRanking === "function") renderRanking();
+    } else if (activeTab === 'drawing') {
+        if (typeof checkExistingDrawing === "function") checkExistingDrawing();
+    } else if (activeTab === 'juara') {
+        if (typeof renderJuaraUmum === "function") renderJuaraUmum();
+    } else if (activeTab === 'atlet') {
+        if (typeof renderParticipantTable === "function") renderParticipantTable();
+    }
+}
