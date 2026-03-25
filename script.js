@@ -21,26 +21,17 @@ const database = firebase.database();
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
 
-// Firebase memiliki path khusus '.info/connected' untuk mengecek status internet
-database.ref('turnamen_data').on('value', (snapshot) => {
-    console.log("Berhasil terhubung. Menarik data dari Firebase...");
-    const data = snapshot.val();
-    
-    if (data) {
-        console.log("Data ditemukan:", data);
-        STATE.categories = data.categories || [];
-        STATE.participants = data.participants || [];
-        STATE.matches = data.matches || [];
-        if(data.settings) STATE.settings = data.settings;
+// TAMBAHKAN KODE INI UNTUK INDIKATOR:
+database.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+        // Jika online (Asumsi menggunakan class Tailwind)
+        if(statusDot) statusDot.className = 'w-3 h-3 bg-green-500 rounded-full animate-pulse';
+        if(statusText) statusText.innerText = 'Online (Firebase)';
     } else {
-        console.log("Database Firebase masih kosong.");
+        // Jika offline
+        if(statusDot) statusDot.className = 'w-3 h-3 bg-red-500 rounded-full';
+        if(statusText) statusText.innerText = 'Offline';
     }
-    
-    refreshAllData();
-    if(document.getElementById('section-drawing') && !document.getElementById('section-drawing').classList.contains('hidden')) checkExistingDrawing();
-    if(document.getElementById('section-scoring') && !document.getElementById('section-scoring').classList.contains('hidden')) filterPesertaScoring();
-    if(document.getElementById('section-ranking') && !document.getElementById('section-ranking').classList.contains('hidden')) renderRanking();
-    if(document.getElementById('section-juara') && !document.getElementById('section-juara').classList.contains('hidden')) renderJuaraUmum();
 });
 
 // 3. Deklarasi State Global (Kosong di awal, akan diisi oleh Firebase)
@@ -118,7 +109,6 @@ function injectAdminExportButtons() {
     }
 }
 
-function saveToLocalStorage() { localStorage.setItem('mass_categories', JSON.stringify(STATE.categories)); localStorage.setItem('mass_participants', JSON.stringify(STATE.participants)); localStorage.setItem('mass_matches', JSON.stringify(STATE.matches)); }
 function refreshAllData() { renderCategoryList(); updateAllDropdowns(); renderParticipantTable(); }
 
 function switchTab(targetTab) {
