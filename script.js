@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.5 (Ironclad Release: Bulletproof Core, Double Bronze, Auto-Wrap UI)
+ * Version 14.7 (Grand Update: Batsu Poin Lawan & Timer Auto-Toggle)
  */
 
 function initializeData() {
@@ -18,7 +18,7 @@ function initializeData() {
 
 let STATE = initializeData();
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
-let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
+let RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } };
 let SWAP_SELECTION = null; 
 
 document.addEventListener('DOMContentLoaded', () => { refreshAllData(); setJudges(5); });
@@ -589,14 +589,22 @@ function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const fou
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
     const categoryObj = STATE.categories.find(c => c.name === catName);
-    const panelEmbu = document.getElementById('panel-embu'); const panelRandori = document.getElementById('panel-randori');
-    const badgeEmbu = document.getElementById('scoring-badge-embu'); const badgeRandori = document.getElementById('scoring-badge-randori');
+    const panelEmbu = document.getElementById('panel-embu'); 
+    const panelRandori = document.getElementById('panel-randori');
+    const badgeEmbu = document.getElementById('scoring-badge-embu'); 
+    const badgeRandori = document.getElementById('scoring-badge-randori');
+    const panelWaktu = document.getElementById('panel-waktu-embu'); 
     const selectEl = document.getElementById('select-peserta');
     
     if(!categoryObj) return;
 
     if(categoryObj.discipline === 'randori') {
-        panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
+        panelEmbu.classList.add('hidden'); 
+        panelRandori.classList.remove('hidden'); 
+        badgeEmbu.classList.add('hidden'); 
+        badgeRandori.classList.remove('hidden');
+        if(panelWaktu) panelWaktu.classList.add('hidden'); 
+        
         let catMatches = STATE.matches.filter(m => m.kategori === catName && m.status === 'pending' && m.merahId !== null && m.putihId !== null && m.merahId !== -1 && m.putihId !== -1);
         if(catMatches.length === 0) { selectEl.innerHTML = `<option value="">-- Tidak ada Partai Aktif --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; return; }
 
@@ -609,7 +617,12 @@ function filterPesertaScoring() {
         selectEl.dispatchEvent(new Event('change'));
 
     } else {
-        panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
+        panelEmbu.classList.remove('hidden'); 
+        panelRandori.classList.add('hidden'); 
+        badgeEmbu.classList.remove('hidden'); 
+        badgeRandori.classList.add('hidden');
+        if(panelWaktu) panelWaktu.classList.remove('hidden'); 
+        
         let listCat = STATE.participants.filter(p => p.kategori === catName && p.urut > 0); const hasFinal = listCat.some(p => p.isFinalist);
         let filtered = hasFinal ? listCat.filter(p => p.isFinalist).sort((a,b) => a.urutFinal - b.urutFinal) : listCat.sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
         if(filtered.length === 0) { selectEl.innerHTML = `<option value="">-- Kosong / Belum Undian --</option>`; document.getElementById('scoring-athlete-name').innerText = "-"; updateScoringButtonsUI(); return; }
@@ -629,10 +642,12 @@ function loadRandoriMatch() {
     resetRandoriBoard(); 
 }
 
-function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } }; updateRandoriUI(); }
+function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
 function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points; if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; updateRandoriUI(); }
-function toggleWarning(corner, level) { if(level === 1) RANDORI_STATE[corner].warn1 = !RANDORI_STATE[corner].warn1; if(level === 2) RANDORI_STATE[corner].warn2 = !RANDORI_STATE[corner].warn2; updateRandoriUI(); }
-function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; document.getElementById('warn1-merah').className = RANDORI_STATE.merah.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-merah').className = RANDORI_STATE.merah.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; document.getElementById('warn1-putih').className = RANDORI_STATE.putih.warn1 ? "w-6 h-6 rounded-full transition-colors bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]" : "w-6 h-6 rounded-full border-2 border-yellow-500 transition-colors bg-transparent"; document.getElementById('warn2-putih').className = RANDORI_STATE.putih.warn2 ? "w-6 h-6 rounded-full transition-colors bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]" : "w-6 h-6 rounded-full border-2 border-orange-500 transition-colors bg-transparent"; }
+function updateRandoriUI() { 
+    document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; 
+    document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; 
+}
 
 function saveRandoriMatchResult() {
     if(!currentRandoriMatchId) return alert("Pilih partai!");
@@ -640,7 +655,7 @@ function saveRandoriMatchResult() {
     if(!match) return;
 
     let sMerah = RANDORI_STATE.merah.score; let sPutih = RANDORI_STATE.putih.score;
-    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan.");
+    if(sMerah === sPutih) return alert("Skor seri! Randori tidak bisa berakhir seri. Tambahkan poin hukuman/kemenangan (Ippon/Waza-ari/Batsu).");
 
     let winnerId = sMerah > sPutih ? match.merahId : match.putihId;
     let loserId = sMerah > sPutih ? match.putihId : match.merahId;
@@ -679,7 +694,6 @@ function updateScoringButtonsUI() { const pId = parseInt(document.getElementById
 function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
 
-// --- BULLETPROOF CALCULATE LOGIC (ANTI-CRASH) ---
 function calculateLive() { 
     let raw = []; let techRaw = []; 
     for(let i=1; i<=STATE.settings.numJudges; i++) { 
@@ -698,7 +712,6 @@ function calculateLive() {
         sum = raw.reduce((a,b) => a+b, 0); 
     } 
     
-    // SAFE ELEMENT FETCHING
     let minEl = document.getElementById('min-time'); 
     let maxEl = document.getElementById('max-time');
     const minT = minEl ? (parseInt(minEl.value) || 0) : 0; 
