@@ -1,6 +1,6 @@
 /**
  * MASS - Martial Arts Scoring System
- * Version 14.1 (Robust CSV Import & Embu Double Fixes)
+ * Version 14.2 (Ultimate Release: Robust Parser, Double Bronze, Balanced BYE & Auto-Wrap UI)
  */
 
 function initializeData() {
@@ -42,7 +42,6 @@ function renderCategoryList() { const container = document.getElementById('list-
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
 function updateAllDropdowns() { const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); const emptyOpt = `<option value="">-- Pilih Kategori --</option>`; document.getElementById('p-kategori').innerHTML = emptyOpt + options; document.getElementById('edit-kategori').innerHTML = emptyOpt + options; document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options; document.getElementById('select-kategori').innerHTML = emptyOpt + options; const allOpt = '<option value="all">Semua Kategori</option>'; document.getElementById('rank-filter-kategori').innerHTML = allOpt + options; document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options; }
 
-// --- SMART CSV PARSER (V14.1 FIX) ---
 function handleCSVUpload(event) { 
     const file = event.target.files[0]; if (!file) return; 
     const reader = new FileReader(); 
@@ -51,8 +50,6 @@ function handleCSVUpload(event) {
         let count = 0; 
         rows.forEach((row, i) => { 
             if(i === 0 || !row.trim()) return; 
-            
-            // Membaca koma dengan pintar (mengabaikan koma di dalam tanda kutip)
             let cols = []; let curr = ''; let inQuotes = false;
             for(let char of row) {
                 if(char === '"') inQuotes = !inQuotes;
@@ -73,10 +70,39 @@ function handleCSVUpload(event) {
     }; 
     reader.readAsText(file); 
 }
-// ------------------------------------
 
 document.getElementById('form-peserta').addEventListener('submit', (e) => { e.preventDefault(); const catName = document.getElementById('p-kategori').value; if(!catName) return alert("Pilih kategori!"); STATE.participants.push({ id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value, kategori: catName, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); saveToLocalStorage(); renderParticipantTable(); document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus(); });
-function renderParticipantTable() { const body = document.getElementById('table-peserta-body'); const filter = document.getElementById('filter-atlet-kategori').value; let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; if(list.length === 0) return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`; let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); body.innerHTML = sortedList.map(p => { let statusHTML = p.urut > 0 ? `<span class="bg-slate-700 px-2 py-1 rounded text-xs font-mono">No.${p.urut} | Pool ${p.pool}</span>` : `<span class="text-xs text-red-400 italic">Belum Undian</span>`; if(p.losses === 1) statusHTML += ` <span class="bg-orange-600 text-[10px] px-1 rounded ml-1">Loser Bracket</span>`; else if(p.losses >= 2) statusHTML += ` <span class="bg-red-800 text-[10px] px-1 rounded ml-1">Gugur</span>`; return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors"><td class="p-4 font-bold text-blue-300">${p.nama} ${p.isFinalist ? '<span class="text-[10px] bg-yellow-500 text-black px-1 rounded ml-1">FINALIS</span>' : ''}</td><td class="p-4">${p.kontingen}</td><td class="p-4 text-xs text-slate-400">${p.kategori}<br>${statusHTML}</td><td class="p-4 text-right"><button onclick="openEditModal(${p.id})" class="text-blue-400 mr-3"><i class="fas fa-edit"></i></button><button onclick="deletePeserta(${p.id})" class="text-slate-500 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); }
+
+// --- UI UPDATE: Tabel Atlet Anti-Melar ---
+function renderParticipantTable() { 
+    const body = document.getElementById('table-peserta-body'); 
+    const filter = document.getElementById('filter-atlet-kategori').value; 
+    let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; 
+    if(list.length === 0) return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`; 
+    let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); 
+    body.innerHTML = sortedList.map(p => { 
+        let statusHTML = p.urut > 0 ? `<span class="bg-slate-700 px-2 py-1 rounded text-xs font-mono inline-block mb-1">No.${p.urut} | Pool ${p.pool}</span>` : `<span class="text-xs text-red-400 italic inline-block mb-1">Belum Undian</span>`; 
+        if(p.losses === 1) statusHTML += ` <span class="bg-orange-600 text-[10px] px-1 rounded ml-1 inline-block">Loser Bracket</span>`; 
+        else if(p.losses >= 2) statusHTML += ` <span class="bg-red-800 text-[10px] px-1 rounded ml-1 inline-block">Gugur</span>`; 
+        
+        return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+            <td class="p-3 align-top font-bold text-blue-300 w-[35%] whitespace-normal break-words leading-tight">
+                ${p.nama} ${p.isFinalist ? '<br><span class="text-[10px] bg-yellow-500 text-black px-1 rounded inline-block mt-1">FINALIS</span>' : ''}
+            </td>
+            <td class="p-3 align-top w-[25%] whitespace-normal break-words text-sm text-slate-200">
+                ${p.kontingen}
+            </td>
+            <td class="p-3 align-top text-xs text-slate-400 w-[25%] whitespace-normal break-words leading-relaxed">
+                <span class="text-blue-400 font-semibold">${p.kategori}</span><br>${statusHTML}
+            </td>
+            <td class="p-3 align-top text-right w-[15%] whitespace-nowrap">
+                <button onclick="openEditModal(${p.id})" class="text-blue-400 mr-2 hover:bg-blue-900/50 p-2 rounded transition-colors"><i class="fas fa-edit"></i></button>
+                <button onclick="deletePeserta(${p.id})" class="text-slate-500 hover:text-red-500 hover:bg-red-900/30 p-2 rounded transition-colors"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`; 
+    }).join(''); 
+}
+
 function deletePeserta(id) { if(confirm('Hapus atlet ini?')) { STATE.participants = STATE.participants.filter(p => p.id !== id); saveToLocalStorage(); renderParticipantTable(); } }
 function openEditModal(id) { const p = STATE.participants.find(x => x.id === id); if(!p) return; document.getElementById('edit-id').value = p.id; document.getElementById('edit-nama').value = p.nama; document.getElementById('edit-kontingen').value = p.kontingen; document.getElementById('edit-kategori').value = p.kategori; document.getElementById('edit-modal').classList.remove('hidden'); }
 function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
@@ -441,6 +467,27 @@ function renderVisualBracket(catName) {
     } catch (err) { console.error(err); }
 }
 
+// --- UI UPDATE: Embu Pool Auto-Wrap Flexbox Fix ---
+function renderPoolUI(arr, title, container, isFinal) { 
+    let borderColor = isFinal ? 'border-yellow-600' : 'border-slate-600'; 
+    let titleColor = isFinal ? 'text-yellow-500' : 'text-purple-400'; 
+    let html = `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-lg w-full h-full flex flex-col"><h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${title}</h3><div class="space-y-3 flex-1">`; 
+    arr.forEach((p, i) => { 
+        let noUrut = isFinal ? p.urutFinal : p.urut; 
+        html += `<div class="flex flex-col md:flex-row items-start md:items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 gap-3 hover:bg-slate-700/30 transition-colors">
+            <div class="flex gap-3 items-start w-full">
+                <span class="font-mono text-slate-500 w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
+                <span class="font-bold text-white whitespace-normal break-words leading-snug">${p.nama}</span>
+            </div>
+            <div class="flex justify-end w-full md:w-auto">
+                <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-1 rounded border border-slate-700 whitespace-nowrap shadow-sm">${p.kontingen}</span>
+            </div>
+        </div>`; 
+    }); 
+    html += `</div></div>`; 
+    container.innerHTML += html; 
+}
+
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
     const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
@@ -487,7 +534,6 @@ function checkExistingDrawing() {
 function startDrawing() { const catName = document.getElementById('draw-select-kategori').value; if(!catName) return alert("Pilih kategori!"); let list = STATE.participants.filter(p => p.kategori === catName); if(list.length === 0) return alert("Belum ada peserta!"); const resultDiv = document.getElementById('drawing-result'); resultDiv.innerHTML = ''; const isFinalMode = list.some(p => p.isFinalist); if (isFinalMode) { let finalL = list.filter(p => p.isFinalist); if (finalL.some(p => p.urutFinal > 0)) if (!confirm("⚠️ Finalis SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; shuffleArray(finalL); finalL.forEach((p, index) => { const idx = STATE.participants.findIndex(x => x.id === p.id); STATE.participants[idx].urutFinal = index + 1; }); renderPoolUI(finalL, "POOL FINAL", resultDiv, true); } else { if (list.some(p => p.urut > 0)) { if (!confirm("⚠️ Kategori ini SUDAH DIUNDI.\nYakin ingin mengacak ulang?")) return; list.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; p.finalScore = 0; p.techScore = 0; }); } shuffleArray(list); if (list.length > 6) { const half = Math.ceil(list.length / 2); const poolA = list.slice(0, half); const poolB = list.slice(half); applyDrawingData(poolA, 'A'); applyDrawingData(poolB, 'B'); renderPoolUI(poolA, "POOL A", resultDiv, false); renderPoolUI(poolB, "POOL B", resultDiv, false); } else { applyDrawingData(list, 'SINGLE'); renderPoolUI(list, "BABAK PENYISIHAN", resultDiv, false); } } saveToLocalStorage(); checkExistingDrawing(); renderParticipantTable(); }
 function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
 function applyDrawingData(arr, poolName) { arr.forEach((p, index) => { const found = STATE.participants.find(item => item.id === p.id); if(found) { found.urut = index + 1; found.pool = poolName; }}); }
-function renderPoolUI(arr, title, container, isFinal) { let borderColor = isFinal ? 'border-yellow-600' : 'border-slate-600'; let titleColor = isFinal ? 'text-yellow-500' : 'text-purple-400'; let html = `<div class="bg-slate-800 p-5 rounded-xl border ${borderColor} shadow-lg"><h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${title}</h3><div class="space-y-2">`; arr.forEach((p, i) => { let noUrut = isFinal ? p.urutFinal : p.urut; html += `<div class="flex items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50"><div class="flex gap-3 items-center"><span class="font-mono text-slate-500 w-5 text-right">${noUrut}.</span><span class="font-bold text-white">${p.nama}</span></div><span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">${p.kontingen}</span></div>`; }); html += `</div></div>`; container.innerHTML += html; }
 
 function filterPesertaScoring() {
     const catName = document.getElementById('select-kategori').value;
@@ -628,7 +674,7 @@ function renderRanking() {
                 htmlOutput += poolList.map((p, i) => { 
                     let medal = i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : `<span class="text-2xl font-black text-slate-600">${i+1}</span>`; 
                     let displayFinalHTML = `<div class="text-2xl font-black text-white">${(poolKey === 'FINAL' ? p.scores.b2.final : p.scores.b1.final).toFixed(2)}</div>`; 
-                    return `<div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4 mb-3"><div class="w-12 text-center flex-shrink-0">${medal}</div><div class="flex-1 w-full"><div class="font-bold text-lg text-white">${p.nama} ${poolKey !== 'FINAL' && p.isFinalist ? '<span class="text-[10px] bg-yellow-500 text-black px-1 rounded ml-1">LULUS FINAL</span>' : ''}</div><div class="text-xs text-slate-400 mt-1"><span class="bg-slate-800 px-2 py-1 rounded border border-slate-700">${p.kontingen}</span></div></div><div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700"><div class="text-center md:text-right flex-1"><div class="text-[10px] text-green-400 font-bold uppercase">Nilai Akhir</div>${displayFinalHTML}</div></div></div>`; 
+                    return `<div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4 mb-3"><div class="w-12 text-center flex-shrink-0">${medal}</div><div class="flex-1 w-full"><div class="font-bold text-lg text-white whitespace-normal break-words">${p.nama} ${poolKey !== 'FINAL' && p.isFinalist ? '<span class="text-[10px] bg-yellow-500 text-black px-1 rounded ml-1">LULUS FINAL</span>' : ''}</div><div class="text-xs text-slate-400 mt-1"><span class="bg-slate-800 px-2 py-1 rounded border border-slate-700">${p.kontingen}</span></div></div><div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700"><div class="text-center md:text-right flex-1"><div class="text-[10px] text-green-400 font-bold uppercase">Nilai Akhir</div>${displayFinalHTML}</div></div></div>`; 
                 }).join(''); 
             }); 
         } else {
@@ -637,10 +683,10 @@ function renderRanking() {
                 htmlOutput += `<div class="p-6 text-center text-slate-600 bg-slate-900/50 rounded-xl border border-slate-800 text-sm italic">Turnamen di kategori ini masih berlangsung.</div>`;
             } else {
                 htmlOutput += `<h4 class="text-md font-bold text-red-400 mt-4 mb-2 pl-2 border-l-4 border-red-500">PEMENANG MEDALI</h4>`;
-                htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${wins.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500">Juara 1 (Emas)</div></div></div>`;
-                htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${wins.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300">Juara 2 (Perak)</div></div></div>`;
+                htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-yellow-600 gap-4 mb-3 bg-yellow-600/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-yellow-400 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${wins.emas}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-yellow-500">Juara 1 (Emas)</div></div></div>`;
+                htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-slate-600 gap-4 mb-3 bg-slate-500/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-slate-300 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${wins.perak}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-slate-300">Juara 2 (Perak)</div></div></div>`;
                 wins.perunggu.forEach(pName => {
-                    htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-amber-700 gap-4 mb-3 bg-amber-800/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-amber-600 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white">${pName}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-amber-600">Juara 3 Bersama (Perunggu)</div></div></div>`;
+                    htmlOutput += `<div class="flex items-center bg-dark-card p-4 rounded-xl border border-amber-700 gap-4 mb-3 bg-amber-800/10"><div class="w-12 text-center flex-shrink-0"><i class="fas fa-medal text-amber-600 text-3xl"></i></div><div class="flex-1"><div class="font-bold text-lg text-white whitespace-normal break-words">${pName}</div><div class="text-xs text-slate-400 mt-1 uppercase font-bold text-amber-600">Juara 3 Bersama (Perunggu)</div></div></div>`;
                 });
             }
         }
@@ -684,7 +730,7 @@ function renderJuaraUmum() {
     
     const tbody = document.getElementById('table-juara-body'); 
     if(leaderboard.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 border-b border-slate-700">Belum ada data medali disumbangkan.</td></tr>`; 
-    tbody.innerHTML = leaderboard.map((k, i) => `<tr class="hover:bg-slate-800/50 transition-colors"><td class="p-4 text-center font-bold text-slate-500 border-b border-slate-800">${i+1}</td><td class="p-4 font-bold text-white border-b border-slate-800 text-lg">${k.nama}</td><td class="p-4 text-center font-black text-yellow-500 border-b border-slate-800 bg-yellow-500/10">${k.emas}</td><td class="p-4 text-center font-black text-slate-300 border-b border-slate-800 bg-slate-400/10">${k.perak}</td><td class="p-4 text-center font-black text-amber-600 border-b border-slate-800 bg-amber-600/10">${k.perunggu}</td><td class="p-4 text-center font-black text-blue-400 border-b border-slate-800">${k.total}</td></tr>`).join(''); 
+    tbody.innerHTML = leaderboard.map((k, i) => `<tr class="hover:bg-slate-800/50 transition-colors"><td class="p-4 text-center font-bold text-slate-500 border-b border-slate-800">${i+1}</td><td class="p-4 font-bold text-white border-b border-slate-800 text-lg whitespace-normal break-words">${k.nama}</td><td class="p-4 text-center font-black text-yellow-500 border-b border-slate-800 bg-yellow-500/10">${k.emas}</td><td class="p-4 text-center font-black text-slate-300 border-b border-slate-800 bg-slate-400/10">${k.perak}</td><td class="p-4 text-center font-black text-amber-600 border-b border-slate-800 bg-amber-600/10">${k.perunggu}</td><td class="p-4 text-center font-black text-blue-400 border-b border-slate-800">${k.total}</td></tr>`).join(''); 
 }
 
 function exportCustomCSV() { let list = [...STATE.participants].filter(p => p.scores.b1.final > 0); let rows = [["Nama Atlet", "Kontingen", "Kategori", "Pool", "Lulus Final?", "Skor B1/Penyisihan", "Skor B2/Final", "Tie-Breaker B1", "Tie-Breaker B2"]]; list.sort((a,b) => a.kategori.localeCompare(b.kategori) || a.pool.localeCompare(b.pool) || b.scores.b1.final - a.scores.b1.final); list.forEach(p => { rows.push([`"${p.nama}"`, `"${p.kontingen}"`, `"${p.kategori}"`, p.pool, p.isFinalist ? "Ya" : "Tidak", p.scores.b1.final, p.scores.b2.final, p.scores.b1.tech, p.scores.b2.tech]); }); let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n"); const link = document.createElement("a"); link.href = encodeURI(csvContent); link.download = `Data_Mentah_Nilai_${new Date().toISOString().slice(0,10)}.csv`; link.click(); }
