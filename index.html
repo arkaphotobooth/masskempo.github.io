@@ -65,17 +65,17 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="col-span-1">
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl">
-                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>Tambah Kategori Baru</h2>
+                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>Tambah Nomor Pertandingan Baru</h2>
                         <form id="form-kategori" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Disiplin</label>
                                 <select id="cat-discipline" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors">
-                                    <option value="embu">EMBU (Seni/Jurus)</option>
-                                    <option value="randori">RANDORI (Tanding/Tarung)</option>
+                                    <option value="embu">EMBU</option>
+                                    <option value="randori">RANDORI</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nama Kategori</label>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nama Nomor Pertandingan</label>
                                 <input type="text" id="cat-name" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors placeholder-slate-600" placeholder="Cth: Embu Berpasangan Putra I-II Dan">
                             </div>
                             <div>
@@ -86,21 +86,21 @@
                                     <option value="3">Beregu (3+ Org)</option>
                                 </select>
                             </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]">SIMPAN KATEGORI</button>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]">SIMPAN NOMOR PERTANDINGAN</button>
                         </form>
                     </div>
                 </div>
                 <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed mt-6">
     <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import dari CSV</h2>
-    <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin, Nama Kategori, Format Atlet</b><br>Contoh: <i>Randori, Randori Putra Kelas A, 1</i></p>
+    <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Kategori,Format Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
     <input type="file" id="csv-kategori-upload" accept=".csv" class="hidden" onchange="handleCategoryCSVUpload(event)">
     <button onclick="document.getElementById('csv-kategori-upload').click()" class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
-        <i class="fas fa-upload"></i> Pilih File CSV Kategori
+        <i class="fas fa-upload"></i> Pilih File CSV Nomor Pertandingan
     </button>
 </div>
                 <div class="col-span-1 lg:col-span-2">
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl h-full">
-                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-list text-blue-500 mr-2"></i>Daftar Kategori Tersimpan</h2>
+                        <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-list text-blue-500 mr-2"></i>Daftar Nomor Pertandingan Tersimpan</h2>
                         <div id="list-kategori" class="flex flex-wrap gap-3">
                             </div>
                     </div>
