@@ -1212,8 +1212,18 @@ function exportDrawingCSV(filterCatName = null) {
 }
 
 function exportHasilCSV(filterCatName = null) {
-    let rows = [["Disiplin", "Kategori", "Peringkat / Medali", "Nama Atlet", "Kontingen", "Nilai Akhir / Keterangan"]];
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
+    
+    // 1. DETEKSI CERDAS: Apakah ini ekspor khusus kategori EMBU saja?
+    let isOnlyEmbu = categoriesToExport.length > 0 && categoriesToExport.every(c => c.discipline === 'embu');
+
+    // 2. BUAT HEADER DINAMIS (Beda format jika Embu vs Campuran/Randori)
+    let rows = [];
+    if (isOnlyEmbu) {
+        rows.push(["Peringkat / Medali", "Kategori", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu (MM:SS)", "Denda", "Nilai Akhir"]);
+    } else {
+        rows.push(["Disiplin", "Kategori", "Peringkat / Medali", "Nama Atlet", "Kontingen", "Nilai Akhir / Keterangan"]);
+    }
 
     categoriesToExport.forEach(cat => {
         if (cat.discipline === 'embu') {
@@ -1222,16 +1232,36 @@ function exportHasilCSV(filterCatName = null) {
                 finalis.sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
                 finalis.forEach((p, i) => {
                     let medali = i === 0 ? "Emas" : i === 1 ? "Perak" : i === 2 ? "Perunggu" : `Peringkat ${i+1}`;
-                    rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, p.scores.b2.final.toFixed(2)]);
+                    let s = p.scores.b2;
+                    
+                    if (isOnlyEmbu) {
+                        let w = s.raw || [];
+                        let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
+                        rows.push([medali, cat.name, p.nama, p.kontingen, w[0]||'-', w[1]||'-', w[2]||'-', w[3]||'-', w[4]||'-', waktuFmt, s.penalty || 0, s.final.toFixed(2)]);
+                    } else {
+                        rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2)]);
+                    }
                 });
             } else {
                 ['SINGLE', 'A', 'B'].forEach(poolKey => {
                     let poolList = STATE.participants.filter(p => p.kategori === cat.name && p.pool === poolKey && p.scores.b1.final > 0);
                     poolList.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-                    poolList.forEach((p, i) => { rows.push(["EMBU", cat.name, `Pool ${poolKey} Rank ${i+1}`, p.nama, p.kontingen, p.scores.b1.final.toFixed(2)]); });
+                    poolList.forEach((p, i) => { 
+                        let medali = poolKey === 'SINGLE' ? `Peringkat ${i+1}` : `Pool ${poolKey} Rank ${i+1}`;
+                        let s = p.scores.b1;
+
+                        if (isOnlyEmbu) {
+                            let w = s.raw || [];
+                            let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
+                            rows.push([medali, cat.name, p.nama, p.kontingen, w[0]||'-', w[1]||'-', w[2]||'-', w[3]||'-', w[4]||'-', waktuFmt, s.penalty || 0, s.final.toFixed(2)]);
+                        } else {
+                            rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2)]);
+                        }
+                    });
                 });
             }
         } else {
+            // --- LOGIKA EKSPOR RANDORI TETAP SAMA ---
             let poolResults = calculateRandoriFinalists(cat.name);
             if (poolResults) {
                 poolResults.forEach(res => {
@@ -1250,6 +1280,7 @@ function exportHasilCSV(filterCatName = null) {
             }
         }
     });
+    
     let prefix = filterCatName ? `Hasil_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Hasil_Pertandingan`;
     downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
