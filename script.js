@@ -1175,7 +1175,10 @@ function renderJuaraUmum() {
 // CSV EXPORT LOGIC (MULTIFUNCTION: MICRO & MACRO)
 // ---------------------------------------------------------
 function downloadCSV(filename, rows) {
-    let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+    // 1. \uFEFF adalah BOM (Byte Order Mark) agar Excel membaca teks dengan rapi
+    // 2. .join(";") mengganti pemisah dari koma (,) menjadi titik koma (;) khusus Excel Indonesia
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.map(cell => `"${cell}"`).join(";")).join("\n");
+    
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
     link.download = filename;
