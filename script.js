@@ -239,14 +239,80 @@ function renderParticipantTable() {
     let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; 
     if(list.length === 0) return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`; 
     let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); 
+
     body.innerHTML = sortedList.map(p => { 
-        let statusHTML = p.urut > 0 ? `<span class="bg-slate-700 px-2 py-1 rounded text-xs font-mono inline-block mb-1">No.${p.urut} | Pool ${p.pool}</span>` : `<span class="text-xs text-red-400 italic inline-block mb-1">Belum Undian</span>`; 
-        if(p.losses === 1) statusHTML += ` <span class="bg-orange-600 text-[10px] px-1 rounded ml-1 inline-block">Loser Bracket</span>`; 
-        else if(p.losses >= 2) statusHTML += ` <span class="bg-red-800 text-[10px] px-1 rounded ml-1 inline-block">Gugur</span>`; 
+        let catObj = STATE.categories.find(c => c.name === p.kategori);
+        let isRandori = catObj && catObj.discipline === 'randori';
+        let isRandoriDrawn = isRandori && STATE.matches.some(m => m.kategori === p.kategori);
+        let statusHTML = '';
+
+        // 1. TENTUKAN STATUS UNDIAN (Format Teks Polos)
+        if (isRandori) {
+            if (isRandoriDrawn) {
+                let poolText = p.pool !== '-' ? `POOL ${p.pool}` : 'Bagan Utama';
+                statusHTML = `<span class="text-xs text-blue-300 font-semibold">${poolText}</span>`;
+            } else {
+                statusHTML = `<span class="text-xs text-red-400 italic">Belum Undian</span>`;
+            }
+        } else {
+            if (p.urut > 0) {
+                let poolLabel = p.pool !== '-' && p.pool !== 'SINGLE' ? ` | POOL ${p.pool}` : '';
+                statusHTML = `<span class="text-xs text-blue-300 font-semibold">No.${p.urut}${poolLabel}</span>`;
+            } else {
+                statusHTML = `<span class="text-xs text-red-400 italic">Belum Undian</span>`;
+            }
+        }
+
+        // 2. TENTUKAN STATUS JUARA 
+        let isJuara = false;
+        let juaraLabel = '';
+
+        if (isRandori && isRandoriDrawn) {
+            const poolResults = calculateRandoriFinalists(p.kategori);
+            if (poolResults) {
+                let isFinalCat = p.kategori.toUpperCase().includes('FINAL');
+                poolResults.forEach(res => {
+                    let isSinglePool = res.pool === '-';
+                    let poolSuffix = isFinalCat || isSinglePool ? "" : ` Pool ${res.pool}`;
+                    
+                    if (res.emas === p.nama) {
+                        isJuara = true; juaraLabel = `Juara 1${poolSuffix}`;
+                    } else if (res.perak === p.nama) {
+                        isJuara = true; juaraLabel = `Juara 2${poolSuffix}`;
+                    } else if (res.perunggu.some(br => br.nama === p.nama)) {
+                        isJuara = true; juaraLabel = `Juara 3${poolSuffix}`;
+                    }
+                });
+            }
+        } else if (!isRandori && p.urut > 0) {
+            // Logika Status Juara untuk Embu
+            if (p.isFinalist && p.scores.b2.final > 0) {
+                let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
+                let rank = catParts.findIndex(x => x.id === p.id);
+                if (rank === 0) { isJuara = true; juaraLabel = "Juara 1"; }
+                else if (rank === 1) { isJuara = true; juaraLabel = "Juara 2"; }
+                else if (rank === 2) { isJuara = true; juaraLabel = "Juara 3"; }
+            } else if (!p.isFinalist && p.scores.b1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
+                let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && x.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
+                let rank = catParts.findIndex(x => x.id === p.id);
+                let pLabel = p.pool === 'SINGLE' || p.pool === '-' ? '' : ` Pool ${p.pool}`;
+                if (rank === 0) { isJuara = true; juaraLabel = `Juara 1${pLabel}`; }
+                else if (rank === 1) { isJuara = true; juaraLabel = `Juara 2${pLabel}`; }
+                else if (rank === 2) { isJuara = true; juaraLabel = `Juara 3${pLabel}`; }
+            }
+        }
+
+        // 3. GABUNGKAN STATUS (Tanpa Lencana/Kotak Background)
+        if (isJuara) {
+            statusHTML += `<br><span class="text-yellow-400 font-bold text-xs tracking-wide"><i class="fas fa-trophy mr-1"></i>${juaraLabel}</span>`;
+        } else {
+            if (p.losses === 1 && isRandoriDrawn) statusHTML += `<br><span class="text-orange-400 text-xs italic">Loser Bracket</span>`;
+            else if (p.losses >= 2 && isRandoriDrawn) statusHTML += `<br><span class="text-red-400 text-xs italic">Gugur</span>`;
+        }
         
         return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
             <td class="p-3 align-top font-bold text-blue-300 w-[35%] whitespace-normal break-words leading-tight">
-                ${p.nama} ${p.isFinalist ? '<br><span class="text-[10px] bg-yellow-500 text-black px-1 rounded inline-block mt-1">FINALIS</span>' : ''}
+                ${p.nama} ${p.isFinalist ? '<br><span class="text-[10px] text-yellow-500 font-bold mt-1">FINALIS</span>' : ''}
             </td>
             <td class="p-3 align-top w-[25%] whitespace-normal break-words text-sm text-slate-200">
                 ${p.kontingen}
