@@ -1197,9 +1197,11 @@ function renderJuaraUmum() {
 
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
+        const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
         
-        // Cek Batas Minimal Peserta
-        if (catParts.length < minPeserta) return; 
+        // REVISI ATURAN 1: Cek Batas Minimal Peserta (KECUALI Kategori FINAL)
+        // Jika bukan kategori Final DAN pesertanya kurang dari batas minimal, maka jangan dihitung.
+        if (!isFinalCategory && catParts.length < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
             let listCat = catParts.filter(p => p.isFinalist); 
@@ -1209,11 +1211,10 @@ function renderJuaraUmum() {
             if(wins[2]) { tally[wins[2].kontingen] = tally[wins[2].kontingen] || {g:0, s:0, b:0}; tally[wins[2].kontingen].b++; } 
         } else {
             const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
-            const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             
+            // ATURAN 2: Jika Randori punya Pool, yang dihitung hanya kategori "FINAL".
             if(hasPools && !isFinalCategory) return; 
             
-            // PERBAIKAN: Gunakan poolResults dan lakukan forEach untuk membaca data tiap Pool
             const poolResults = calculateRandoriFinalists(cat.name);
             if(!poolResults) return; 
             
@@ -1358,7 +1359,10 @@ function exportMedaliCSV() {
 
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
-        if (catParts.length < minPeserta) return; 
+        const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
+        
+        // REVISI ATURAN 1: Cek Batas Minimal Peserta (KECUALI Kategori FINAL)
+        if (!isFinalCategory && catParts.length < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
             let listCat = catParts.filter(p => p.isFinalist); 
@@ -1368,11 +1372,9 @@ function exportMedaliCSV() {
             if(wins[2]) { tally[wins[2].kontingen] = tally[wins[2].kontingen] || {g:0, s:0, b:0}; tally[wins[2].kontingen].b++; } 
         } else {
             const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
-            const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             
             if(hasPools && !isFinalCategory) return; 
             
-            // PERBAIKAN CSV: Gunakan poolResults
             const poolResults = calculateRandoriFinalists(cat.name);
             if(!poolResults) return; 
             
