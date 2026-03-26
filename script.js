@@ -17,6 +17,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+// 3. Deklarasi State Global (WAJIB DI ATAS SEBELUM FIREBASE)
+let STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5, minPesertaJuara: 1 } };
+const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
+let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
+let SWAP_SELECTION = null;
+
 // --- SENSOR KONEKSI FIREBASE ---
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
@@ -24,11 +30,11 @@ const statusText = document.getElementById('koneksi-text');
 // 1. INDIKATOR ONLINE/OFFLINE
 database.ref('.info/connected').on('value', (snap) => {
     if (snap.val() === true) {
-        if(statusDot) statusDot.className = 'w-3 h-3 bg-green-500 rounded-full animate-pulse';
-        if(statusText) statusText.innerText = 'Online (Firebase)';
+        if(statusDot) statusDot.className = 'w-2.5 h-2.5 bg-green-500 rounded-full transition-colors duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
+        if(statusText) statusText.innerText = 'ONLINE (FIREBASE)';
     } else {
-        if(statusDot) statusDot.className = 'w-3 h-3 bg-red-500 rounded-full';
-        if(statusText) statusText.innerText = 'Offline';
+        if(statusDot) statusDot.className = 'w-2.5 h-2.5 bg-red-500 rounded-full transition-colors duration-300';
+        if(statusText) statusText.innerText = 'MENGHUBUNGKAN...';
     }
 });
 
@@ -47,13 +53,12 @@ database.ref('turnamen_data').on('value', (snapshot) => {
     if(document.getElementById('section-scoring') && !document.getElementById('section-scoring').classList.contains('hidden')) filterPesertaScoring();
     if(document.getElementById('section-ranking') && !document.getElementById('section-ranking').classList.contains('hidden')) renderRanking();
     if(document.getElementById('section-juara') && !document.getElementById('section-juara').classList.contains('hidden')) renderJuaraUmum();
+    
+    let minEl = document.getElementById('setting-min-peserta'); 
+    if(minEl && !document.getElementById('section-admin').classList.contains('hidden')) {
+        minEl.value = STATE.settings.minPesertaJuara || 1; 
+    }
 });
-
-// 3. Deklarasi State Global
-let STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } };
-const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
-let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
-let SWAP_SELECTION = null;
 
 // 5. UBAH FUNGSI LOKAL MENJADI CLOUD
 // Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
@@ -114,7 +119,8 @@ function switchTab(targetTab) {
     const activeSection = document.getElementById(`section-${targetTab}`); const activeTab = document.getElementById(`tab-${targetTab}`);
     if (activeSection) { activeSection.classList.remove('hidden'); activeSection.classList.add('block'); }
     if (activeTab) { if(targetTab === 'admin') { activeTab.classList.remove('text-red-400'); activeTab.classList.add('active-tab', 'text-red-500'); } else if(targetTab === 'juara') { activeTab.classList.remove('text-yellow-500'); activeTab.classList.add('active-tab', 'text-yellow-400'); } else { activeTab.classList.remove('text-slate-400'); activeTab.classList.add('active-tab', 'text-blue-500'); } }
-   if(targetTab === 'ranking') renderRanking(); 
+    
+    if(targetTab === 'ranking') renderRanking(); 
     if(targetTab === 'scoring') filterPesertaScoring(); 
     if(targetTab === 'drawing') { SWAP_SELECTION = null; updateAllDropdowns(); checkExistingDrawing(); } 
     if(targetTab === 'juara') renderJuaraUmum();
@@ -122,6 +128,7 @@ function switchTab(targetTab) {
         let minEl = document.getElementById('setting-min-peserta'); 
         if(minEl) minEl.value = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1; 
     }
+} // <--- INI TANDA KURUNG YANG HILANG SEBELUMNYA
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if(!name) return; if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
 function renderCategoryList() { const container = document.getElementById('list-kategori'); if(STATE.categories.length === 0) return container.innerHTML = `<span class="text-sm text-slate-500 italic">Belum ada kategori.</span>`; container.innerHTML = STATE.categories.map(c => { let badgeColor = c.discipline === 'randori' ? 'bg-red-700' : 'bg-blue-600'; let disciplineText = c.discipline ? c.discipline.toUpperCase() : 'EMBU'; return `<div class="bg-slate-800 px-4 py-2 rounded-lg text-sm flex items-center gap-3 border border-slate-700 shadow-sm"><span class="${badgeColor} text-[9px] px-1.5 py-0.5 rounded font-bold">${disciplineText}</span><span class="font-bold text-white">${c.name}</span><span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300">${c.type} Org</span><button onclick="deleteCategory(${c.id})" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-times"></i></button></div>` }).join(''); }
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
