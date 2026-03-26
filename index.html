@@ -92,7 +92,7 @@
                 </div>
                 <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed mt-6">
     <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import dari CSV</h2>
-    <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Kategori,Format Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
+    <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format: <b>Disiplin,Nama Nomor,Format Atlet</b><br>Contoh: <i>Randori,Randori Putra Kelas A,1</i></p>
     <input type="file" id="csv-kategori-upload" accept=".csv" class="hidden" onchange="handleCategoryCSVUpload(event)">
     <button onclick="document.getElementById('csv-kategori-upload').click()" class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
         <i class="fas fa-upload"></i> Pilih File CSV Nomor Pertandingan
@@ -115,7 +115,7 @@
                         <h2 class="text-lg font-black text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-user-plus text-blue-500 mr-2"></i>Input Manual</h2>
                         <form id="form-peserta" class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Pilih Kategori</label>
+                                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Pilih Nomor Pertandingan</label>
                                 <select id="p-kategori" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-blue-500 outline-none"></select>
                             </div>
                             <div>
@@ -133,7 +133,7 @@
 
                     <div class="bg-dark-card p-6 rounded-2xl border border-slate-800 shadow-xl border-dashed">
                         <h2 class="text-md font-black text-green-400 mb-2"><i class="fas fa-file-csv mr-2"></i>Import dari CSV</h2>
-                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format Wajib: <b>Nama Atlet, Kontingen, Kategori</b> (Pisahkan dengan koma).<br>Jika nama pakai koma, apit dengan tanda kutip ganda.</p>
+                        <p class="text-[10px] text-slate-400 mb-4 leading-relaxed">Format Wajib: <b>Nama Atlet, Kontingen, Nomor</b> (Pisahkan dengan koma).<br>Jika nama pakai koma, apit dengan tanda kutip ganda.</p>
                         <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
                         <button onclick="document.getElementById('csv-upload').click()" class="w-full bg-slate-800 border border-green-500/50 hover:bg-green-600 hover:border-green-500 text-green-400 hover:text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
                             <i class="fas fa-upload"></i> Pilih File CSV
@@ -153,7 +153,7 @@
                                     <tr class="bg-slate-900 text-xs text-slate-500 uppercase tracking-wider border-b-2 border-slate-700">
                                         <th class="p-3 w-[35%]">Nama Atlet/Tim</th>
                                         <th class="p-3 w-[25%]">Kontingen</th>
-                                        <th class="p-3 w-[25%]">Kategori & Status</th>
+                                        <th class="p-3 w-[25%]">Nomor & Status</th>
                                         <th class="p-3 w-[15%] text-right">Aksi</th>
                                     </tr>
                                 </thead>
@@ -173,7 +173,7 @@
                         <i class="fas fa-sitemap text-purple-400 text-xl"></i>
                     </div>
                     <div class="w-full md:w-72">
-                        <label class="block text-[10px] text-slate-500 mb-1 font-bold uppercase">Pilih Kategori Undian</label>
+                        <label class="block text-[10px] text-slate-500 mb-1 font-bold uppercase">Pilih Nomor Undian</label>
                         <select id="draw-select-kategori" onchange="checkExistingDrawing()" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm font-bold focus:border-purple-500 outline-none"></select>
                     </div>
                 </div>
@@ -196,7 +196,7 @@
 
             <div id="draw-panel-empty" class="text-center py-20 border-2 border-dashed border-slate-700 rounded-2xl">
                 <i class="fas fa-inbox text-4xl text-slate-600 mb-3"></i>
-                <p class="text-slate-400 font-bold">Pilih Kategori di atas untuk melihat Drawing</p>
+                <p class="text-slate-400 font-bold">Pilih Nomor di atas untuk melihat Drawing</p>
             </div>
 
             <div id="drawing-result" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"></div>
@@ -212,7 +212,7 @@
                 
                 <div class="col-span-1 lg:col-span-3 flex flex-col gap-4">
                     <div class="bg-dark-card p-4 rounded-xl border border-slate-700 shadow-lg">
-                        <label class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">KATEGORI PERTANDINGAN</label>
+                        <label class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">NOMOR PERTANDINGAN</label>
                         <select id="select-kategori" onchange="filterPesertaScoring()" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-blue-500 outline-none mb-4"></select>
                         
                         <label class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">PILIH PARTAI / PESERTA</label>
@@ -368,7 +368,7 @@
                 <div class="text-center mb-8">
                     <i class="fas fa-crown text-yellow-500 text-5xl mb-4 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]"></i>
                     <h2 class="text-3xl font-black text-white tracking-tight">KLASEMEN JUARA UMUM</h2>
-                    <p class="text-slate-400 mt-2">Dihitung otomatis dari Perolehan Medali Kategori Final (Embu & Randori)</p>
+                    <p class="text-slate-400 mt-2">Dihitung otomatis dari Perolehan Medali Nomor Final (Embu & Randori)</p>
                 </div>
                 
                 <div class="overflow-x-auto rounded-xl border border-slate-700">
@@ -397,7 +397,7 @@
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
             <h3 class="font-bold text-slate-300">Syarat Minimal Peserta (Juara Umum)</h3>
-            <p class="text-xs text-slate-500">Kategori dengan peserta kurang dari angka ini tidak akan menyumbang medali di klasemen Juara Umum.</p>
+            <p class="text-xs text-slate-500">Nomor dengan peserta kurang dari angka ini tidak akan menyumbang medali di klasemen Juara Umum.</p>
         </div>
         <div class="flex items-center gap-2 w-full md:w-auto">
             <input type="number" id="setting-min-peserta" value="1" min="1" class="w-20 bg-slate-900 border border-slate-600 p-2 rounded text-white text-center font-bold focus:border-blue-500 outline-none">
@@ -442,7 +442,7 @@
             <form id="form-edit-peserta" class="space-y-4">
                 <input type="hidden" id="edit-id">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Kategori Pertandingan</label>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">Nomor Pertandingan</label>
                     <select id="edit-kategori" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white text-sm focus:border-blue-500 outline-none"></select>
                 </div>
                 <div>
