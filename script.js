@@ -244,43 +244,39 @@ function renderParticipantTable() {
         let catObj = STATE.categories.find(c => c.name === p.kategori);
         let isRandori = catObj && catObj.discipline === 'randori';
         let isRandoriDrawn = isRandori && STATE.matches.some(m => m.kategori === p.kategori);
-        let statusHTML = '';
+        
+        let baseStatus = '';
+        let resultBadge = '';
 
-        // 1. TENTUKAN STATUS UNDIAN (Format Teks Polos)
+        // 1. TENTUKAN STATUS UNDIAN (Dasar)
         if (isRandori) {
             if (isRandoriDrawn) {
-                let poolText = p.pool !== '-' ? `POOL ${p.pool}` : 'Bagan Utama';
-                statusHTML = `<span class="text-xs text-blue-300 font-semibold">${poolText}</span>`;
+                baseStatus = p.pool !== '-' ? `POOL ${p.pool}` : 'Bagan Utama';
             } else {
-                statusHTML = `<span class="text-xs text-red-400 italic">Belum Undian</span>`;
+                baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
             }
         } else {
             if (p.urut > 0) {
                 let poolLabel = p.pool !== '-' && p.pool !== 'SINGLE' ? ` | POOL ${p.pool}` : '';
-                statusHTML = `<span class="text-xs text-blue-300 font-semibold">No.${p.urut}${poolLabel}</span>`;
+                baseStatus = `No.${p.urut}${poolLabel}`;
             } else {
-                statusHTML = `<span class="text-xs text-red-400 italic">Belum Undian</span>`;
+                baseStatus = `<span class="text-red-400 italic">Belum Undian</span>`;
             }
         }
 
-        // 2. TENTUKAN STATUS JUARA 
+        // 2. TENTUKAN STATUS JUARA / GUGUR (Lencana)
         let isJuara = false;
-        let juaraLabel = '';
 
         if (isRandori && isRandoriDrawn) {
             const poolResults = calculateRandoriFinalists(p.kategori);
             if (poolResults) {
-                let isFinalCat = p.kategori.toUpperCase().includes('FINAL');
                 poolResults.forEach(res => {
-                    let isSinglePool = res.pool === '-';
-                    let poolSuffix = isFinalCat || isSinglePool ? "" : ` Pool ${res.pool}`;
-                    
                     if (res.emas === p.nama) {
-                        isJuara = true; juaraLabel = `Juara 1${poolSuffix}`;
+                        isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`;
                     } else if (res.perak === p.nama) {
-                        isJuara = true; juaraLabel = `Juara 2${poolSuffix}`;
+                        isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`;
                     } else if (res.perunggu.some(br => br.nama === p.nama)) {
-                        isJuara = true; juaraLabel = `Juara 3${poolSuffix}`;
+                        isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`;
                     }
                 });
             }
@@ -289,26 +285,27 @@ function renderParticipantTable() {
             if (p.isFinalist && p.scores.b2.final > 0) {
                 let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
                 let rank = catParts.findIndex(x => x.id === p.id);
-                if (rank === 0) { isJuara = true; juaraLabel = "Juara 1"; }
-                else if (rank === 1) { isJuara = true; juaraLabel = "Juara 2"; }
-                else if (rank === 2) { isJuara = true; juaraLabel = "Juara 3"; }
+                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
+                else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
+                else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
             } else if (!p.isFinalist && p.scores.b1.final > 0 && !STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist)) {
                 let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.pool === p.pool && x.scores.b1.final > 0).sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
                 let rank = catParts.findIndex(x => x.id === p.id);
-                let pLabel = p.pool === 'SINGLE' || p.pool === '-' ? '' : ` Pool ${p.pool}`;
-                if (rank === 0) { isJuara = true; juaraLabel = `Juara 1${pLabel}`; }
-                else if (rank === 1) { isJuara = true; juaraLabel = `Juara 2${pLabel}`; }
-                else if (rank === 2) { isJuara = true; juaraLabel = `Juara 3${pLabel}`; }
+                if (rank === 0) { isJuara = true; resultBadge = `<span class="bg-yellow-500 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 1</span>`; }
+                else if (rank === 1) { isJuara = true; resultBadge = `<span class="bg-slate-300 text-black text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 2</span>`; }
+                else if (rank === 2) { isJuara = true; resultBadge = `<span class="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded ml-2 font-bold shadow-sm">Juara 3</span>`; }
             }
         }
 
-        // 3. GABUNGKAN STATUS (Tanpa Lencana/Kotak Background)
-        if (isJuara) {
-            statusHTML += `<br><span class="text-yellow-400 font-bold text-xs tracking-wide"><i class="fas fa-trophy mr-1"></i>${juaraLabel}</span>`;
-        } else {
-            if (p.losses === 1 && isRandoriDrawn) statusHTML += `<br><span class="text-orange-400 text-xs italic">Loser Bracket</span>`;
-            else if (p.losses >= 2 && isRandoriDrawn) statusHTML += `<br><span class="text-red-400 text-xs italic">Gugur</span>`;
+        // Tampilkan lencana Gugur jika bukan Juara
+        if (!isJuara) {
+            let isDrawn = isRandori ? isRandoriDrawn : p.urut > 0;
+            if (p.losses === 1 && isDrawn) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
+            else if (p.losses >= 2 && isDrawn) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
         }
+        
+        // 3. GABUNGKAN DALAM SATU BARIS MENGGUNAKAN FLEXBOX
+        let statusHTML = `<div class="text-xs text-blue-300 font-semibold mt-1 flex items-center">${baseStatus} ${resultBadge}</div>`;
         
         return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
             <td class="p-3 align-top font-bold text-blue-300 w-[35%] whitespace-normal break-words leading-tight">
@@ -318,7 +315,7 @@ function renderParticipantTable() {
                 ${p.kontingen}
             </td>
             <td class="p-3 align-top text-xs text-slate-400 w-[25%] whitespace-normal break-words leading-relaxed">
-                <span class="text-blue-400 font-semibold">${p.kategori}</span><br>${statusHTML}
+                <span class="text-blue-400 font-semibold">${p.kategori}</span>${statusHTML}
             </td>
             <td class="p-3 align-top text-right w-[15%] whitespace-nowrap">
                 <button onclick="openEditModal(${p.id})" class="text-blue-400 mr-2 hover:bg-blue-900/50 p-2 rounded transition-colors"><i class="fas fa-edit"></i></button>
