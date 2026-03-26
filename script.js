@@ -1198,7 +1198,7 @@ function renderJuaraUmum() {
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
         
-        // ATURAN 1: Cek Batas Minimal Peserta
+        // Cek Batas Minimal Peserta
         if (catParts.length < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
@@ -1211,15 +1211,19 @@ function renderJuaraUmum() {
             const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             
-            // ATURAN 2: Jika randori punya Pool, yang dihitung hanya kategori "FINAL". 
-            // Jika randori tunggal (peserta <= 8), hitung langsung!
             if(hasPools && !isFinalCategory) return; 
             
-            const results = calculateRandoriFinalists(cat.name);
-            if(!results) return; 
-            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
-            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
-            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            // PERBAIKAN: Gunakan poolResults dan lakukan forEach untuk membaca data tiap Pool
+            const poolResults = calculateRandoriFinalists(cat.name);
+            if(!poolResults) return; 
+            
+            poolResults.forEach(res => {
+                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
+                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
+                res.perunggu.forEach(p => { 
+                    if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } 
+                });
+            });
         }
     }); 
 
@@ -1354,7 +1358,7 @@ function exportMedaliCSV() {
 
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
-        if (catParts.length < minPeserta) return; // ATURAN MINIMAL PESERTA
+        if (catParts.length < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
             let listCat = catParts.filter(p => p.isFinalist); 
@@ -1366,21 +1370,25 @@ function exportMedaliCSV() {
             const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
             
-            // ATURAN RANDORI TUNGGAL
             if(hasPools && !isFinalCategory) return; 
             
-            const results = calculateRandoriFinalists(cat.name);
-            if(!results) return; 
-            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
-            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
-            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
+            // PERBAIKAN CSV: Gunakan poolResults
+            const poolResults = calculateRandoriFinalists(cat.name);
+            if(!poolResults) return; 
+            
+            poolResults.forEach(res => {
+                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
+                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
+                res.perunggu.forEach(p => { 
+                    if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } 
+                });
+            });
         }
     }); 
 
     let leaderboard = Object.keys(tally).map(kontingen => ({ nama: kontingen, emas: tally[kontingen].g, perak: tally[kontingen].s, perunggu: tally[kontingen].b, total: tally[kontingen].g + tally[kontingen].s + tally[kontingen].b })); 
     leaderboard.sort((a,b) => b.emas - a.emas || b.perak - a.perak || b.perunggu - a.perunggu); 
     
-    // Format Export Menggunakan Titik Koma (;) Khusus Excel Indonesia
     let rows = [["Peringkat", "Kontingen", "Emas", "Perak", "Perunggu", "Total Medali"]];
     leaderboard.forEach((k, i) => { rows.push([i + 1, k.nama, k.emas, k.perak, k.perunggu, k.total]); });
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.map(cell => `"${cell}"`).join(";")).join("\n");
