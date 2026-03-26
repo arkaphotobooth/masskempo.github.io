@@ -26,19 +26,28 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+<header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center py-3 gap-4">
+                
                 <div class="flex items-center gap-3">
+                    
                     <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.5)]">
                         <i class="fas fa-khanda text-white text-xl"></i>
                     </div>
+                    
                     <div>
                         <h1 class="text-xl font-black tracking-tight text-white m-0 leading-none">MASS <span class="text-blue-500">PRO</span></h1>
-                        <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase">Martial Arts System V14.9 Hybrid</span>
+                        
+                        <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase block mt-1">Martial Arts System V14.9 Hybrid</span>
+                        
+                        <div class="flex items-center gap-1.5 mt-1.5">
+                            <div id="koneksi-dot" class="w-2.5 h-2.5 bg-red-500 rounded-full transition-colors duration-300"></div>
+                            <span id="koneksi-text" class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Menghubungkan...</span>
+                        </div>
                     </div>
+
                 </div>
-                
                 <nav class="flex overflow-x-auto w-full md:w-auto hide-scrollbar gap-1 text-sm font-bold pb-1 md:pb-0">
                     <button onclick="switchTab('kategori')" id="tab-kategori" class="active-tab text-blue-500 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800"><i class="fas fa-tags mr-2"></i>Kategori</button>
                     <button onclick="switchTab('atlet')" id="tab-atlet" class="text-slate-400 px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap hover:bg-slate-800 hover:text-blue-400"><i class="fas fa-users mr-2"></i>Atlet</button>
@@ -51,7 +60,7 @@
             </div>
         </div>
     </header>
-
+    
     <main class="flex-grow container mx-auto px-4 py-8">
 
         <section id="section-kategori" class="block animate-fade-in">
