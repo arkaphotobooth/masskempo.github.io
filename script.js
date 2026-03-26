@@ -114,9 +114,14 @@ function switchTab(targetTab) {
     const activeSection = document.getElementById(`section-${targetTab}`); const activeTab = document.getElementById(`tab-${targetTab}`);
     if (activeSection) { activeSection.classList.remove('hidden'); activeSection.classList.add('block'); }
     if (activeTab) { if(targetTab === 'admin') { activeTab.classList.remove('text-red-400'); activeTab.classList.add('active-tab', 'text-red-500'); } else if(targetTab === 'juara') { activeTab.classList.remove('text-yellow-500'); activeTab.classList.add('active-tab', 'text-yellow-400'); } else { activeTab.classList.remove('text-slate-400'); activeTab.classList.add('active-tab', 'text-blue-500'); } }
-    if(targetTab === 'ranking') renderRanking(); if(targetTab === 'scoring') filterPesertaScoring(); if(targetTab === 'drawing') { SWAP_SELECTION = null; updateAllDropdowns(); checkExistingDrawing(); } if(targetTab === 'juara') renderJuaraUmum();
-}
-
+   if(targetTab === 'ranking') renderRanking(); 
+    if(targetTab === 'scoring') filterPesertaScoring(); 
+    if(targetTab === 'drawing') { SWAP_SELECTION = null; updateAllDropdowns(); checkExistingDrawing(); } 
+    if(targetTab === 'juara') renderJuaraUmum();
+    if(targetTab === 'admin') { 
+        let minEl = document.getElementById('setting-min-peserta'); 
+        if(minEl) minEl.value = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1; 
+    }
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if(!name) return; if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
 function renderCategoryList() { const container = document.getElementById('list-kategori'); if(STATE.categories.length === 0) return container.innerHTML = `<span class="text-sm text-slate-500 italic">Belum ada kategori.</span>`; container.innerHTML = STATE.categories.map(c => { let badgeColor = c.discipline === 'randori' ? 'bg-red-700' : 'bg-blue-600'; let disciplineText = c.discipline ? c.discipline.toUpperCase() : 'EMBU'; return `<div class="bg-slate-800 px-4 py-2 rounded-lg text-sm flex items-center gap-3 border border-slate-700 shadow-sm"><span class="${badgeColor} text-[9px] px-1.5 py-0.5 rounded font-bold">${disciplineText}</span><span class="font-bold text-white">${c.name}</span><span class="bg-slate-700 text-[10px] px-2 py-0.5 rounded text-slate-300">${c.type} Org</span><button onclick="deleteCategory(${c.id})" class="text-slate-500 hover:text-red-400 ml-2"><i class="fas fa-times"></i></button></div>` }).join(''); }
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
@@ -179,6 +184,44 @@ function handleCSVUpload(event) {
         saveToLocalStorage(); refreshAllData(); event.target.value = ''; alert(`${count} Tim/Atlet diimport sukses.`); 
     }; 
     reader.readAsText(file); 
+}
+
+// Fungsi Baru: Upload CSV Khusus Kategori
+function handleCategoryCSVUpload(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const rows = e.target.result.split('\n');
+        let count = 0;
+        rows.forEach((row, i) => {
+            if(i === 0 || !row.trim()) return; // Lewati baris pertama (header)
+            let cols = row.split(',').map(item => item.replace(/^"|"$/g, '').trim());
+            if(cols.length >= 3) {
+                const discipline = cols[0].toLowerCase().includes('randori') ? 'randori' : 'embu';
+                const name = cols[1];
+                const type = parseInt(cols[2]) || 1;
+                
+                // Cek agar tidak duplikat
+                if(name && !STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                    STATE.categories.push({ id: Date.now() + i, name, type, discipline });
+                    count++;
+                }
+            }
+        });
+        saveToLocalStorage(); refreshAllData(); event.target.value = ''; alert(`${count} Kategori berhasil diimport.`);
+    };
+    reader.readAsText(file);
+}
+
+// Fungsi Baru: Simpan Setting Minimal Peserta
+function saveMinPesertaSetting() {
+    const val = parseInt(document.getElementById('setting-min-peserta').value);
+    if(!val || val < 1) return alert("Angka minimal adalah 1.");
+    if(!STATE.settings) STATE.settings = {};
+    STATE.settings.minPesertaJuara = val;
+    saveToLocalStorage();
+    alert("Syarat Minimal Peserta diperbarui menjadi " + val);
+    renderJuaraUmum();
 }
 
 document.getElementById('form-peserta').addEventListener('submit', (e) => { e.preventDefault(); const catName = document.getElementById('p-kategori').value; if(!catName) return alert("Pilih kategori!"); STATE.participants.push({ id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value, kategori: catName, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); saveToLocalStorage(); renderParticipantTable(); document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus(); });
@@ -1143,23 +1186,33 @@ function renderRanking() {
 
 function renderJuaraUmum() { 
     let tally = {}; 
+    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1;
+
     STATE.categories.forEach(cat => { 
+        let catParts = STATE.participants.filter(p => p.kategori === cat.name);
+        
+        // ATURAN 1: Cek Batas Minimal Peserta
+        if (catParts.length < minPeserta) return; 
+
         if(cat.discipline === 'embu') {
-            let listCat = STATE.participants.filter(p => p.kategori === cat.name && p.isFinalist); 
+            let listCat = catParts.filter(p => p.isFinalist); 
             let wins = listCat.filter(p => p.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
             if(wins[0]) { tally[wins[0].kontingen] = tally[wins[0].kontingen] || {g:0, s:0, b:0}; tally[wins[0].kontingen].g++; } 
             if(wins[1]) { tally[wins[1].kontingen] = tally[wins[1].kontingen] || {g:0, s:0, b:0}; tally[wins[1].kontingen].s++; } 
             if(wins[2]) { tally[wins[2].kontingen] = tally[wins[2].kontingen] || {g:0, s:0, b:0}; tally[wins[2].kontingen].b++; } 
         } else {
+            const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
-            if(!isFinalCategory) return; 
-            const poolResults = calculateRandoriFinalists(cat.name);
-            if(!poolResults) return; 
-            poolResults.forEach(res => {
-                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
-                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
-                res.perunggu.forEach(p => { if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
-            });
+            
+            // ATURAN 2: Jika randori punya Pool, yang dihitung hanya kategori "FINAL". 
+            // Jika randori tunggal (peserta <= 8), hitung langsung!
+            if(hasPools && !isFinalCategory) return; 
+            
+            const results = calculateRandoriFinalists(cat.name);
+            if(!results) return; 
+            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
+            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
+            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
         }
     }); 
 
@@ -1170,7 +1223,7 @@ function renderJuaraUmum() {
     if(leaderboard.length === 0) return tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 border-b border-slate-700">Belum ada data medali disumbangkan.</td></tr>`; 
     tbody.innerHTML = leaderboard.map((k, i) => `<tr class="hover:bg-slate-800/50 transition-colors"><td class="p-4 text-center font-bold text-slate-500 border-b border-slate-800">${i+1}</td><td class="p-4 font-bold text-white border-b border-slate-800 text-lg whitespace-normal break-words">${k.nama}</td><td class="p-4 text-center font-black text-yellow-500 border-b border-slate-800 bg-yellow-500/10">${k.emas}</td><td class="p-4 text-center font-black text-slate-300 border-b border-slate-800 bg-slate-400/10">${k.perak}</td><td class="p-4 text-center font-black text-amber-600 border-b border-slate-800 bg-amber-600/10">${k.perunggu}</td><td class="p-4 text-center font-black text-blue-400 border-b border-slate-800">${k.total}</td></tr>`).join(''); 
 }
-
+    
 // ---------------------------------------------------------
 // CSV EXPORT LOGIC (MULTIFUNCTION: MICRO & MACRO)
 // ---------------------------------------------------------
@@ -1290,32 +1343,45 @@ function exportHasilCSV(filterCatName = null) {
 
 function exportMedaliCSV() {
     let tally = {}; 
+    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1;
+
     STATE.categories.forEach(cat => { 
+        let catParts = STATE.participants.filter(p => p.kategori === cat.name);
+        if (catParts.length < minPeserta) return; // ATURAN MINIMAL PESERTA
+
         if(cat.discipline === 'embu') {
-            let listCat = STATE.participants.filter(p => p.kategori === cat.name && p.isFinalist); 
+            let listCat = catParts.filter(p => p.isFinalist); 
             let wins = listCat.filter(p => p.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
             if(wins[0]) { tally[wins[0].kontingen] = tally[wins[0].kontingen] || {g:0, s:0, b:0}; tally[wins[0].kontingen].g++; } 
             if(wins[1]) { tally[wins[1].kontingen] = tally[wins[1].kontingen] || {g:0, s:0, b:0}; tally[wins[1].kontingen].s++; } 
             if(wins[2]) { tally[wins[2].kontingen] = tally[wins[2].kontingen] || {g:0, s:0, b:0}; tally[wins[2].kontingen].b++; } 
         } else {
+            const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
             const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
-            if(!isFinalCategory) return; 
-            const poolResults = calculateRandoriFinalists(cat.name);
-            if(!poolResults) return; 
-            poolResults.forEach(res => {
-                if(res.emasKontingen) { tally[res.emasKontingen] = tally[res.emasKontingen] || {g:0, s:0, b:0}; tally[res.emasKontingen].g++; }
-                if(res.perakKontingen) { tally[res.perakKontingen] = tally[res.perakKontingen] || {g:0, s:0, b:0}; tally[res.perakKontingen].s++; }
-                res.perunggu.forEach(p => { if(p.kontingen) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
-            });
+            
+            // ATURAN RANDORI TUNGGAL
+            if(hasPools && !isFinalCategory) return; 
+            
+            const results = calculateRandoriFinalists(cat.name);
+            if(!results) return; 
+            if(results.emas) { let p = STATE.participants.find(x => x.nama === results.emas && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].g++; } }
+            if(results.perak) { let p = STATE.participants.find(x => x.nama === results.perak && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].s++; } }
+            results.perunggu.forEach(pName => { let p = STATE.participants.find(x => x.nama === pName && x.kategori === cat.name); if(p) { tally[p.kontingen] = tally[p.kontingen] || {g:0, s:0, b:0}; tally[p.kontingen].b++; } });
         }
     }); 
 
     let leaderboard = Object.keys(tally).map(kontingen => ({ nama: kontingen, emas: tally[kontingen].g, perak: tally[kontingen].s, perunggu: tally[kontingen].b, total: tally[kontingen].g + tally[kontingen].s + tally[kontingen].b })); 
     leaderboard.sort((a,b) => b.emas - a.emas || b.perak - a.perak || b.perunggu - a.perunggu); 
     
+    // Format Export Menggunakan Titik Koma (;) Khusus Excel Indonesia
     let rows = [["Peringkat", "Kontingen", "Emas", "Perak", "Perunggu", "Total Medali"]];
     leaderboard.forEach((k, i) => { rows.push([i + 1, k.nama, k.emas, k.perak, k.perunggu, k.total]); });
-    downloadCSV(`Klasemen_Medali_Juara_Umum_${new Date().toISOString().slice(0,10)}.csv`, rows);
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.map(cell => `"${cell}"`).join(";")).join("\n");
+    
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `Klasemen_Medali_Juara_Umum_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
 }
 
 function exportCustomCSV() { exportHasilCSV(null); } // Legacy fallback
