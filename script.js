@@ -1256,15 +1256,27 @@ function renderRanking() {
 
 function renderJuaraUmum() { 
     let tally = {}; 
-    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1;
+    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? parseInt(STATE.settings.minPesertaJuara) : 1;
 
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
         const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
         
-        // REVISI ATURAN 1: Cek Batas Minimal Peserta (KECUALI Kategori FINAL)
-        // Jika bukan kategori Final DAN pesertanya kurang dari batas minimal, maka jangan dihitung.
-        if (!isFinalCategory && catParts.length < minPeserta) return; 
+        // --- SMART PARTICIPANT DETECTOR ---
+        // 1. Cari nama dasar kategori dengan mengabaikan kata "FINAL"
+        let baseName = cat.name.replace(/FINAL/ig, '').trim().toLowerCase();
+        
+        // 2. Kumpulkan semua atlet dari kategori awal (Penyisihan/Pool) maupun kategori Final
+        let relatedParticipants = STATE.participants.filter(p => 
+            p.kategori.replace(/FINAL/ig, '').trim().toLowerCase() === baseName
+        );
+        
+        // 3. Hitung jumlah atlet UNIK (Mencegah hitungan ganda jika atlet dicopy dari Pool ke Final)
+        let uniqueAthletes = new Set(relatedParticipants.map(p => p.nama.toLowerCase().trim()));
+        let trueParticipantCount = uniqueAthletes.size;
+
+        // ATURAN 1: Cek Batas Minimal Peserta secara akurat menggunakan True Count!
+        if (trueParticipantCount < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
             let listCat = catParts.filter(p => p.isFinalist); 
@@ -1275,7 +1287,7 @@ function renderJuaraUmum() {
         } else {
             const hasPools = catParts.some(p => p.pool === 'A' || p.pool === 'B');
             
-            // ATURAN 2: Jika Randori punya Pool, yang dihitung hanya kategori "FINAL".
+            // ATURAN 2: Jika Randori punya Pool, yang menyumbang medali hanya kategori "FINAL".
             if(hasPools && !isFinalCategory) return; 
             
             const poolResults = calculateRandoriFinalists(cat.name);
@@ -1418,14 +1430,18 @@ function exportHasilCSV(filterCatName = null) {
 
 function exportMedaliCSV() {
     let tally = {}; 
-    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? STATE.settings.minPesertaJuara : 1;
+    const minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? parseInt(STATE.settings.minPesertaJuara) : 1;
 
     STATE.categories.forEach(cat => { 
         let catParts = STATE.participants.filter(p => p.kategori === cat.name);
         const isFinalCategory = cat.name.toUpperCase().includes('FINAL');
         
-        // REVISI ATURAN 1: Cek Batas Minimal Peserta (KECUALI Kategori FINAL)
-        if (!isFinalCategory && catParts.length < minPeserta) return; 
+        let baseName = cat.name.replace(/FINAL/ig, '').trim().toLowerCase();
+        let relatedParticipants = STATE.participants.filter(p => p.kategori.replace(/FINAL/ig, '').trim().toLowerCase() === baseName);
+        let uniqueAthletes = new Set(relatedParticipants.map(p => p.nama.toLowerCase().trim()));
+        let trueParticipantCount = uniqueAthletes.size;
+
+        if (trueParticipantCount < minPeserta) return; 
 
         if(cat.discipline === 'embu') {
             let listCat = catParts.filter(p => p.isFinalist); 
