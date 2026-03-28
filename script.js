@@ -1564,9 +1564,54 @@ function exportMedaliCSV() {
 }
 
 function exportCustomCSV() { exportHasilCSV(null); } // Legacy fallback
-function resetAllPenilaian() { if(confirm('⚠️ PERHATIAN: Ini akan MENGHAPUS SEMUA SKOR & PARTAI RANDORI. Yakin?')) { STATE.participants.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }; p.finalScore = 0; p.techScore = 0; p.isFinalist = false; p.urutFinal = 0; p.losses = 0; }); STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Nilai di-reset.'); } }
-function resetDataAtlet() { if(confirm('⚠️ PERHATIAN: Ini MENGHAPUS SEMUA ATLET. Yakin?')) { STATE.participants = []; STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Data atlet dihapus.'); } }
-function resetTotalSistem() { if(confirm('🚨 FACTORY RESET: Hapus seluruh sistem?')) { localStorage.clear(); STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } }; refreshAllData(); alert('Sistem kembali ke pengaturan awal.'); location.reload(); } }
+function resetAllPenilaian() { 
+    if(confirm('⚠️ PERHATIAN: Ini akan MENGHAPUS SEMUA SKOR & PARTAI RANDORI di seluruh jaringan. Yakin?')) { 
+        // 1. Bersihkan nilai di memori lokal
+        STATE.participants.forEach(p => { 
+            p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }; 
+            p.finalScore = 0; p.techScore = 0; p.isFinalist = false; p.urutFinal = 0; p.losses = 0; 
+        }); 
+        STATE.matches = []; 
+        
+        // 2. Tembakkan perintah hapus spesifik ke Firebase
+        let updates = {};
+        updates['turnamen_data/participants'] = STATE.participants;
+        updates['turnamen_data/matches'] = null; // 'null' di Firebase berarti HAPUS NODE
+
+        database.ref().update(updates).then(() => {
+            alert('✅ Berhasil: Semua Nilai & Bagan telah di-reset dari server!');
+        }).catch(err => alert("Gagal Reset: " + err));
+    } 
+}
+
+function resetDataAtlet() { 
+    if(confirm('⚠️ PERHATIAN: Ini MENGHAPUS SEMUA ATLET & BAGAN di seluruh jaringan. Yakin?')) { 
+        STATE.participants = []; 
+        STATE.matches = []; 
+        
+        let updates = {};
+        updates['turnamen_data/participants'] = null;
+        updates['turnamen_data/matches'] = null;
+
+        database.ref().update(updates).then(() => {
+            alert('✅ Berhasil: Data Atlet dan Bagan telah dihapus dari server!');
+        }).catch(err => alert("Gagal Hapus Atlet: " + err));
+    } 
+}
+
+function resetTotalSistem() { 
+    if(confirm('🚨 FACTORY RESET: Anda yakin ingin menghapus seluruh sistem (Kategori, Atlet, Nilai) secara permanen dari server?')) { 
+        
+        // Tembak langsung ke inti Root Firebase (Wipe Out)
+        // Kita hanya menyisakan kerangka kosong dan setting default
+        database.ref('turnamen_data').set({
+            settings: { numJudges: 5, minPesertaJuara: 1 }
+        }).then(() => {
+            alert('🔥 Kiamat selesai. Sistem kembali ke pengaturan pabrik.');
+            location.reload();
+        }).catch(err => alert("Gagal Factory Reset: " + err));
+    } 
+}
 
 // =========================================================
 // FITUR BACKUP & RESTORE DATABASE (JSON)
