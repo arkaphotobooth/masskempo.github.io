@@ -233,20 +233,50 @@ function saveMinPesertaSetting() {
 
 document.getElementById('form-peserta').addEventListener('submit', (e) => { e.preventDefault(); const catName = document.getElementById('p-kategori').value; if(!catName) return alert("Pilih kategori!"); STATE.participants.push({ id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value, kategori: catName, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); saveToLocalStorage(); renderParticipantTable(); document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus(); });
 
-function renderParticipantTable() { 
+// --- VARIABEL GLOBAL PAGINATION ---
+let currentAthletePage = 1;
+const ATHLETES_PER_PAGE = 50;
+
+function renderParticipantTable(resetPage = false) { 
+    if (resetPage) currentAthletePage = 1; // Reset ke halaman 1 jika filter berubah
+
     const body = document.getElementById('table-peserta-body'); 
     const filter = document.getElementById('filter-atlet-kategori').value; 
     let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; 
     
-    if(list.length === 0) return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`; 
-    
+    // --- UPDATE UI PAGINATION ---
+    const totalItems = list.length;
+    const totalPages = Math.ceil(totalItems / ATHLETES_PER_PAGE) || 1;
+    if (currentAthletePage > totalPages) currentAthletePage = totalPages;
+
+    const infoEl = document.getElementById('pagination-info');
+    const btnPrev = document.getElementById('btn-prev-page');
+    const btnNext = document.getElementById('btn-next-page');
+
+    if (totalItems === 0) {
+        if(infoEl) infoEl.innerText = `Menampilkan 0 atlet`;
+        if(btnPrev) btnPrev.disabled = true;
+        if(btnNext) btnNext.disabled = true;
+        return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`;
+    }
+
+    const startIndex = (currentAthletePage - 1) * ATHLETES_PER_PAGE;
+    const endIndex = Math.min(startIndex + ATHLETES_PER_PAGE, totalItems);
+
+    if(infoEl) infoEl.innerText = `Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalItems} Atlet`;
+    if(btnPrev) btnPrev.disabled = currentAthletePage === 1;
+    if(btnNext) btnNext.disabled = currentAthletePage === totalPages;
+    // ----------------------------
+
     let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); 
+    
+    // POTONG DATA UNTUK HALAMAN INI SAJA (MAX 50)
+    let paginatedList = sortedList.slice(startIndex, endIndex);
 
     // --- STRATEGI A: MEMOIZATION (BUKU CONTEKAN) ---
-    // Hitung status bagan & juara SATU KALI saja per kategori, bukan ratusan kali!
     let cachedRandoriResults = {};
     let cachedRandoriDrawn = {};
-    let uniqueCategories = [...new Set(sortedList.map(p => p.kategori))];
+    let uniqueCategories = [...new Set(paginatedList.map(p => p.kategori))];
     
     uniqueCategories.forEach(catName => {
         let catObj = STATE.categories.find(c => c.name === catName);
@@ -260,11 +290,9 @@ function renderParticipantTable() {
     });
     // -----------------------------------------------
 
-    body.innerHTML = sortedList.map(p => { 
+    body.innerHTML = paginatedList.map(p => { 
         let catObj = STATE.categories.find(c => c.name === p.kategori);
         let isRandori = catObj && catObj.discipline === 'randori';
-        
-        // Ambil status dari buku contekan (Sangat Cepat!)
         let isRandoriDrawn = isRandori ? cachedRandoriDrawn[p.kategori] : false;
         
         let baseStatus = '';
@@ -290,7 +318,6 @@ function renderParticipantTable() {
         let isJuara = false;
 
         if (isRandori && isRandoriDrawn) {
-            // Ambil hasil juara dari buku contekan (Tidak perlu kalkulasi ulang!)
             const poolResults = cachedRandoriResults[p.kategori];
             if (poolResults) {
                 poolResults.forEach(res => {
@@ -304,7 +331,6 @@ function renderParticipantTable() {
                 });
             }
         } else if (!isRandori && p.urut > 0) {
-            // Logika Status Juara untuk Embu
             if (p.isFinalist && p.scores.b2.final > 0) {
                 let catParts = STATE.participants.filter(x => x.kategori === p.kategori && x.isFinalist && x.scores.b2.final > 0).sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
                 let rank = catParts.findIndex(x => x.id === p.id);
@@ -320,14 +346,12 @@ function renderParticipantTable() {
             }
         }
 
-        // Tampilkan lencana Gugur jika bukan Juara
         if (!isJuara) {
             let isDrawn = isRandori ? isRandoriDrawn : p.urut > 0;
             if (p.losses === 1 && isDrawn) resultBadge = `<span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Loser Bracket</span>`;
             else if (p.losses >= 2 && isDrawn) resultBadge = `<span class="bg-red-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 font-bold shadow-sm">Gugur</span>`;
         }
         
-        // 3. GABUNGKAN DALAM SATU BARIS MENGGUNAKAN FLEXBOX
         let statusHTML = `<div class="text-xs text-blue-300 font-semibold mt-1 flex items-center">${baseStatus} ${resultBadge}</div>`;
         
         return `<tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
@@ -346,6 +370,12 @@ function renderParticipantTable() {
             </td>
         </tr>`; 
     }).join(''); 
+}
+
+// FUNGSI UNTUK PINDAH HALAMAN
+function changeAthletePage(delta) {
+    currentAthletePage += delta;
+    renderParticipantTable();
 }
 
 function deletePeserta(id) { if(confirm('Hapus atlet ini?')) { STATE.participants = STATE.participants.filter(p => p.id !== id); saveToLocalStorage(); renderParticipantTable(); } }
