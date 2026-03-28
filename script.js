@@ -614,7 +614,14 @@ function undoMatchResult(matchId) {
     recalculateAllLosses(match.kategori);
     processAutoWins(match.kategori);
     
-    saveToLocalStorage(); renderVisualBracket(match.kategori); filterPesertaScoring();
+    // --- STRATEGI B: BRANCH UPDATE ---
+    let updates = {};
+    updates['turnamen_data/matches'] = STATE.matches;
+    updates['turnamen_data/participants'] = STATE.participants;
+    
+    database.ref().update(updates).then(() => {
+        renderVisualBracket(match.kategori); filterPesertaScoring();
+    }).catch(err => alert("Gagal Undo: " + err));
 }
 
 function forwardParticipant(targetMatchNum, participantId, catName, poolName) {
@@ -1018,7 +1025,18 @@ function saveRandoriMatchResult() {
             if(match.nextL) forwardParticipant(match.nextL, loserId, match.kategori, match.pool); 
         }
 
-        processAutoWins(match.kategori); saveToLocalStorage(); alert("Partai Selesai! Pemenang dicatat."); filterPesertaScoring(); checkExistingDrawing();
+        processAutoWins(match.kategori); 
+        
+        // --- STRATEGI B: BRANCH UPDATE ---
+        // Menembak spesifik ke cabang data, menghemat ukuran payload
+        let updates = {};
+        updates['turnamen_data/matches'] = STATE.matches;
+        updates['turnamen_data/participants'] = STATE.participants;
+        
+        database.ref().update(updates).then(() => {
+            alert("Partai Selesai! Pemenang dicatat."); 
+            filterPesertaScoring(); checkExistingDrawing();
+        }).catch(err => alert("Gagal Simpan: " + err));
     }
 }
 
@@ -1078,7 +1096,10 @@ function saveScore(babakOverride) {
     let babak = document.getElementById('select-babak').value; if(babakOverride === 1 || babakOverride === 2) babak = `b${babakOverride}`; 
     for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); if(sEl && sEl.value === "") return alert(`TOTAL NILAI Wasit ${i} kosong!`); }
         
-    const calc = calculateLive(); const p = STATE.participants.find(i => i.id === pId); 
+    const calc = calculateLive(); 
+    const pIndex = STATE.participants.findIndex(i => i.id === pId); 
+    const p = STATE.participants[pIndex]; 
+    
     p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; 
     
     if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
@@ -1087,8 +1108,17 @@ function saveScore(babakOverride) {
         if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } 
         else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } 
     } 
-    saveToLocalStorage(); alert(`SKOR TERSIMPAN!`); clearInterval(UI.timerInterval); UI.timerInterval = null; 
-    document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; 
+    
+    // --- STRATEGI B: GRANULAR UPDATE (SUPER CEPAT) ---
+    // Hanya mengirim data pIndex (1 Atlet) ke server. Bebas tabrakan data antar matras!
+    let updates = {};
+    updates[`turnamen_data/participants/${pIndex}`] = p;
+    
+    database.ref().update(updates).then(() => {
+        alert(`SKOR TERSIMPAN!`); 
+        clearInterval(UI.timerInterval); UI.timerInterval = null; 
+        document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; 
+    }).catch(err => alert("Gagal Simpan: " + err));
 }
 
 function toggleTimer() { const btn = document.getElementById('btn-timer'); if(UI.timerInterval) { clearInterval(UI.timerInterval); UI.timerInterval = null; btn.innerText = 'LANJUTKAN'; btn.classList.replace('bg-red-600', 'bg-yellow-600'); btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); } else { UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); btn.innerText = 'STOP'; btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold'; } }
