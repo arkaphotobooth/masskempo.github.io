@@ -1567,3 +1567,71 @@ function exportCustomCSV() { exportHasilCSV(null); } // Legacy fallback
 function resetAllPenilaian() { if(confirm('⚠️ PERHATIAN: Ini akan MENGHAPUS SEMUA SKOR & PARTAI RANDORI. Yakin?')) { STATE.participants.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }; p.finalScore = 0; p.techScore = 0; p.isFinalist = false; p.urutFinal = 0; p.losses = 0; }); STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Nilai di-reset.'); } }
 function resetDataAtlet() { if(confirm('⚠️ PERHATIAN: Ini MENGHAPUS SEMUA ATLET. Yakin?')) { STATE.participants = []; STATE.matches = []; saveToLocalStorage(); refreshAllData(); alert('Data atlet dihapus.'); } }
 function resetTotalSistem() { if(confirm('🚨 FACTORY RESET: Hapus seluruh sistem?')) { localStorage.clear(); STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5 } }; refreshAllData(); alert('Sistem kembali ke pengaturan awal.'); location.reload(); } }
+
+// =========================================================
+// FITUR BACKUP & RESTORE DATABASE (JSON)
+// =========================================================
+
+function backupDatabase() {
+    // 1. Kumpulkan semua data STATE saat ini
+    const dataToBackup = {
+        categories: STATE.categories,
+        participants: STATE.participants,
+        matches: STATE.matches,
+        settings: STATE.settings,
+        backupDate: new Date().toISOString() // Catat waktu backup
+    };
+    
+    // 2. Ubah jadi file JSON dan download
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToBackup, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `Backup_MASS_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchorNode); 
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+function restoreDatabase(event) {
+    const file = event.target.files[0]; 
+    if (!file) return;
+    
+    // 1. Peringatan keras sebelum menimpa data server
+    if(!confirm("⚠️ PERINGATAN KRITIS!\n\nMere-store data akan MENGHAPUS & MENIMPA seluruh data turnamen online saat ini dengan data dari file.\n\nApakah Anda sangat yakin ingin melanjutkan?")) {
+        event.target.value = ''; 
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            // 2. Baca isi file JSON
+            const importedData = JSON.parse(e.target.result);
+            
+            // 3. Validasi keamanan sederhana
+            if (!importedData.categories && !importedData.participants) {
+                throw new Error("Format file JSON tidak valid atau bukan file backup MASS.");
+            }
+
+            // 4. Tembakkan langsung ke Firebase Database!
+            // (Tidak perlu saveToLocalStorage karena listener Firebase akan otomatis 
+            // menarik data ini dan merefresh layar di SEMUA laptop panitia secara instan)
+            database.ref('turnamen_data').set({
+                categories: importedData.categories || [],
+                participants: importedData.participants || [],
+                matches: importedData.matches || [],
+                settings: importedData.settings || { numJudges: 5, minPesertaJuara: 1 }
+            }).then(() => {
+                alert("✅ RESTORE BERHASIL!\nData turnamen telah dipulihkan dan disinkronkan ke seluruh jaringan.");
+            }).catch(err => {
+                alert("❌ GAGAL RESTORE ke Server: " + err.message);
+            });
+
+        } catch (error) {
+            alert("❌ GAGAL MEMBACA FILE:\n" + error.message);
+        } finally {
+            event.target.value = ''; // Reset input
+        }
+    };
+    reader.readAsText(file);
+}
