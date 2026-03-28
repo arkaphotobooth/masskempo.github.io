@@ -237,13 +237,35 @@ function renderParticipantTable() {
     const body = document.getElementById('table-peserta-body'); 
     const filter = document.getElementById('filter-atlet-kategori').value; 
     let list = filter && filter !== 'all' ? STATE.participants.filter(p => p.kategori === filter) : STATE.participants; 
+    
     if(list.length === 0) return body.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500">Tidak ada data.</td></tr>`; 
+    
     let sortedList = [...list].sort((a,b) => a.kategori === b.kategori ? a.urut - b.urut : a.kategori.localeCompare(b.kategori)); 
+
+    // --- STRATEGI A: MEMOIZATION (BUKU CONTEKAN) ---
+    // Hitung status bagan & juara SATU KALI saja per kategori, bukan ratusan kali!
+    let cachedRandoriResults = {};
+    let cachedRandoriDrawn = {};
+    let uniqueCategories = [...new Set(sortedList.map(p => p.kategori))];
+    
+    uniqueCategories.forEach(catName => {
+        let catObj = STATE.categories.find(c => c.name === catName);
+        if (catObj && catObj.discipline === 'randori') {
+            let isDrawn = STATE.matches.some(m => m.kategori === catName);
+            cachedRandoriDrawn[catName] = isDrawn;
+            if (isDrawn) {
+                cachedRandoriResults[catName] = calculateRandoriFinalists(catName);
+            }
+        }
+    });
+    // -----------------------------------------------
 
     body.innerHTML = sortedList.map(p => { 
         let catObj = STATE.categories.find(c => c.name === p.kategori);
         let isRandori = catObj && catObj.discipline === 'randori';
-        let isRandoriDrawn = isRandori && STATE.matches.some(m => m.kategori === p.kategori);
+        
+        // Ambil status dari buku contekan (Sangat Cepat!)
+        let isRandoriDrawn = isRandori ? cachedRandoriDrawn[p.kategori] : false;
         
         let baseStatus = '';
         let resultBadge = '';
@@ -268,7 +290,8 @@ function renderParticipantTable() {
         let isJuara = false;
 
         if (isRandori && isRandoriDrawn) {
-            const poolResults = calculateRandoriFinalists(p.kategori);
+            // Ambil hasil juara dari buku contekan (Tidak perlu kalkulasi ulang!)
+            const poolResults = cachedRandoriResults[p.kategori];
             if (poolResults) {
                 poolResults.forEach(res => {
                     if (res.emas === p.nama) {
