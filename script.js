@@ -814,51 +814,28 @@ function renderEmbuLayout(catName, container, poolsConfig) {
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
-    const panelEmbu = document.getElementById('draw-panel-embu'); 
-    const panelRandori = document.getElementById('draw-panel-randori'); 
-    const panelEmpty = document.getElementById('draw-panel-empty'); 
-    const resultDiv = document.getElementById('drawing-result'); 
-    
+    const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
     panelEmbu.classList.add('hidden'); panelRandori.classList.add('hidden'); panelEmpty.classList.add('hidden'); resultDiv.innerHTML = ''; document.getElementById('randori-bracket-container').classList.add('hidden');
     
-    // --- INJEKSI DUA TOMBOL (EXCEL & PDF) ---
+    // Injeksi Tombol Unduh Jadwal
     let drawHeader = document.querySelector('#section-drawing > div:first-child');
-    let exportContainer = document.getElementById('draw-export-container');
-    
-    if (!exportContainer && drawHeader) {
-        exportContainer = document.createElement('div');
-        exportContainer.id = 'draw-export-container';
-        exportContainer.className = 'flex flex-col md:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0';
-
-        // 1. Tombol Excel (Hijau)
-        let btnExcel = document.createElement('button');
-        btnExcel.className = 'bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 flex-1 md:flex-none';
-        btnExcel.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH EXCEL';
-        btnExcel.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
-
-        // 2. Tombol PDF (Merah)
-        let btnPdf = document.createElement('button');
-        btnPdf.id = 'btn-cetak-pdf-resmi'; // <--- TAMBAHKAN BARIS INI
-        btnPdf.className = 'bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 flex-1 md:flex-none';
-        btnPdf.innerHTML = '<i class="fas fa-file-pdf"></i> CETAK PDF';
-        btnPdf.onclick = () => generateOfficialPDF(document.getElementById('draw-select-kategori').value);
-
-        exportContainer.appendChild(btnExcel);
-        exportContainer.appendChild(btnPdf);
-        drawHeader.appendChild(exportContainer);
+    let microDrawBtn = document.getElementById('btn-micro-draw-export');
+    if (!microDrawBtn && drawHeader) {
+        microDrawBtn = document.createElement('button');
+        microDrawBtn.id = 'btn-micro-draw-export';
+        microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0';
+        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL';
+        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
+        drawHeader.appendChild(microDrawBtn);
     }
-    
-    // Sembunyikan atau tampilkan kedua tombol berdasarkan pilihan kategori
-    if(exportContainer) {
-        if(!catName) exportContainer.classList.add('hidden');
-        else exportContainer.classList.remove('hidden');
-    }
-    // ----------------------------------------
     
     if(!catName) { 
         panelEmpty.classList.remove('hidden'); 
+        if(microDrawBtn) microDrawBtn.classList.add('hidden');
         return; 
     }
+    
+    if(microDrawBtn) microDrawBtn.classList.remove('hidden');
     
     const categoryObj = STATE.categories.find(c => c.name === catName); let list = STATE.participants.filter(p => p.kategori === catName); 
     
@@ -1702,88 +1679,4 @@ function restoreDatabase(event) {
         }
     };
     reader.readAsText(file);
-}
-// =========================================================
-// FITUR CETAK BAGAN RESMI (PDF GENERATOR)
-// =========================================================
-
-async function generateOfficialPDF(catName) {
-    if (!catName) return alert("Pilih kategori terlebih dahulu!");
-    const categoryObj = STATE.categories.find(c => c.name === catName);
-    if (!categoryObj || categoryObj.discipline !== 'randori') return alert("Cetak PDF saat ini dioptimalkan untuk bagan Randori.");
-
-    // 1. Tampilkan Efek Loading di Tombol (Diperbaiki)
-    const btnPdf = document.getElementById('btn-cetak-pdf-resmi');
-    const originalBtnText = btnPdf ? btnPdf.innerHTML : "CETAK PDF";
-    if (btnPdf) {
-        btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMPROSES...';
-        btnPdf.disabled = true;
-    }
-
-    try {
-        const targetArea = document.getElementById('pdf-bracket-area');
-        if (!targetArea) throw new Error("Kanvas HTML tidak ditemukan. Cek file index.html Anda!");
-
-        // 2. Isi Data Teks di Kop Surat & Footer
-        document.getElementById('pdf-kategori-title').innerText = `NOMOR: ${catName.toUpperCase()}`;
-        
-        const poolResults = calculateRandoriFinalists(catName);
-        let pWin = "-", pRun = "-";
-        if(poolResults && poolResults.length > 0) {
-            pWin = poolResults[0].emas ? `${poolResults[0].emas} (${poolResults[0].emasKontingen})` : "-";
-            pRun = poolResults[0].perak ? `${poolResults[0].perak} (${poolResults[0].perakKontingen})` : "-";
-        }
-        document.getElementById('pdf-winner-1').innerText = pWin;
-        document.getElementById('pdf-winner-2').innerText = pRun;
-
-        // 3. Kloning Bagan
-        const sourceBracket = document.getElementById('randori-bracket-view');
-        targetArea.innerHTML = ''; 
-        const clonedBracket = sourceBracket.cloneNode(true);
-        targetArea.appendChild(clonedBracket);
-
-        // 4. INJEKSI CSS PEMUTIH
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #pdf-bracket-area * { color: black !important; border-color: black !important; background-color: transparent !important; box-shadow: none !important; }
-            #pdf-bracket-area .bg-slate-800 { background-color: white !important; border-width: 2px !important; }
-            #pdf-bracket-area button { display: none !important; } 
-            #pdf-bracket-area .text-slate-500, #pdf-bracket-area .text-slate-400 { color: #333 !important; font-weight: bold; }
-            #pdf-bracket-area .text-yellow-400 { color: black !important; border-bottom: 2px solid black; display: inline-block; padding-bottom: 4px; }
-            #pdf-bracket-area .line-through { text-decoration-color: red !important; text-decoration-thickness: 2px !important; color: #666 !important; }
-            #pdf-bracket-area { transform: scale(0.85); transform-origin: top left; }
-        `;
-        targetArea.appendChild(style);
-
-        // Tunggu sebentar
-        await new Promise(r => setTimeout(r, 500));
-
-        // 5. Eksekusi Kamera html2canvas
-        const paper = document.getElementById('pdf-paper');
-        const canvas = await window.html2canvas(paper, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff"
-        });
-
-        // 6. Cetak ke jsPDF (Diperbaiki agar kebal error)
-        const imgData = canvas.toDataURL('image/png');
-        const jsPDFConstructor = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-        const pdf = new jsPDFConstructor('l', 'mm', 'a4'); 
-        
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Bagan_Resmi_${catName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        alert("Gagal mencetak PDF:\n" + error.message);
-    } finally {
-        if (btnPdf) {
-            btnPdf.innerHTML = originalBtnText;
-            btnPdf.disabled = false;
-        }
-    }
 }
