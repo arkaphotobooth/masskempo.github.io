@@ -1702,3 +1702,84 @@ function restoreDatabase(event) {
     };
     reader.readAsText(file);
 }
+// =========================================================
+// FITUR CETAK BAGAN RESMI (PDF GENERATOR)
+// =========================================================
+
+async function generateOfficialPDF(catName) {
+    if (!catName) return alert("Pilih kategori terlebih dahulu!");
+    const categoryObj = STATE.categories.find(c => c.name === catName);
+    if (!categoryObj || categoryObj.discipline !== 'randori') return alert("Cetak PDF saat ini dioptimalkan untuk bagan Randori.");
+
+    // 1. Tampilkan Efek Loading di Tombol
+    const btnPdf = document.querySelector('button[onclick^="generateOfficialPDF"]');
+    const originalBtnText = btnPdf.innerHTML;
+    btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> MEMPROSES...';
+    btnPdf.disabled = true;
+
+    try {
+        // 2. Isi Data Teks di Kop Surat & Footer
+        document.getElementById('pdf-kategori-title').innerText = `NOMOR: ${catName.toUpperCase()}`;
+        
+        const poolResults = calculateRandoriFinalists(catName);
+        let pWin = "-", pRun = "-";
+        if(poolResults && poolResults.length > 0) {
+            pWin = poolResults[0].emas ? `${poolResults[0].emas} (${poolResults[0].emasKontingen})` : "-";
+            pRun = poolResults[0].perak ? `${poolResults[0].perak} (${poolResults[0].perakKontingen})` : "-";
+        }
+        document.getElementById('pdf-winner-1').innerText = pWin;
+        document.getElementById('pdf-winner-2').innerText = pRun;
+
+        // 3. Kloning Bagan (Copy-Paste elemen visual dari layar ke Kanvas Siluman)
+        const sourceBracket = document.getElementById('randori-bracket-view');
+        const targetArea = document.getElementById('pdf-bracket-area');
+        
+        targetArea.innerHTML = ''; // Bersihkan kanvas sisa sebelumnya
+        const clonedBracket = sourceBracket.cloneNode(true);
+        targetArea.appendChild(clonedBracket);
+
+        // 4. INJEKSI CSS PEMUTIH (Mengubah tema Dark Mode jadi Kertas HVS Putih)
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #pdf-bracket-area * { color: black !important; border-color: black !important; background-color: transparent !important; box-shadow: none !important; }
+            #pdf-bracket-area .bg-slate-800 { background-color: white !important; border-width: 2px !important; }
+            #pdf-bracket-area button { display: none !important; } /* Sembunyikan tombol Undo/Hapus */
+            #pdf-bracket-area .text-slate-500, #pdf-bracket-area .text-slate-400 { color: #333 !important; font-weight: bold; }
+            #pdf-bracket-area .text-yellow-400 { color: black !important; border-bottom: 2px solid black; display: inline-block; padding-bottom: 4px; }
+            #pdf-bracket-area .line-through { text-decoration-color: red !important; text-decoration-thickness: 2px !important; color: #666 !important; }
+            #pdf-bracket-area { transform: scale(0.85); transform-origin: top left; } /* Mengecilkan sedikit agar muat di kertas A4 */
+        `;
+        targetArea.appendChild(style);
+
+        // Tunggu 0.5 detik agar browser selesai me-render font dan CSS baru
+        await new Promise(r => setTimeout(r, 500));
+
+        // 5. Eksekusi Kamera html2canvas
+        const paper = document.getElementById('pdf-paper');
+        const canvas = await html2canvas(paper, {
+            scale: 2, // Resolusi HD
+            useCORS: true,
+            backgroundColor: "#ffffff"
+        });
+
+        // 6. Cetak ke jsPDF
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('l', 'mm', 'a4'); // 'l' = Landscape, 'a4' = Kertas A4
+        
+        // Sesuaikan ukuran gambar dengan lebar kertas A4 (297mm)
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Bagan_Resmi_${catName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        alert("Terjadi kesalahan saat mencetak PDF. Pastikan koneksi internet stabil.");
+    } finally {
+        // Kembalikan tombol ke keadaan semula
+        btnPdf.innerHTML = originalBtnText;
+        btnPdf.disabled = false;
+    }
+}
