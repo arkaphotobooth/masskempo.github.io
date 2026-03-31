@@ -1453,7 +1453,7 @@ function downloadCSV(filename, rows) {
 }
 
 function exportDrawingCSV(filterCatName = null) {
-    let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Urut / Partai", "Sudut Merah (AKA) / Atlet", "Sudut Putih (SHIRO) / Kontingen", "Status"]];
+    let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Partai", "Sudut Merah (AKA)", "Skor Merah", "Sudut Putih (SHIRO)", "Skor Putih", "Status"]];
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
     
     categoriesToExport.forEach(cat => {
@@ -1462,7 +1462,7 @@ function exportDrawingCSV(filterCatName = null) {
             catParts.forEach(p => {
                 let poolLabel = p.isFinalist && p.urutFinal > 0 ? "FINAL" : `Pool ${p.pool}`;
                 let noUrut = p.isFinalist && p.urutFinal > 0 ? p.urutFinal : p.urut;
-                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.kontingen, ""]);
+                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.scores.b1.final||0, p.kontingen, p.scores.b2.final||0, ""]);
             });
         } else {
             let catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
@@ -1473,7 +1473,7 @@ function exportDrawingCSV(filterCatName = null) {
                 let nPth = m.putihId === -1 ? "BYE" : (pth ? pth.nama : "Menunggu");
                 let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
                 let poolLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
-                rows.push(["RANDORI", cat.name, `${poolLabel} - ${m.babak}`, `G-${displayNum}`, nMrh, nPth, m.status === 'done' ? "Selesai" : ""]);
+                rows.push(["RANDORI", cat.name, `${poolLabel} - ${m.babak}`, `G-${displayNum}`, nMrh, m.skorMerah, nPth, m.skorPutih, m.status === 'done' ? "Selesai" : ""]);
             });
         }
     });
