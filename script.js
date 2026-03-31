@@ -814,28 +814,50 @@ function renderEmbuLayout(catName, container, poolsConfig) {
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
-    const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
+    const panelEmbu = document.getElementById('draw-panel-embu'); 
+    const panelRandori = document.getElementById('draw-panel-randori'); 
+    const panelEmpty = document.getElementById('draw-panel-empty'); 
+    const resultDiv = document.getElementById('drawing-result'); 
+    
     panelEmbu.classList.add('hidden'); panelRandori.classList.add('hidden'); panelEmpty.classList.add('hidden'); resultDiv.innerHTML = ''; document.getElementById('randori-bracket-container').classList.add('hidden');
     
-    // Injeksi Tombol Unduh Jadwal
+    // --- INJEKSI DUA TOMBOL (EXCEL & PDF) ---
     let drawHeader = document.querySelector('#section-drawing > div:first-child');
-    let microDrawBtn = document.getElementById('btn-micro-draw-export');
-    if (!microDrawBtn && drawHeader) {
-        microDrawBtn = document.createElement('button');
-        microDrawBtn.id = 'btn-micro-draw-export';
-        microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0';
-        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL';
-        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
-        drawHeader.appendChild(microDrawBtn);
+    let exportContainer = document.getElementById('draw-export-container');
+    
+    if (!exportContainer && drawHeader) {
+        exportContainer = document.createElement('div');
+        exportContainer.id = 'draw-export-container';
+        exportContainer.className = 'flex flex-col md:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0';
+
+        // 1. Tombol Excel (Hijau)
+        let btnExcel = document.createElement('button');
+        btnExcel.className = 'bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 flex-1 md:flex-none';
+        btnExcel.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH EXCEL';
+        btnExcel.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
+
+        // 2. Tombol PDF (Merah)
+        let btnPdf = document.createElement('button');
+        btnPdf.className = 'bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 flex-1 md:flex-none';
+        btnPdf.innerHTML = '<i class="fas fa-file-pdf"></i> CETAK PDF';
+        btnPdf.onclick = () => generateOfficialPDF(document.getElementById('draw-select-kategori').value);
+
+        exportContainer.appendChild(btnExcel);
+        exportContainer.appendChild(btnPdf);
+        drawHeader.appendChild(exportContainer);
     }
+    
+    // Sembunyikan atau tampilkan kedua tombol berdasarkan pilihan kategori
+    if(exportContainer) {
+        if(!catName) exportContainer.classList.add('hidden');
+        else exportContainer.classList.remove('hidden');
+    }
+    // ----------------------------------------
     
     if(!catName) { 
         panelEmpty.classList.remove('hidden'); 
-        if(microDrawBtn) microDrawBtn.classList.add('hidden');
         return; 
     }
-    
-    if(microDrawBtn) microDrawBtn.classList.remove('hidden');
     
     const categoryObj = STATE.categories.find(c => c.name === catName); let list = STATE.participants.filter(p => p.kategori === catName); 
     
