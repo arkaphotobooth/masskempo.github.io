@@ -570,9 +570,9 @@ function generateRandoriBracket() {
                     matchNum: t.matchNum + numOffset,
                     babak: t.babak, col: t.col,
                     nextW: typeof t.nextW === 'number' ? t.nextW + numOffset : t.nextW,
-                    nextWSlot: t.nextWSlot,
+                    nextWSlot: t.nextWSlot || null,
                     nextL: typeof t.nextL === 'number' ? t.nextL + numOffset : t.nextL,
-                    nextLSlot: t.nextLSlot,
+                    nextLSlot: t.nextLSlot || null,
                     merahId: t.slot1 !== null ? finalSlots[t.slot1 - 1] : null,
                     putihId: t.slot2 !== null ? finalSlots[t.slot2 - 1] : null,
                     winnerId: null, loserId: null, status: 'pending', skorMerah: 0, skorPutih: 0
