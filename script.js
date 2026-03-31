@@ -480,17 +480,32 @@ function generateRandoriBracket() {
         } else if (count <= 32) {
             if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah otomatis menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
             let shuffledAthletes = [...athletes];
-            for (let i = shuffledAthletes.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                let temp = shuffledAthletes[i]; shuffledAthletes[i] = shuffledAthletes[j]; shuffledAthletes[j] = temp;
+            
+            // Aturan khusus: Jangan acak atlet jika nama kategori mengandung kata "FINAL"
+            if (!isFinalCategory) {
+                for (let i = shuffledAthletes.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    let temp = shuffledAthletes[i]; shuffledAthletes[i] = shuffledAthletes[j]; shuffledAthletes[j] = temp;
+                }
             }
+            
             let mid = Math.ceil(count / 2);
             let poolA = shuffledAthletes.slice(0, mid);
             let poolB = shuffledAthletes.slice(mid);
+            
             poolA.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'A'; });
             poolB.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'B'; });
-            poolConfigs.push({ name: 'A', template: TEMPLATE_16, size: 16, athletes: poolA, isCrossover: false });
-            poolConfigs.push({ name: 'B', template: TEMPLATE_16, size: 16, athletes: poolB, isCrossover: false });
+            
+            // --- LOGIKA CERDAS PEMILIH TEMPLATE POOL A ---
+            let sizeA = poolA.length <= 4 ? 4 : (poolA.length <= 8 ? 8 : 16);
+            let templateA = sizeA === 4 ? TEMPLATE_4_STANDARD : (sizeA === 8 ? TEMPLATE_8_PERKEMI : TEMPLATE_16);
+            poolConfigs.push({ name: 'A', template: templateA, size: sizeA, athletes: poolA, isCrossover: false });
+
+            // --- LOGIKA CERDAS PEMILIH TEMPLATE POOL B ---
+            let sizeB = poolB.length <= 4 ? 4 : (poolB.length <= 8 ? 8 : 16);
+            let templateB = sizeB === 4 ? TEMPLATE_4_STANDARD : (sizeB === 8 ? TEMPLATE_8_PERKEMI : TEMPLATE_16);
+            poolConfigs.push({ name: 'B', template: templateB, size: sizeB, athletes: poolB, isCrossover: false });
+            
         } else {
             return alert("Sistem saat ini mendukung maksimal 32 peserta per nomor.");
         }
