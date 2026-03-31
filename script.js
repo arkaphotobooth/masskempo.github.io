@@ -1453,7 +1453,8 @@ function downloadCSV(filename, rows) {
 }
 
 function exportDrawingCSV(filterCatName = null) {
-    let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Partai", "Sudut Merah (AKA)", "Skor Merah", "Sudut Putih (SHIRO)", "Skor Putih", "Status"]];
+    // KITA TAMBAHKAN KOLOM KONTINGEN MERAH & PUTIH DI SINI
+    let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Partai", "Sudut Merah (AKA)", "Kontingen Merah", "Skor Merah", "Sudut Putih (SHIRO)", "Kontingen Putih", "Skor Putih", "Status"]];
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
     
     categoriesToExport.forEach(cat => {
@@ -1462,18 +1463,25 @@ function exportDrawingCSV(filterCatName = null) {
             catParts.forEach(p => {
                 let poolLabel = p.isFinalist && p.urutFinal > 0 ? "FINAL" : `Pool ${p.pool}`;
                 let noUrut = p.isFinalist && p.urutFinal > 0 ? p.urutFinal : p.urut;
-                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.scores.b1.final||0, p.kontingen, p.scores.b2.final||0, ""]);
+                // Embu disesuaikan dengan format kolom baru
+                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.kontingen, p.scores.b1.final||0, "", "", p.scores.b2.final||0, ""]);
             });
         } else {
             let catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
             catMatches.forEach(m => {
                 let mrh = STATE.participants.find(x => x.id === m.merahId);
                 let pth = STATE.participants.find(x => x.id === m.putihId);
+                
                 let nMrh = m.merahId === -1 ? "BYE" : (mrh ? mrh.nama : "Menunggu");
+                let kMrh = m.merahId === -1 ? "-" : (mrh ? mrh.kontingen : "-");
+                
                 let nPth = m.putihId === -1 ? "BYE" : (pth ? pth.nama : "Menunggu");
+                let kPth = m.putihId === -1 ? "-" : (pth ? pth.kontingen : "-");
+                
                 let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
                 let poolLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
-                rows.push(["RANDORI", cat.name, `${poolLabel} - ${m.babak}`, `G-${displayNum}`, nMrh, m.skorMerah, nPth, m.skorPutih, m.status === 'done' ? "Selesai" : ""]);
+                
+                rows.push(["RANDORI", cat.name, `${poolLabel} - ${m.babak}`, `G-${displayNum}`, nMrh, kMrh, m.skorMerah, nPth, kPth, m.skorPutih, m.status === 'done' ? "Selesai" : ""]);
             });
         }
     });
