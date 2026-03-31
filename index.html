@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .bg-dark-card { background-color: #1e293b; }
@@ -499,5 +501,40 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script src="script.js"></script>
+<div id="print-canvas-container" class="fixed -left-[9999px] top-0">
+        <div id="pdf-paper" class="bg-white text-black p-8 relative overflow-hidden" style="width: 1122px; height: 793px; font-family: Arial, sans-serif;">
+            
+            <div class="flex items-center justify-between border-b-4 border-black pb-3 mb-4">
+                <div class="w-24 flex justify-center">
+                    <div class="w-20 h-20 rounded-full border-4 border-red-600 flex items-center justify-center text-red-600 font-black text-[10px] text-center leading-tight">LOGO<br>PERKEMI</div>
+                </div>
+                <div class="text-center flex-1 px-4 leading-snug">
+                    <h1 class="text-xl font-black tracking-wider">PERKEMI</h1>
+                    <h2 class="text-lg font-bold uppercase">PANITIA PELAKSANA</h2>
+                    <h2 class="text-lg font-bold uppercase">INVITASI CABOR BELADIRI MAHASISWA THN 2025</h2>
+                    <h3 class="text-md font-bold uppercase mb-1">CABOR SHORINJI KEMPO</h3>
+                    <p class="text-[11px] font-medium">Sekretariat: GOR OTISTA Jakarta Timur, DKI Jakarta<br>Jalan Otista Raya No.121, Kampung Melayu, Jakarta Timur, Tlp: 0813-1904-7903</p>
+                </div>
+                <div class="w-24"></div> </div>
+
+            <div class="text-center mb-6">
+                <h2 id="pdf-kategori-title" class="text-lg font-black uppercase underline decoration-2 underline-offset-4">NOMOR: RANDORI PUTRA KELAS 60 KG</h2>
+            </div>
+
+            <div id="pdf-bracket-area" class="w-full h-[500px] relative">
+                </div>
+
+            <div class="absolute bottom-8 right-12 text-center">
+                <p class="text-sm font-bold mb-16">Dewan Wasit / Hakim</p>
+                <p class="text-sm font-bold underline">( .......................................... )</p>
+            </div>
+            
+            <div class="absolute bottom-8 left-12">
+                <p class="text-sm font-bold mb-1">Pool Winner: <span id="pdf-winner-1" class="border-b border-black inline-block w-40"></span></p>
+                <p class="text-sm font-bold">Runner Up Pool: <span id="pdf-winner-2" class="border-b border-black inline-block w-40"></span></p>
+            </div>
+
+        </div>
+    </div>
 </body>
 </html>
