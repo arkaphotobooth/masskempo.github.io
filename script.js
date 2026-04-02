@@ -22,6 +22,7 @@ let STATE = { categories: [], participants: [], matches: [], settings: { numJudg
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
 let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
 let SWAP_SELECTION = null;
+let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang diklik
 
 // --- SENSOR KONEKSI FIREBASE ---
 const statusDot = document.getElementById('koneksi-dot');
@@ -1751,4 +1752,51 @@ function restoreDatabase(event) {
         }
     };
     reader.readAsText(file);
+}
+// ==========================================
+// FITUR KLIK-UNTUK-TUKAR URUTAN EMBU
+// ==========================================
+function handleEmbuSwap(participantId) {
+    const catName = document.getElementById('draw-select-kategori').value;
+    if(!catName) return;
+
+    // KONDISI 1: Jika memori masih kosong (Ini adalah KLIK PERTAMA)
+    if (EMBU_SWAP_SELECTION === null) {
+        EMBU_SWAP_SELECTION = participantId;
+        renderVisualBracket(catName); // Render ulang agar baris berubah warna
+        return;
+    }
+
+    // KONDISI 2: Jika mengklik orang yang sama (BATALKAN PILIHAN)
+    if (EMBU_SWAP_SELECTION === participantId) {
+        EMBU_SWAP_SELECTION = null;
+        renderVisualBracket(catName);
+        return;
+    }
+
+    // KONDISI 3: Jika mengklik orang berbeda (KLIK KEDUA -> EKSEKUSI TUKAR!)
+    let p1 = STATE.participants.find(p => p.id === EMBU_SWAP_SELECTION);
+    let p2 = STATE.participants.find(p => p.id === participantId);
+
+    if (p1 && p2) {
+        // Tukar Nomor Urut (Babak Penyisihan)
+        let tempUrut = p1.urut;
+        p1.urut = p2.urut;
+        p2.urut = tempUrut;
+
+        // Tukar Pool (Jika kebetulan mereka beda Pool)
+        let tempPool = p1.pool;
+        p1.pool = p2.pool;
+        p2.pool = tempPool;
+
+        // Tukar Nomor Urut (Babak Final)
+        let tempUrutFinal = p1.urutFinal;
+        p1.urutFinal = p2.urutFinal;
+        p2.urutFinal = tempUrutFinal;
+    }
+
+    // Bersihkan memori dan simpan
+    EMBU_SWAP_SELECTION = null;
+    saveToLocalStorage();
+    renderVisualBracket(catName); // Tabel akan otomatis menyusun ulang dirinya
 }
