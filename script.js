@@ -847,6 +847,7 @@ function renderEmbuLayout(catName, container, poolsConfig) {
                 <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-black tracking-wider">DRAWING EMBU</span>
                 <span class="text-sm font-bold text-yellow-400 truncate">${catName}</span>
             </div>
+            <span class="text-[10px] text-slate-400 font-mono hidden md:block">Swap: Klik Nama ke Nama Lain</span>
             <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/50 border border-red-700 text-red-400 hover:bg-red-500 hover:text-white w-8 h-8 rounded flex items-center justify-center transition-colors shadow-sm" title="Kosongkan Nilai (Urutan Tetap)"><i class="fas fa-eraser text-sm"></i></button>
         </div>
         <div class="grid grid-cols-1 ${gridCols} gap-6 bg-slate-900 p-5">`;
@@ -859,22 +860,30 @@ function renderEmbuLayout(catName, container, poolsConfig) {
             <div class="space-y-3 flex-1">`; 
         pool.data.forEach((p) => { 
             let noUrut = pool.isFinal ? p.urutFinal : p.urut; 
-            html += `<div class="flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 bg-slate-900/50 rounded-lg border border-slate-700/50 gap-3 hover:bg-slate-700/30 transition-colors">
+            
+            // --- SENSOR KLIK & WARNA HIGHLIGHT EMBU ---
+            let isSelected = (EMBU_SWAP_SELECTION === p.id);
+            let activeClass = isSelected 
+                ? 'bg-yellow-600/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
+                : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/40';
+
+            html += `<div onclick="handleEmbuSwap(${p.id})" class="cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
                 <div class="flex gap-3 items-start w-full">
-                    <span class="font-mono text-slate-500 w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
-                    <span class="font-bold text-white whitespace-normal break-words leading-snug">${p.nama}</span>
+                    <span class="font-mono ${isSelected ? 'text-yellow-400' : 'text-slate-500'} w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
+                    <span class="font-bold ${isSelected ? 'text-yellow-400' : 'text-white'} whitespace-normal break-words leading-snug">${p.nama}</span>
                 </div>
                 <div class="flex justify-start xl:justify-end w-full xl:w-auto pl-8 xl:pl-0">
-                    <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-1 rounded border border-slate-700 whitespace-nowrap shadow-sm">${p.kontingen}</span>
+                    <span class="text-[10px] ${isSelected ? 'text-yellow-200 bg-yellow-900/50 border-yellow-600' : 'text-slate-400 bg-slate-800 border-slate-700'} px-2 py-1 rounded border whitespace-nowrap shadow-sm">${p.kontingen}</span>
                 </div>
             </div>`; 
+            // ------------------------------------------
+
         }); 
         html += `</div></div>`;
     });
     html += `</div></div>`;
     container.innerHTML = html;
 }
-
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
@@ -1760,43 +1769,36 @@ function handleEmbuSwap(participantId) {
     const catName = document.getElementById('draw-select-kategori').value;
     if(!catName) return;
 
-    // KONDISI 1: Jika memori masih kosong (Ini adalah KLIK PERTAMA)
     if (EMBU_SWAP_SELECTION === null) {
         EMBU_SWAP_SELECTION = participantId;
-        renderVisualBracket(catName); // Render ulang agar baris berubah warna
+        checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
         return;
     }
 
-    // KONDISI 2: Jika mengklik orang yang sama (BATALKAN PILIHAN)
     if (EMBU_SWAP_SELECTION === participantId) {
         EMBU_SWAP_SELECTION = null;
-        renderVisualBracket(catName);
+        checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
         return;
     }
 
-    // KONDISI 3: Jika mengklik orang berbeda (KLIK KEDUA -> EKSEKUSI TUKAR!)
     let p1 = STATE.participants.find(p => p.id === EMBU_SWAP_SELECTION);
     let p2 = STATE.participants.find(p => p.id === participantId);
 
     if (p1 && p2) {
-        // Tukar Nomor Urut (Babak Penyisihan)
         let tempUrut = p1.urut;
         p1.urut = p2.urut;
         p2.urut = tempUrut;
 
-        // Tukar Pool (Jika kebetulan mereka beda Pool)
         let tempPool = p1.pool;
         p1.pool = p2.pool;
         p2.pool = tempPool;
 
-        // Tukar Nomor Urut (Babak Final)
         let tempUrutFinal = p1.urutFinal;
         p1.urutFinal = p2.urutFinal;
         p2.urutFinal = tempUrutFinal;
     }
 
-    // Bersihkan memori dan simpan
     EMBU_SWAP_SELECTION = null;
     saveToLocalStorage();
-    renderVisualBracket(catName); // Tabel akan otomatis menyusun ulang dirinya
+    checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
 }
