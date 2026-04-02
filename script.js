@@ -88,25 +88,31 @@ document.addEventListener('DOMContentLoaded', () => {
 function injectAdminExportButtons() {
     const adminExportSection = document.querySelector('#section-admin .bg-dark-card.text-center');
     if (adminExportSection) {
+        let currentMode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
         adminExportSection.innerHTML = `
+            <div class="mt-2 bg-slate-800 p-5 rounded-xl border border-slate-700 text-left mb-6 shadow-lg">
+                <h3 class="text-lg font-black text-yellow-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM TURNAMEN RANDORI</h3>
+                <p class="text-xs text-slate-400 mb-4">Pilih sistem bagan. Perubahan ini akan berlaku untuk kategori Randori yang <b class="text-white">baru akan di-generate</b>.</p>
+                <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white font-bold cursor-pointer hover:border-blue-500 transition-colors">
+                    <option value="double" ${currentMode === 'double' ? 'selected' : ''}>Mode PERKEMI (Double Elimination + Suden Death)</option>
+                    <option value="single" ${currentMode === 'single' ? 'selected' : ''}>Mode UMUM (Single Elimination / Gugur Biasa)</option>
+                </select>
+            </div>
             <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data (Makro)</h2>
-            <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori) untuk Laporan Resmi Sekretariat.</p>
+            <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori).</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
-                    <i class="fas fa-sitemap text-2xl"></i>
-                    <span>Semua Jadwal & Drawing</span>
-                </button>
-                <button onclick="exportHasilCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
-                    <i class="fas fa-trophy text-2xl"></i>
-                    <span>Semua Hasil & Juara</span>
-                </button>
-                <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2">
-                    <i class="fas fa-medal text-2xl"></i>
-                    <span>Klasemen Medali Akhir</span>
-                </button>
+                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-sitemap text-2xl"></i><span>Semua Jadwal & Drawing</span></button>
+                <button onclick="exportHasilCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-trophy text-2xl"></i><span>Semua Hasil & Juara</span></button>
+                <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-medal text-2xl"></i><span>Klasemen Medali Akhir</span></button>
             </div>
         `;
     }
+}
+function saveTournamentMode() {
+    if(!STATE.settings) STATE.settings = {};
+    STATE.settings.tournamentMode = document.getElementById('setting-tournament-mode').value;
+    saveToLocalStorage();
+    alert("Sistem turnamen berhasil diubah menjadi: " + (STATE.settings.tournamentMode === 'single' ? "SINGLE ELIMINATION (Gugur)" : "DOUBLE ELIMINATION (Perkemi)"));
 }
 
 function refreshAllData() { renderCategoryList(); updateAllDropdowns(); renderParticipantTable(); }
@@ -448,6 +454,38 @@ const TEMPLATE_16 = [
     { matchNum: 29, babak: "FINAL BAWAH", col: 7, slot1: null, slot2: null, nextW: 30, nextWSlot: 2, nextL: null }, 
     { matchNum: 30, babak: "GRAND FINAL", col: 8, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' } 
 ];
+// --- TEMPLATE SINGLE ELIMINATION (SISTEM GUGUR BIASA) ---
+const SINGLE_TEMPLATE_4 = [
+    { matchNum: 1, babak: "Semi-Final", col: 1, slot1: 1, slot2: 2, nextW: 3, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 2, babak: "Semi-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 3, babak: "FINAL", col: 2, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
+];
+const SINGLE_TEMPLATE_8 = [
+    { matchNum: 1, babak: "Quarter-Final", col: 1, slot1: 1, slot2: 2, nextW: 5, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 2, babak: "Quarter-Final", col: 1, slot1: 3, slot2: 4, nextW: 5, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 3, babak: "Quarter-Final", col: 1, slot1: 5, slot2: 6, nextW: 6, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 4, babak: "Quarter-Final", col: 1, slot1: 7, slot2: 8, nextW: 6, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 5, babak: "Semi-Final", col: 2, slot1: null, slot2: null, nextW: 7, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 6, babak: "Semi-Final", col: 2, slot1: null, slot2: null, nextW: 7, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 7, babak: "FINAL", col: 3, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
+];
+const SINGLE_TEMPLATE_16 = [
+    { matchNum: 1, babak: "Babak 16", col: 1, slot1: 1, slot2: 2, nextW: 9, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 2, babak: "Babak 16", col: 1, slot1: 3, slot2: 4, nextW: 9, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 3, babak: "Babak 16", col: 1, slot1: 5, slot2: 6, nextW: 10, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 4, babak: "Babak 16", col: 1, slot1: 7, slot2: 8, nextW: 10, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 5, babak: "Babak 16", col: 1, slot1: 9, slot2: 10, nextW: 11, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 6, babak: "Babak 16", col: 1, slot1: 11, slot2: 12, nextW: 11, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 7, babak: "Babak 16", col: 1, slot1: 13, slot2: 14, nextW: 12, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 8, babak: "Babak 16", col: 1, slot1: 15, slot2: 16, nextW: 12, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 9, babak: "Quarter-Final", col: 2, slot1: null, slot2: null, nextW: 13, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 10, babak: "Quarter-Final", col: 2, slot1: null, slot2: null, nextW: 13, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 11, babak: "Quarter-Final", col: 2, slot1: null, slot2: null, nextW: 14, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 12, babak: "Quarter-Final", col: 2, slot1: null, slot2: null, nextW: 14, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 13, babak: "Semi-Final", col: 3, slot1: null, slot2: null, nextW: 15, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 14, babak: "Semi-Final", col: 3, slot1: null, slot2: null, nextW: 15, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 15, babak: "FINAL", col: 4, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
+];
 
 function generateRandoriBracket() {
     const container = document.getElementById('randori-bracket-view');
@@ -473,16 +511,18 @@ function generateRandoriBracket() {
         }
 
         let poolConfigs = [];
+        let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+
         if(count <= 4) {
-            if(isFinalCategory) poolConfigs.push({ name: '-', template: TEMPLATE_4_CROSS, size: 4, athletes: athletes, isCrossover: true });
-            else poolConfigs.push({ name: '-', template: TEMPLATE_4_STANDARD, size: 4, athletes: athletes, isCrossover: false });
+            let temp4 = mode === 'single' ? SINGLE_TEMPLATE_4 : (isFinalCategory ? TEMPLATE_4_CROSS : TEMPLATE_4_STANDARD);
+            poolConfigs.push({ name: '-', template: temp4, size: 4, athletes: athletes, isCrossover: (isFinalCategory && mode === 'double') });
         } else if (count <= 8) {
-            poolConfigs.push({ name: '-', template: TEMPLATE_8_PERKEMI, size: 8, athletes: athletes, isCrossover: false });
+            let temp8 = mode === 'single' ? SINGLE_TEMPLATE_8 : TEMPLATE_8_PERKEMI;
+            poolConfigs.push({ name: '-', template: temp8, size: 8, athletes: athletes, isCrossover: false });
         } else if (count <= 32) {
-            if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah otomatis menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
+            if(!confirm(`Terdapat ${count} peserta. Sistem akan memecah menjadi 2 Pool (A dan B). Lanjutkan?`)) return;
             let shuffledAthletes = [...athletes];
             
-            // Aturan khusus: Jangan acak atlet jika nama kategori mengandung kata "FINAL"
             if (!isFinalCategory) {
                 for (let i = shuffledAthletes.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -497,15 +537,13 @@ function generateRandoriBracket() {
             poolA.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'A'; });
             poolB.forEach(a => { const p = STATE.participants.find(x=>x.id===a.id); if(p) p.pool = 'B'; });
             
-            // --- LOGIKA CERDAS PEMILIH TEMPLATE POOL A ---
             let sizeA = poolA.length <= 4 ? 4 : (poolA.length <= 8 ? 8 : 16);
-            let templateA = sizeA === 4 ? TEMPLATE_4_STANDARD : (sizeA === 8 ? TEMPLATE_8_PERKEMI : TEMPLATE_16);
-            poolConfigs.push({ name: 'A', template: templateA, size: sizeA, athletes: poolA, isCrossover: false });
+            let tempA = mode === 'single' ? (sizeA===4?SINGLE_TEMPLATE_4:(sizeA===8?SINGLE_TEMPLATE_8:SINGLE_TEMPLATE_16)) : (sizeA===4?TEMPLATE_4_STANDARD:(sizeA===8?TEMPLATE_8_PERKEMI:TEMPLATE_16));
+            poolConfigs.push({ name: 'A', template: tempA, size: sizeA, athletes: poolA, isCrossover: false });
 
-            // --- LOGIKA CERDAS PEMILIH TEMPLATE POOL B ---
             let sizeB = poolB.length <= 4 ? 4 : (poolB.length <= 8 ? 8 : 16);
-            let templateB = sizeB === 4 ? TEMPLATE_4_STANDARD : (sizeB === 8 ? TEMPLATE_8_PERKEMI : TEMPLATE_16);
-            poolConfigs.push({ name: 'B', template: templateB, size: sizeB, athletes: poolB, isCrossover: false });
+            let tempB = mode === 'single' ? (sizeB===4?SINGLE_TEMPLATE_4:(sizeB===8?SINGLE_TEMPLATE_8:SINGLE_TEMPLATE_16)) : (sizeB===4?TEMPLATE_4_STANDARD:(sizeB===8?TEMPLATE_8_PERKEMI:TEMPLATE_16));
+            poolConfigs.push({ name: 'B', template: tempB, size: sizeB, athletes: poolB, isCrossover: false });
             
         } else {
             return alert("Sistem saat ini mendukung maksimal 32 peserta per nomor.");
@@ -1117,7 +1155,8 @@ function saveRandoriMatchResult() {
         let isGrandFinal = match.nextW === 'WINNER' && match.babak !== "SUDDEN DEATH";
         let isChallenger = winnerP && winnerP.losses > 0;
         
-       if(isGrandFinal && isChallenger) {
+        let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+        if(mode === 'double' && isGrandFinal && isChallenger) {
             alert("TIE BREAKER GRAND FINAL!\nSistem membuka Partai Sudden Death!");
             STATE.matches = STATE.matches.filter(m => !(m.kategori === match.kategori && m.pool === match.pool && m.babak === "SUDDEN DEATH"));
             
@@ -1244,11 +1283,28 @@ function calculateRandoriFinalists(catName) {
         let juara1 = STATE.participants.find(p => p.id === gf.winnerId);
         let juara2 = STATE.participants.find(p => p.id === gf.loserId);
         
-        let finalBawah = poolMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
-        let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
-        
-        let lbSFinal = poolMatches.find(m => m.babak.toUpperCase() === "LB SEMI-FINAL" || m.babak.toUpperCase() === "LB S-FINAL" || m.babak.toUpperCase() === "LB SF" || m.babak.toUpperCase() === "LB R1");
-        let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
+        // --- LOGIKA CERDAS PENENTUAN JUARA 3 BERSAMA ---
+        let perungguArr = [];
+        let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+
+        if (mode === 'single') {
+            // MODE UMUM: Ambil 2 orang yang kalah di Semi-Final
+            let sfs = poolMatches.filter(m => m.nextW === gf.matchNum && m.status === 'done');
+            sfs.forEach(sf => {
+                let p3 = STATE.participants.find(p => p.id === sf.loserId);
+                if (p3) perungguArr.push({nama: p3.nama, kontingen: p3.kontingen});
+            });
+        } else {
+            // MODE PERKEMI: Ambil dari Looser Bracket
+            let finalBawah = poolMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
+            let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
+            
+            let lbSFinal = poolMatches.find(m => m.babak.toUpperCase() === "LB SEMI-FINAL" || m.babak.toUpperCase() === "LB S-FINAL" || m.babak.toUpperCase() === "LB SF" || m.babak.toUpperCase() === "LB R1");
+            let juara3b = (lbSFinal && lbSFinal.status === 'done') ? STATE.participants.find(p => p.id === lbSFinal.loserId) : null;
+            
+            if(juara3a) perungguArr.push({nama: juara3a.nama, kontingen: juara3a.kontingen});
+            if(juara3b) perungguArr.push({nama: juara3b.nama, kontingen: juara3b.kontingen});
+        }
 
         results.push({
             pool: poolName,
@@ -1256,16 +1312,12 @@ function calculateRandoriFinalists(catName) {
             emasKontingen: juara1 ? juara1.kontingen : null,
             perak: juara2 ? juara2.nama : null,
             perakKontingen: juara2 ? juara2.kontingen : null,
-            perunggu: [
-                juara3a ? {nama: juara3a.nama, kontingen: juara3a.kontingen} : null, 
-                juara3b ? {nama: juara3b.nama, kontingen: juara3b.kontingen} : null
-            ].filter(n => n !== null)
+            perunggu: perungguArr
         });
     });
 
     return results.length > 0 ? results : null;
 }
-
 function cancelFinalist() {
     const filter = document.getElementById('rank-filter-kategori').value;
     if(!filter) return;
