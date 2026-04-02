@@ -59,7 +59,12 @@ database.ref('turnamen_data').on('value', (snapshot) => {
     if(minEl && !document.getElementById('section-admin').classList.contains('hidden')) {
         minEl.value = STATE.settings.minPesertaJuara || 1; 
     }
-});
+    // --- FIX BUG SAKLAR: Sinkronkan dengan data Firebase ---
+    let modeEl = document.getElementById('setting-tournament-mode');
+    if(modeEl) {
+        modeEl.value = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+    }
+}); // <-- Ini adalah penutup fungsi Firebase on('value')
 
 // 5. UBAH FUNGSI LOKAL MENJADI CLOUD
 // Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
