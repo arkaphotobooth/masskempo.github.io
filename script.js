@@ -28,7 +28,10 @@ let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang dik
 const statusDot = document.getElementById('koneksi-dot');
 const statusText = document.getElementById('koneksi-text');
 
-// 1. INDIKATOR ONLINE/OFFLINE
+// --- 1. DEKLARASI GEMBOK KEAMANAN (Taruh di atas fungsi Firebase) ---
+let isDataLoaded = false; 
+
+// 2. SINKRONISASI DATA REAL-TIME DARI SERVER
 database.ref('.info/connected').on('value', (snap) => {
     if (snap.val() === true) {
         if(statusDot) statusDot.className = 'w-2.5 h-2.5 bg-green-500 rounded-full transition-colors duration-300 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
@@ -39,8 +42,9 @@ database.ref('.info/connected').on('value', (snap) => {
     }
 });
 
-// 2. SINKRONISASI DATA REAL-TIME DARI SERVER
 database.ref('turnamen_data').on('value', (snapshot) => {
+    isDataLoaded = true; // <--- KUNCI DIBUKA: Data berhasil ditarik dari server!
+    
     const data = snapshot.val();
     if (data) {
         STATE.categories = data.categories || [];
@@ -56,19 +60,24 @@ database.ref('turnamen_data').on('value', (snapshot) => {
     if(document.getElementById('section-juara') && !document.getElementById('section-juara').classList.contains('hidden')) renderJuaraUmum();
     
     let minEl = document.getElementById('setting-min-peserta'); 
-    if(minEl && !document.getElementById('section-admin').classList.contains('hidden')) {
+    if(minEl && document.getElementById('section-admin') && !document.getElementById('section-admin').classList.contains('hidden')) {
         minEl.value = STATE.settings.minPesertaJuara || 1; 
     }
-    // --- FIX BUG SAKLAR: Sinkronkan dengan data Firebase ---
     let modeEl = document.getElementById('setting-tournament-mode');
     if(modeEl) {
         modeEl.value = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
     }
-}); // <-- Ini adalah penutup fungsi Firebase on('value')
+});
 
 // 5. UBAH FUNGSI LOKAL MENJADI CLOUD
 // Membajak fungsi asli Anda agar menembak ke Firebase, bukan ke laptop lokal
 function saveToLocalStorage() { 
+    // PELINDUNG ANTI-WIPE (Mencegah Database Tertimpa Data Kosong saat awal web dibuka)
+    if (!isDataLoaded) {
+        console.warn("⛔ BLOKIR: Mencoba menyimpan sebelum data Firebase selesai dimuat.");
+        return; 
+    }
+
     console.log("Mencoba menyimpan data ke Firebase...", STATE);
     database.ref('turnamen_data').set({
         categories: STATE.categories,
@@ -151,34 +160,42 @@ function renderCategoryList() { const container = document.getElementById('list-
 function deleteCategory(id) { if(confirm("Hapus kategori ini?")) { STATE.categories = STATE.categories.filter(c => c.id !== id); saveToLocalStorage(); refreshAllData(); } }
 
 function updateAllDropdowns() { 
-    // 1. Simpan memori pilihan user saat ini sebelum di-reset
-    const valP = document.getElementById('p-kategori').value;
-    const valEdit = document.getElementById('edit-kategori').value;
-    const valDraw = document.getElementById('draw-select-kategori').value;
-    const valSelect = document.getElementById('select-kategori').value;
-    const valRank = document.getElementById('rank-filter-kategori').value;
-    const valFilterAtlet = document.getElementById('filter-atlet-kategori').value;
+    // Pengaman Anti-Crash
+    const elP = document.getElementById('p-kategori');
+    const elEdit = document.getElementById('edit-kategori');
+    const elDraw = document.getElementById('draw-select-kategori');
+    const elSelect = document.getElementById('select-kategori');
+    const elRank = document.getElementById('rank-filter-kategori');
+    const elFilterAtlet = document.getElementById('filter-atlet-kategori');
 
-    // 2. Buat ulang daftar `<option>`
+    // 1. Simpan memori dengan aman
+    const valP = elP ? elP.value : null;
+    const valEdit = elEdit ? elEdit.value : null;
+    const valDraw = elDraw ? elDraw.value : null;
+    const valSelect = elSelect ? elSelect.value : null;
+    const valRank = elRank ? elRank.value : null;
+    const valFilterAtlet = elFilterAtlet ? elFilterAtlet.value : null;
+
+    // 2. Buat ulang daftar <option>
     const options = STATE.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); 
     const emptyOpt = `<option value="">-- Pilih Kategori --</option>`; 
     const allOpt = '<option value="all">Semua Kategori</option>'; 
     
-    // 3. Masukkan daftar baru ke dalam HTML
-    document.getElementById('p-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('edit-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('draw-select-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('select-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('rank-filter-kategori').innerHTML = emptyOpt + options; 
-    document.getElementById('filter-atlet-kategori').innerHTML = allOpt + options; 
+    // 3. Masukkan daftar baru (HANYA jika elemennya ada)
+    if(elP) elP.innerHTML = emptyOpt + options; 
+    if(elEdit) elEdit.innerHTML = emptyOpt + options; 
+    if(elDraw) elDraw.innerHTML = emptyOpt + options; 
+    if(elSelect) elSelect.innerHTML = emptyOpt + options; 
+    if(elRank) elRank.innerHTML = emptyOpt + options; 
+    if(elFilterAtlet) elFilterAtlet.innerHTML = allOpt + options; 
 
-    // 4. Kembalikan pilihan user yang tadi disimpan (jika ada)
-    if (valP) document.getElementById('p-kategori').value = valP;
-    if (valEdit) document.getElementById('edit-kategori').value = valEdit;
-    if (valDraw) document.getElementById('draw-select-kategori').value = valDraw;
-    if (valSelect) document.getElementById('select-kategori').value = valSelect;
-    if (valRank) document.getElementById('rank-filter-kategori').value = valRank;
-    if (valFilterAtlet) document.getElementById('filter-atlet-kategori').value = valFilterAtlet;
+    // 4. Kembalikan pilihan user
+    if (valP && elP) elP.value = valP;
+    if (valEdit && elEdit) elEdit.value = valEdit;
+    if (valDraw && elDraw) elDraw.value = valDraw;
+    if (valSelect && elSelect) elSelect.value = valSelect;
+    if (valRank && elRank) elRank.value = valRank;
+    if (valFilterAtlet && elFilterAtlet) elFilterAtlet.value = valFilterAtlet;
 }
 
 function handleCSVUpload(event) { 
@@ -1221,15 +1238,21 @@ function updateScoringButtonsUI() { const pId = parseInt(document.getElementById
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     
-    // --- FIX PENTING: Simpan memori tombol 3 Juri ke Firebase ---
-    saveToLocalStorage(); 
-    
-    document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
-    document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    // Warnai tombol aktif (dengan proteksi jika elemen null)
+    let btnJ3 = document.getElementById('btn-j3');
+    let btnJ5 = document.getElementById('btn-j5');
+    if(btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    if(btnJ5) btnJ5.className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     
     const container = document.getElementById('judge-inputs'); 
+    if(!container) return; // Mencegah crash jika sedang tidak di tab Scoring
+
     container.innerHTML = ''; 
-    for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
+    for(let i=1; i<=n; i++) { 
+        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
+    } 
+    calculateLive(); 
+}
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
 
 function calculateLive() {
