@@ -1659,7 +1659,6 @@ function downloadCSV(filename, rows) {
 }
 
 function exportDrawingCSV(filterCatName = null) {
-    // KITA TAMBAHKAN KOLOM KONTINGEN MERAH & PUTIH DI SINI
     let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Partai", "Sudut Merah (AKA)", "Kontingen Merah", "Skor Merah", "Sudut Putih (SHIRO)", "Kontingen Putih", "Skor Putih", "Status"]];
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
     
@@ -1669,8 +1668,12 @@ function exportDrawingCSV(filterCatName = null) {
             catParts.forEach(p => {
                 let poolLabel = p.isFinalist && p.urutFinal > 0 ? "FINAL" : `Pool ${p.pool}`;
                 let noUrut = p.isFinalist && p.urutFinal > 0 ? p.urutFinal : p.urut;
-                // Embu disesuaikan dengan format kolom baru
-                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.kontingen, p.scores.b1.final||0, "", "", p.scores.b2.final||0, ""]);
+                
+                // UBAH: Format skor dari titik menjadi koma
+                let skorB1 = p.scores.b1.final > 0 ? p.scores.b1.final.toFixed(2).replace('.', ',') : 0;
+                let skorB2 = p.scores.b2.final > 0 ? p.scores.b2.final.toFixed(2).replace('.', ',') : 0;
+                
+                rows.push(["EMBU", cat.name, poolLabel, noUrut, p.nama, p.kontingen, skorB1, "", "", skorB2, ""]);
             });
         } else {
             let catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a,b) => a.matchNum - b.matchNum);
@@ -1697,12 +1700,9 @@ function exportDrawingCSV(filterCatName = null) {
 
 function exportHasilCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
-    
-    // 1. DETEKSI CERDAS: Apakah ini ekspor khusus kategori EMBU saja?
     let isOnlyEmbu = categoriesToExport.length > 0 && categoriesToExport.every(c => c.discipline === 'embu');
-
-    // 2. BUAT HEADER DINAMIS (Beda format jika Embu vs Campuran/Randori)
     let rows = [];
+    
     if (isOnlyEmbu) {
         rows.push(["Peringkat / Medali", "Kategori", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu (MM:SS)", "Denda", "Nilai Akhir"]);
     } else {
@@ -1721,9 +1721,11 @@ function exportHasilCSV(filterCatName = null) {
                     if (isOnlyEmbu) {
                         let w = s.raw || [];
                         let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
-                        rows.push([medali, cat.name, p.nama, p.kontingen, w[0]||'-', w[1]||'-', w[2]||'-', w[3]||'-', w[4]||'-', waktuFmt, s.penalty || 0, s.final.toFixed(2)]);
+                        
+                        // UBAH: Format semua nilai pecahan dengan koma
+                        rows.push([medali, cat.name, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, s.final.toFixed(2).replace('.', ',')]);
                     } else {
-                        rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2)]);
+                        rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2).replace('.', ',')]);
                     }
                 });
             } else {
@@ -1737,15 +1739,16 @@ function exportHasilCSV(filterCatName = null) {
                         if (isOnlyEmbu) {
                             let w = s.raw || [];
                             let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
-                            rows.push([medali, cat.name, p.nama, p.kontingen, w[0]||'-', w[1]||'-', w[2]||'-', w[3]||'-', w[4]||'-', waktuFmt, s.penalty || 0, s.final.toFixed(2)]);
+                            
+                            // UBAH: Format semua nilai pecahan dengan koma
+                            rows.push([medali, cat.name, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, s.final.toFixed(2).replace('.', ',')]);
                         } else {
-                            rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2)]);
+                            rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2).replace('.', ',')]);
                         }
                     });
                 });
             }
         } else {
-            // --- LOGIKA EKSPOR RANDORI TETAP SAMA ---
             let poolResults = calculateRandoriFinalists(cat.name);
             if (poolResults) {
                 poolResults.forEach(res => {
