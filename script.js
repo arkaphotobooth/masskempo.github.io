@@ -1218,30 +1218,84 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
 document.getElementById('select-kategori').addEventListener('change', filterPesertaScoring);
 
 function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
-function setJudges(n) { STATE.settings.numJudges = n; document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; const container = document.getElementById('judge-inputs'); container.innerHTML = ''; for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
+function setJudges(n) { 
+    STATE.settings.numJudges = n; 
+    
+    // --- FIX PENTING: Simpan memori tombol 3 Juri ke Firebase ---
+    saveToLocalStorage(); 
+    
+    document.getElementById('btn-j3').className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    document.getElementById('btn-j5').className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
+    
+    const container = document.getElementById('judge-inputs'); 
+    container.innerHTML = ''; 
+    for(let i=1; i<=n; i++) { container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; } calculateLive(); }
 function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
 
-function calculateLive() { 
-    let raw = []; let techRaw = []; 
-    for(let i=1; i<=STATE.settings.numJudges; i++) { 
-        let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`);
-        raw.push(sEl ? (parseFloat(sEl.value) || 0) : 0); techRaw.push(tEl ? (parseFloat(tEl.value) || 0) : 0); 
-    } 
-    let sum = 0; 
-    if(STATE.settings.numJudges === 5) { let sorted = [...raw].sort((a,b) => a-b); sorted.pop(); sorted.shift(); sum = sorted.reduce((a,b) => a+b, 0); } 
-    else { sum = raw.reduce((a,b) => a+b, 0); } 
+function calculateLive() {
+    let raw = [];
+    let techRaw = [];
+
+    // Deteksi jumlah wasit berdasarkan KOTAK FISIK di layar
+    let actualJudges = 0;
+    for(let i=1; i<=5; i++) {
+        if(document.getElementById(`score-${i}`)) actualJudges++;
+    }
+
+    // 1. Ambil nilai
+    for(let i=1; i<=actualJudges; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        raw.push(sEl && sEl.value !== '' ? parseFloat(sEl.value) : 0);
+        techRaw.push(tEl && tEl.value !== '' ? parseFloat(tEl.value) : 0);
+    }
+
+    let validScores = [...raw];
+    let validTechs = [...techRaw];
+
+    // 2. PEMOTONGAN CERDAS: HANYA potong jika kotak fisik ada 5
+    if (actualJudges === 5 && validScores.length === 5) {
+        let minVal = Math.min(...validScores);
+        let maxVal = Math.max(...validScores);
+
+        validScores.splice(validScores.indexOf(minVal), 1);
+        validScores.splice(validScores.indexOf(maxVal), 1);
+
+        if(validTechs.length === 5) {
+            let minT = Math.min(...validTechs);
+            let maxT = Math.max(...validTechs);
+            validTechs.splice(validTechs.indexOf(minT), 1);
+            validTechs.splice(validTechs.indexOf(maxT), 1);
+        }
+    }
+
+    // 3. Jumlahkan Total
+    let totalRaw = validScores.reduce((a,b) => a+b, 0);
+    let totalTech = validTechs.reduce((a,b) => a+b, 0);
+
+    // 4. Kalkulasi Penalti
+    let penalty = 0;
+    let minTimeInputs = document.querySelectorAll('input[type="number"]');
+    let minTime = minTimeInputs.length > 0 ? parseFloat(minTimeInputs[0].value) : 90;
+    let maxTime = minTimeInputs.length > 1 ? parseFloat(minTimeInputs[1].value) : 120;
     
-    let minEl = document.getElementById('min-time'); let maxEl = document.getElementById('max-time');
-    const minT = minEl ? (parseInt(minEl.value) || 0) : 0; const maxT = maxEl ? (parseInt(maxEl.value) || 0) : 0; 
-    
-    let penalty = 0; 
-    if(UI.timerSeconds > 0 && minT > 0 && UI.timerSeconds < minT) { penalty = Math.ceil((minT - UI.timerSeconds) / 5) * 5; } 
-    else if (maxT > 0 && UI.timerSeconds > maxT) { penalty = Math.ceil((UI.timerSeconds - maxT) / 5) * 5; }
-    
-    const final = Math.max(0, sum - penalty); 
-    let finalEl = document.getElementById('live-final-score'); if(finalEl) finalEl.innerText = final.toFixed(1); 
-    let penEl = document.getElementById('live-penalty'); if(penEl) penEl.innerText = penalty > 0 ? `Penalti Waktu: -${penalty}` : `Penalti Waktu: 0`; 
-    return { final, penalty, raw, techRaw, tieBreaker: techRaw[0] }; 
+    if (minTime > 0 && maxTime > 0 && UI.timerSeconds > 0) {
+        if (UI.timerSeconds < minTime) {
+            penalty = Math.ceil((minTime - UI.timerSeconds) / 5) * 5;
+        } else if (UI.timerSeconds > maxTime) {
+            penalty = Math.ceil((UI.timerSeconds - maxTime) / 5) * 5;
+        }
+    }
+
+    let finalScore = totalRaw - penalty;
+
+    // 5. Update UI
+    let scoreEl = document.getElementById('live-final-score');
+    let penEl = document.getElementById('live-penalty');
+    if(scoreEl) scoreEl.innerText = finalScore.toFixed(1);
+    if(penEl) penEl.innerText = `Penalti Waktu: ${penalty}`;
+
+    return { raw: raw, techRaw: techRaw, penalty: penalty, final: finalScore, tieBreaker: totalTech };
 }
 
 function saveScore(babakOverride) { 
