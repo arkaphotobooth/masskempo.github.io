@@ -127,6 +127,7 @@ function injectAdminExportButtons() {
                     <select id="setting-embu-mode" onchange="saveEmbuB2Mode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-blue-500 transition-colors">
                         <option value="reverse" ${currentEmbuMode === 'reverse' ? 'selected' : ''}>Dibalik dari Babak 1 (Baku)</option>
                         <option value="redraw" ${currentEmbuMode === 'redraw' ? 'selected' : ''}>Diacak Ulang (Re-Draw)</option>
+                        <option value="highscore" ${currentEmbuMode === 'highscore' ? 'selected' : ''}>Peringkat Nilai B1 (Tertinggi Tampil Terakhir)</option>
                     </select>
                 </div>
             </div>
@@ -1009,7 +1010,7 @@ function checkExistingDrawing() {
                 list.sort((a,b) => a.urut - b.urut); 
                 renderEmbuLayout(catName, resultDiv, [ {data: list.filter(p => p.pool === 'A'), title: "POOL A", isFinal: false}, {data: list.filter(p => p.pool === 'B'), title: "POOL B", isFinal: false} ]);
             } else { 
-                // JALUR SINGLE POOL - Cek setting Admin (Dibalik atau Diacak Ulang)
+                // JALUR SINGLE POOL - Cek setting Admin (Dibalik, Diacak Ulang, atau Peringkat)
                 let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
                 
                 if (modeB2 === 'redraw') {
@@ -1021,14 +1022,29 @@ function checkExistingDrawing() {
                     renderEmbuLayout(catName, resultDiv, poolsData);
                     
                     resultDiv.innerHTML += `<div class="col-span-full mt-6 text-center"><button onclick="startDrawingB2()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg border border-purple-400 transition-transform hover:scale-105"><i class="fas fa-random mr-2"></i>ACAK URUTAN BABAK 2 SEKARANG</button></div>`;
+                
+                } else if (modeB2 === 'highscore') {
+                    let listB1 = [...list].sort((a,b) => a.urut - b.urut);
+                    // Filter yang sudah main B1, urutkan dari nilai TERENDAH ke TERTINGGI (Ascending)
+                    let listB2 = [...list].filter(p => p.scores.b1.final > 0).sort((a,b) => a.scores.b1.final - b.scores.b1.final || a.scores.b1.tech - b.scores.b1.tech);
+                    let poolsData = [{data: listB1, title: "BABAK 1", isFinal: false, isB2: false}];
+                    
+                    if (listB2.length > 0) poolsData.push({data: listB2, title: "BABAK 2 (BERDASARKAN PERINGKAT)", isFinal: false, isB2: true});
+                    renderEmbuLayout(catName, resultDiv, poolsData);
+                    
+                    if (listB2.length < list.length) {
+                        resultDiv.innerHTML += `<div class="col-span-full mt-4 text-center text-slate-500 italic text-sm">Selesaikan penilaian Babak 1 untuk melihat susunan penuh Babak 2.</div>`;
+                    }
                 } else {
-                    list.sort((a,b) => a.urut - b.urut); 
-                    renderEmbuLayout(catName, resultDiv, [{data: list, title: "BABAK PENYISIHAN", isFinal: false}]);
+                    // MODE DIBALIK (REVERSE)
+                    let listB1 = [...list].sort((a,b) => a.urut - b.urut);
+                    let listB2 = [...list].sort((a,b) => b.urut - a.urut);
+                    renderEmbuLayout(catName, resultDiv, [
+                        {data: listB1, title: "BABAK 1", isFinal: false, isB2: false},
+                        {data: listB2, title: "BABAK 2 (URUTAN DIBALIK)", isFinal: false, isB2: true}
+                    ]);
                 }
-            } 
-        } else { resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; } 
-    }
-}
+            }
 
 // MESIN PENGACAK KHUSUS BABAK 2
 function startDrawingB2() {
@@ -1171,7 +1187,7 @@ function filterPesertaScoring() {
             // Tambahkan |b1 pada value agar sistem tahu ini Penyisihan (Babak 1)
             optionsHTML = sorted.map(p => `<option value="${p.id}|b1">[Pool ${p.pool}] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
         } else {
-        // JALUR SINGLE POOL: Cek Setting Admin
+            // JALUR SINGLE POOL: Pecah Babak 1 dan 2 langsung di Dropdown
             let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
             let sortedB1 = [...listCat].sort((a,b) => a.urut - b.urut);
             
@@ -1180,7 +1196,6 @@ function filterPesertaScoring() {
             optionsHTML += `</optgroup>`;
 
             if (modeB2 === 'redraw') {
-                // JIKA MODE ACAK ULANG AKTIF
                 let sortedB2 = [...listCat].filter(p => p.urutB2 > 0).sort((a,b) => a.urutB2 - b.urutB2);
                 if(sortedB2.length > 0) {
                     optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : DIACAK ULANG) ---">`;
@@ -1189,9 +1204,17 @@ function filterPesertaScoring() {
                 } else {
                     optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : BELUM DIACAK) ---"></optgroup>`;
                 }
+            } else if (modeB2 === 'highscore') {
+                let sortedB2 = [...listCat].filter(p => p.scores.b1.final > 0).sort((a,b) => a.scores.b1.final - b.scores.b1.final || a.scores.b1.tech - b.scores.b1.tech);
+                if(sortedB2.length > 0) {
+                    optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : NILAI B1 TERTINGGI TAMPIL TERAKHIR) ---">`;
+                    optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] ${p.nama} (B1: ${p.scores.b1.final})</option>`).join('');
+                    optionsHTML += `</optgroup>`;
+                } else {
+                    optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : SELESAIKAN BABAK 1 DULU) ---"></optgroup>`;
+                }
             } else {
-                // JIKA MODE DIBALIK AKTIF (BAKU)
-                let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut); // Urutan dibalik
+                let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut);
                 optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : URUTAN DIBALIK) ---">`;
                 optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
                 optionsHTML += `</optgroup>`;
