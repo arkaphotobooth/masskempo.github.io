@@ -1172,7 +1172,6 @@ function filterPesertaScoring() {
             // Tambahkan |b1 pada value agar sistem tahu ini Penyisihan (Babak 1)
             optionsHTML = sorted.map(p => `<option value="${p.id}|b1">[Pool ${p.pool}] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
         } else {
-           } else {
         // JALUR SINGLE POOL: Cek Setting Admin
             let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
             let sortedB1 = [...listCat].sort((a,b) => a.urut - b.urut);
