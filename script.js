@@ -940,13 +940,17 @@ function renderEmbuLayout(catName, container, poolsConfig) {
         <div class="grid grid-cols-1 ${gridCols} gap-6 bg-slate-900 p-5">`;
 
     poolsConfig.forEach(pool => {
-        let borderColor = pool.isFinal ? 'border-yellow-600' : 'border-slate-600'; 
-        let titleColor = pool.isFinal ? 'text-yellow-500' : 'text-purple-400'; 
+        // --- FIX BABAK 2: Tambahkan pembacaan pool.isB2 pada warna border dan judul ---
+        let borderColor = pool.isFinal || pool.isB2 ? 'border-yellow-600' : 'border-slate-600'; 
+        let titleColor = pool.isFinal || pool.isB2 ? 'text-yellow-500' : 'text-purple-400'; 
+        
         html += `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-sm w-full h-full flex flex-col">
             <h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${pool.title}</h3>
             <div class="space-y-3 flex-1">`; 
+            
         pool.data.forEach((p) => { 
-            let noUrut = pool.isFinal ? p.urutFinal : p.urut; 
+            // --- FIX BABAK 2: Tambahkan pembacaan p.urutB2 jika itu adalah Babak 2 ---
+            let noUrut = pool.isFinal ? p.urutFinal : (pool.isB2 ? p.urutB2 : p.urut); 
             
             // --- SENSOR KLIK & WARNA HIGHLIGHT EMBU ---
             let isSelected = (EMBU_SWAP_SELECTION === p.id);
@@ -971,59 +975,80 @@ function renderEmbuLayout(catName, container, poolsConfig) {
     html += `</div></div>`;
     container.innerHTML = html;
 }
+
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
     const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
     panelEmbu.classList.add('hidden'); panelRandori.classList.add('hidden'); panelEmpty.classList.add('hidden'); resultDiv.innerHTML = ''; document.getElementById('randori-bracket-container').classList.add('hidden');
     
-    // Injeksi Tombol Unduh Jadwal
     let drawHeader = document.querySelector('#section-drawing > div:first-child');
     let microDrawBtn = document.getElementById('btn-micro-draw-export');
     if (!microDrawBtn && drawHeader) {
-        microDrawBtn = document.createElement('button');
-        microDrawBtn.id = 'btn-micro-draw-export';
-        microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0';
-        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL';
-        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
-        drawHeader.appendChild(microDrawBtn);
+        microDrawBtn = document.createElement('button'); microDrawBtn.id = 'btn-micro-draw-export'; microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0'; microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL'; microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value); drawHeader.appendChild(microDrawBtn);
     }
     
-    if(!catName) { 
-        panelEmpty.classList.remove('hidden'); 
-        if(microDrawBtn) microDrawBtn.classList.add('hidden');
-        return; 
-    }
-    
+    if(!catName) { panelEmpty.classList.remove('hidden'); if(microDrawBtn) microDrawBtn.classList.add('hidden'); return; }
     if(microDrawBtn) microDrawBtn.classList.remove('hidden');
     
     const categoryObj = STATE.categories.find(c => c.name === catName); let list = STATE.participants.filter(p => p.kategori === catName); 
     
     if(categoryObj && categoryObj.discipline === 'randori') { 
-        panelRandori.classList.remove('hidden'); 
-        renderVisualBracket(catName); 
+        panelRandori.classList.remove('hidden'); renderVisualBracket(catName); 
     } else { 
         panelEmbu.classList.remove('hidden'); 
         const isFinalMode = list.some(p => p.isFinalist); 
+        
         if (isFinalMode) { 
             let finalL = list.filter(p => p.isFinalist); 
             if (finalL.some(p => p.urutFinal > 0)) { 
-                finalL.sort((a,b) => a.urutFinal - b.urutFinal); 
-                renderEmbuLayout(catName, resultDiv, [{data: finalL, title: "POOL FINAL", isFinal: true}]);
-            } else { 
-                resultDiv.innerHTML = `<div class="col-span-full text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; 
-            } 
+                finalL.sort((a,b) => a.urutFinal - b.urutFinal); renderEmbuLayout(catName, resultDiv, [{data: finalL, title: "POOL FINAL", isFinal: true}]);
+            } else { resultDiv.innerHTML = `<div class="col-span-full text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; } 
         } else if (list.some(p => p.urut > 0)) { 
-            list.sort((a,b) => a.urut - b.urut); 
+            // SUDAH DIUNDI BABAK 1
             if(list.some(p => p.pool === 'A' || p.pool === 'B')) { 
+                list.sort((a,b) => a.urut - b.urut); 
                 renderEmbuLayout(catName, resultDiv, [ {data: list.filter(p => p.pool === 'A'), title: "POOL A", isFinal: false}, {data: list.filter(p => p.pool === 'B'), title: "POOL B", isFinal: false} ]);
             } else { 
-                renderEmbuLayout(catName, resultDiv, [{data: list, title: "BABAK PENYISIHAN", isFinal: false}]);
+                // JALUR SINGLE POOL - Cek setting Admin (Dibalik atau Diacak Ulang)
+                let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
+                
+                if (modeB2 === 'redraw') {
+                    let listB1 = [...list].sort((a,b) => a.urut - b.urut);
+                    let listB2 = [...list].filter(p => p.urutB2 > 0).sort((a,b) => a.urutB2 - b.urutB2);
+                    let poolsData = [{data: listB1, title: "BABAK 1", isFinal: false, isB2: false}];
+                    
+                    if (listB2.length > 0) poolsData.push({data: listB2, title: "BABAK 2", isFinal: false, isB2: true});
+                    renderEmbuLayout(catName, resultDiv, poolsData);
+                    
+                    resultDiv.innerHTML += `<div class="col-span-full mt-6 text-center"><button onclick="startDrawingB2()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg border border-purple-400 transition-transform hover:scale-105"><i class="fas fa-random mr-2"></i>ACAK URUTAN BABAK 2 SEKARANG</button></div>`;
+                } else {
+                    list.sort((a,b) => a.urut - b.urut); 
+                    renderEmbuLayout(catName, resultDiv, [{data: list, title: "BABAK PENYISIHAN", isFinal: false}]);
+                }
             } 
-        } else { 
-            resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; 
-        } 
+        } else { resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; } 
     }
+}
+
+// MESIN PENGACAK KHUSUS BABAK 2
+function startDrawingB2() {
+    const catName = document.getElementById('draw-select-kategori').value;
+    if(!catName) return alert("Pilih kategori!");
+    let list = STATE.participants.filter(p => p.kategori === catName && p.urut > 0);
+    if(list.length === 0) return alert("Undi Babak 1 terlebih dahulu!");
+    
+    if (list.some(p => p.urutB2 > 0)) { if (!confirm("⚠️ Babak 2 SUDAH DIUNDI.\nYakin ingin mengacak ulang Babak 2?")) return; }
+    
+    let ids = list.map(p => p.id);
+    shuffleArray(ids); // Gunakan mesin kocok yang sudah ada
+    
+    ids.forEach((id, index) => {
+        const found = STATE.participants.find(item => item.id === id);
+        if(found) found.urutB2 = index + 1;
+    });
+    
+    saveToLocalStorage(); checkExistingDrawing(); filterPesertaScoring();
 }
 
 function startDrawing() { 
@@ -1147,15 +1172,32 @@ function filterPesertaScoring() {
             // Tambahkan |b1 pada value agar sistem tahu ini Penyisihan (Babak 1)
             optionsHTML = sorted.map(p => `<option value="${p.id}|b1">[Pool ${p.pool}] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
         } else {
-            // JALUR SINGLE POOL: Pecah Babak 1 dan 2 langsung di Dropdown
+           } else {
+        // JALUR SINGLE POOL: Cek Setting Admin
+            let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
             let sortedB1 = [...listCat].sort((a,b) => a.urut - b.urut);
-            let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut); // Di-reverse (dibalik) untuk Babak 2
-
+            
             optionsHTML += `<optgroup label="--- TAMPIL PERTAMA (BABAK 1) ---">`;
             optionsHTML += sortedB1.map(p => `<option value="${p.id}|b1">[Babak 1] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
-            optionsHTML += `</optgroup><optgroup label="--- TAMPIL KEDUA (BABAK 2 : URUTAN DIBALIK) ---">`;
-            optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
             optionsHTML += `</optgroup>`;
+
+            if (modeB2 === 'redraw') {
+                // JIKA MODE ACAK ULANG AKTIF
+                let sortedB2 = [...listCat].filter(p => p.urutB2 > 0).sort((a,b) => a.urutB2 - b.urutB2);
+                if(sortedB2.length > 0) {
+                    optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : DIACAK ULANG) ---">`;
+                    optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] No.${p.urutB2} - ${p.nama} (${p.kontingen})</option>`).join('');
+                    optionsHTML += `</optgroup>`;
+                } else {
+                    optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : BELUM DIACAK) ---"></optgroup>`;
+                }
+            } else {
+                // JIKA MODE DIBALIK AKTIF (BAKU)
+                let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut); // Urutan dibalik
+                optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : URUTAN DIBALIK) ---">`;
+                optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
+                optionsHTML += `</optgroup>`;
+            }
         }
         
         selectEl.innerHTML = optionsHTML;
