@@ -1372,9 +1372,12 @@ document.getElementById('select-kategori').addEventListener('change', filterPese
 function updateScoringButtonsUI() { 
     const val = document.getElementById('select-peserta').value; 
     
-    // Menyembunyikan Dropdown Babak Lama yang mengganggu
+    // FIX: Hanya sembunyikan elemen dropdown-nya saja, BUKAN kotaknya!
     const selectBabakOld = document.getElementById('select-babak');
-    if (selectBabakOld) selectBabakOld.parentElement.classList.add('hidden');
+    if (selectBabakOld) {
+        selectBabakOld.style.display = 'none';
+        if (selectBabakOld.parentElement) selectBabakOld.parentElement.classList.remove('hidden');
+    }
 
     const btnB1 = document.getElementById('btn-save-b1'); 
     const btnB2 = document.getElementById('btn-save-b2'); 
