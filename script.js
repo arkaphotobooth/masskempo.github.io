@@ -940,25 +940,26 @@ function renderEmbuLayout(catName, container, poolsConfig) {
         <div class="grid grid-cols-1 ${gridCols} gap-6 bg-slate-900 p-5">`;
 
     poolsConfig.forEach(pool => {
-        // --- FIX BABAK 2: Tambahkan pembacaan pool.isB2 pada warna border dan judul ---
         let borderColor = pool.isFinal || pool.isB2 ? 'border-yellow-600' : 'border-slate-600'; 
         let titleColor = pool.isFinal || pool.isB2 ? 'text-yellow-500' : 'text-purple-400'; 
         
+        // FIX: Identifikasi tipe pool agar klik tidak tertukar
+        let poolType = pool.isFinal ? 'final' : (pool.isB2 ? 'b2' : 'b1');
+
         html += `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-sm w-full h-full flex flex-col">
             <h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${pool.title}</h3>
             <div class="space-y-3 flex-1">`; 
             
         pool.data.forEach((p) => { 
-            // --- FIX BABAK 2: Tambahkan pembacaan p.urutB2 jika itu adalah Babak 2 ---
             let noUrut = pool.isFinal ? p.urutFinal : (pool.isB2 ? p.urutB2 : p.urut); 
             
-            // --- SENSOR KLIK & WARNA HIGHLIGHT EMBU ---
-            let isSelected = (EMBU_SWAP_SELECTION === p.id);
+            // FIX: Sensor klik sekarang mendeteksi ID dan Tipe Babaknya
+            let isSelected = (EMBU_SWAP_SELECTION && EMBU_SWAP_SELECTION.id === p.id && EMBU_SWAP_SELECTION.type === poolType);
             let activeClass = isSelected 
                 ? 'bg-yellow-600/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
                 : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/40';
 
-            html += `<div onclick="handleEmbuSwap(${p.id})" class="cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
+            html += `<div onclick="handleEmbuSwap(${p.id}, '${poolType}')" class="cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
                 <div class="flex gap-3 items-start w-full">
                     <span class="font-mono ${isSelected ? 'text-yellow-400' : 'text-slate-500'} w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
                     <span class="font-bold ${isSelected ? 'text-yellow-400' : 'text-white'} whitespace-normal break-words leading-snug">${p.nama}</span>
@@ -967,8 +968,6 @@ function renderEmbuLayout(catName, container, poolsConfig) {
                     <span class="text-[10px] ${isSelected ? 'text-yellow-200 bg-yellow-900/50 border-yellow-600' : 'text-slate-400 bg-slate-800 border-slate-700'} px-2 py-1 rounded border whitespace-nowrap shadow-sm">${p.kontingen}</span>
                 </div>
             </div>`; 
-            // ------------------------------------------
-
         }); 
         html += `</div></div>`;
     });
@@ -2001,40 +2000,49 @@ function restoreDatabase(event) {
 // ==========================================
 // FITUR KLIK-UNTUK-TUKAR URUTAN EMBU
 // ==========================================
-function handleEmbuSwap(participantId) {
+function handleEmbuSwap(participantId, poolType) {
     const catName = document.getElementById('draw-select-kategori').value;
     if(!catName) return;
 
-    if (EMBU_SWAP_SELECTION === null) {
-        EMBU_SWAP_SELECTION = participantId;
-        checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
+    // 1. Jika belum ada yang diklik sebelumnya
+    if (!EMBU_SWAP_SELECTION) {
+        EMBU_SWAP_SELECTION = { id: participantId, type: poolType };
+        checkExistingDrawing(); 
         return;
     }
 
-    if (EMBU_SWAP_SELECTION === participantId) {
+    // 2. Batal jika mengklik orang yang persis sama
+    if (EMBU_SWAP_SELECTION.id === participantId && EMBU_SWAP_SELECTION.type === poolType) {
         EMBU_SWAP_SELECTION = null;
-        checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
+        checkExistingDrawing(); 
         return;
     }
 
-    let p1 = STATE.participants.find(p => p.id === EMBU_SWAP_SELECTION);
+    // 3. Mencegah error jika klik menyilang (B1 disilang ke B2)
+    if (EMBU_SWAP_SELECTION.type !== poolType) {
+        EMBU_SWAP_SELECTION = { id: participantId, type: poolType };
+        checkExistingDrawing(); 
+        return;
+    }
+
+    // 4. LAKUKAN PERTUKARAN
+    let p1 = STATE.participants.find(p => p.id === EMBU_SWAP_SELECTION.id);
     let p2 = STATE.participants.find(p => p.id === participantId);
 
     if (p1 && p2) {
-        let tempUrut = p1.urut;
-        p1.urut = p2.urut;
-        p2.urut = tempUrut;
-
-        let tempPool = p1.pool;
-        p1.pool = p2.pool;
-        p2.pool = tempPool;
-
-        let tempUrutFinal = p1.urutFinal;
-        p1.urutFinal = p2.urutFinal;
-        p2.urutFinal = tempUrutFinal;
+        if (poolType === 'b1') {
+            let tempUrut = p1.urut; p1.urut = p2.urut; p2.urut = tempUrut;
+            let tempPool = p1.pool; p1.pool = p2.pool; p2.pool = tempPool;
+        } else if (poolType === 'b2') {
+            let tempUrutB2 = p1.urutB2; p1.urutB2 = p2.urutB2; p2.urutB2 = tempUrutB2;
+        } else if (poolType === 'final') {
+            let tempUrutFinal = p1.urutFinal; p1.urutFinal = p2.urutFinal; p2.urutFinal = tempUrutFinal;
+        }
     }
 
+    // 5. Bersihkan memori dan simpan
     EMBU_SWAP_SELECTION = null;
     saveToLocalStorage();
-    checkExistingDrawing(); // <--- MEMANGGIL FUNGSI YANG BENAR
+    checkExistingDrawing(); 
+    if (typeof filterPesertaScoring === 'function') filterPesertaScoring();
 }
