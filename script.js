@@ -979,22 +979,41 @@ function renderEmbuLayout(catName, container, poolsConfig) {
 // INJEKSI DOM UNTUK TOMBOL UNDUH JADWAL (MIKRO)
 function checkExistingDrawing() {
     const catName = document.getElementById('draw-select-kategori').value; 
-    const panelEmbu = document.getElementById('draw-panel-embu'); const panelRandori = document.getElementById('draw-panel-randori'); const panelEmpty = document.getElementById('draw-panel-empty'); const resultDiv = document.getElementById('drawing-result'); 
-    panelEmbu.classList.add('hidden'); panelRandori.classList.add('hidden'); panelEmpty.classList.add('hidden'); resultDiv.innerHTML = ''; document.getElementById('randori-bracket-container').classList.add('hidden');
+    const panelEmbu = document.getElementById('draw-panel-embu'); 
+    const panelRandori = document.getElementById('draw-panel-randori'); 
+    const panelEmpty = document.getElementById('draw-panel-empty'); 
+    const resultDiv = document.getElementById('drawing-result'); 
+    
+    panelEmbu.classList.add('hidden'); 
+    panelRandori.classList.add('hidden'); 
+    panelEmpty.classList.add('hidden'); 
+    resultDiv.innerHTML = ''; 
+    document.getElementById('randori-bracket-container').classList.add('hidden');
     
     let drawHeader = document.querySelector('#section-drawing > div:first-child');
     let microDrawBtn = document.getElementById('btn-micro-draw-export');
     if (!microDrawBtn && drawHeader) {
-        microDrawBtn = document.createElement('button'); microDrawBtn.id = 'btn-micro-draw-export'; microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0'; microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL'; microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value); drawHeader.appendChild(microDrawBtn);
+        microDrawBtn = document.createElement('button'); 
+        microDrawBtn.id = 'btn-micro-draw-export'; 
+        microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0'; 
+        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL'; 
+        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value); 
+        drawHeader.appendChild(microDrawBtn);
     }
     
-    if(!catName) { panelEmpty.classList.remove('hidden'); if(microDrawBtn) microDrawBtn.classList.add('hidden'); return; }
+    if(!catName) { 
+        panelEmpty.classList.remove('hidden'); 
+        if(microDrawBtn) microDrawBtn.classList.add('hidden'); 
+        return; 
+    }
     if(microDrawBtn) microDrawBtn.classList.remove('hidden');
     
-    const categoryObj = STATE.categories.find(c => c.name === catName); let list = STATE.participants.filter(p => p.kategori === catName); 
+    const categoryObj = STATE.categories.find(c => c.name === catName); 
+    let list = STATE.participants.filter(p => p.kategori === catName); 
     
     if(categoryObj && categoryObj.discipline === 'randori') { 
-        panelRandori.classList.remove('hidden'); renderVisualBracket(catName); 
+        panelRandori.classList.remove('hidden'); 
+        renderVisualBracket(catName); 
     } else { 
         panelEmbu.classList.remove('hidden'); 
         const isFinalMode = list.some(p => p.isFinalist); 
@@ -1002,13 +1021,19 @@ function checkExistingDrawing() {
         if (isFinalMode) { 
             let finalL = list.filter(p => p.isFinalist); 
             if (finalL.some(p => p.urutFinal > 0)) { 
-                finalL.sort((a,b) => a.urutFinal - b.urutFinal); renderEmbuLayout(catName, resultDiv, [{data: finalL, title: "POOL FINAL", isFinal: true}]);
-            } else { resultDiv.innerHTML = `<div class="col-span-full text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; } 
+                finalL.sort((a,b) => a.urutFinal - b.urutFinal); 
+                renderEmbuLayout(catName, resultDiv, [{data: finalL, title: "POOL FINAL", isFinal: true}]);
+            } else { 
+                resultDiv.innerHTML = `<div class="col-span-full text-center text-yellow-500 py-10 border-2 border-dashed border-yellow-600 rounded-xl">Peserta Final dipilih. Klik Acak Urutan.</div>`; 
+            } 
         } else if (list.some(p => p.urut > 0)) { 
             // SUDAH DIUNDI BABAK 1
             if(list.some(p => p.pool === 'A' || p.pool === 'B')) { 
                 list.sort((a,b) => a.urut - b.urut); 
-                renderEmbuLayout(catName, resultDiv, [ {data: list.filter(p => p.pool === 'A'), title: "POOL A", isFinal: false}, {data: list.filter(p => p.pool === 'B'), title: "POOL B", isFinal: false} ]);
+                renderEmbuLayout(catName, resultDiv, [ 
+                    {data: list.filter(p => p.pool === 'A'), title: "POOL A", isFinal: false}, 
+                    {data: list.filter(p => p.pool === 'B'), title: "POOL B", isFinal: false} 
+                ]);
             } else { 
                 // JALUR SINGLE POOL - Cek setting Admin (Dibalik, Diacak Ulang, atau Peringkat)
                 let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
@@ -1044,7 +1069,12 @@ function checkExistingDrawing() {
                         {data: listB2, title: "BABAK 2 (URUTAN DIBALIK)", isFinal: false, isB2: true}
                     ]);
                 }
-            }
+            } 
+        } else { 
+            resultDiv.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 border-2 border-dashed border-slate-700 rounded-xl">Belum diundi.</div>`; 
+        } 
+    }
+}
 
 // MESIN PENGACAK KHUSUS BABAK 2
 function startDrawingB2() {
