@@ -2139,11 +2139,15 @@ function handleEmbuSwap(participantId, poolType) {
         return;
     }
 
-    // 4. LAKUKAN PERTUKARAN
-    let p1 = STATE.participants.find(p => p.id === EMBU_SWAP_SELECTION.id);
-    let p2 = STATE.participants.find(p => p.id === participantId);
+    // 4. TEMUKAN INDEX ATLET UNTUK UPDATE GRANULAR
+    let p1Index = STATE.participants.findIndex(p => p.id === EMBU_SWAP_SELECTION.id);
+    let p2Index = STATE.participants.findIndex(p => p.id === participantId);
 
-    if (p1 && p2) {
+    if (p1Index > -1 && p2Index > -1) {
+        let p1 = STATE.participants[p1Index];
+        let p2 = STATE.participants[p2Index];
+
+        // Tukar Urutan
         if (poolType === 'b1') {
             let tempUrut = p1.urut; p1.urut = p2.urut; p2.urut = tempUrut;
             let tempPool = p1.pool; p1.pool = p2.pool; p2.pool = tempPool;
@@ -2152,11 +2156,23 @@ function handleEmbuSwap(participantId, poolType) {
         } else if (poolType === 'final') {
             let tempUrutFinal = p1.urutFinal; p1.urutFinal = p2.urutFinal; p2.urutFinal = tempUrutFinal;
         }
-    }
 
-    // 5. Bersihkan memori dan simpan
-    EMBU_SWAP_SELECTION = null;
-    saveToLocalStorage();
-    checkExistingDrawing(); 
-    if (typeof filterPesertaScoring === 'function') filterPesertaScoring();
+        // 5. BERSIHKAN MEMORI SEKARANG JUGA (Agar seleksi langsung hilang)
+        EMBU_SWAP_SELECTION = null;
+
+        // 6. UPDATE LAYAR LOKAL SECARA INSTAN (Tanpa menunggu balasan server)
+        checkExistingDrawing(); 
+        if (typeof filterPesertaScoring === 'function') filterPesertaScoring();
+
+        // 7. TEMBAKAN SNIPER KE FIREBASE (Hanya update 2 atlet ini secara diam-diam di background)
+        let updates = {};
+        updates[`turnamen_data/participants/${p1Index}`] = p1;
+        updates[`turnamen_data/participants/${p2Index}`] = p2;
+
+        database.ref().update(updates).catch(err => console.error("Gagal menukar di server: " + err));
+        
+    } else {
+        EMBU_SWAP_SELECTION = null;
+        checkExistingDrawing();
+    }
 }
