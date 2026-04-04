@@ -109,21 +109,34 @@ function injectAdminExportButtons() {
     const adminExportSection = document.querySelector('#section-admin .bg-dark-card.text-center');
     if (adminExportSection) {
         let currentMode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+        let currentEmbuMode = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
+        
         adminExportSection.innerHTML = `
-            <div class="mt-2 bg-slate-800 p-5 rounded-xl border border-slate-700 text-left mb-6 shadow-lg">
-                <h3 class="text-lg font-black text-yellow-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM TURNAMEN RANDORI</h3>
-                <p class="text-xs text-slate-400 mb-4">Pilih sistem bagan. Perubahan ini akan berlaku untuk kategori Randori yang <b class="text-white">baru akan di-generate</b>.</p>
-                <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white font-bold cursor-pointer hover:border-blue-500 transition-colors">
-                    <option value="double" ${currentMode === 'double' ? 'selected' : ''}>Mode PERKEMI (Double Elimination + Suden Death)</option>
-                    <option value="single" ${currentMode === 'single' ? 'selected' : ''}>Mode UMUM (Single Elimination / Gugur Biasa)</option>
-                </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
+                    <h3 class="text-md font-black text-red-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM RANDORI</h3>
+                    <p class="text-[10px] text-slate-400 mb-3">Aturan bagan yang akan di-generate.</p>
+                    <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-red-500 transition-colors">
+                        <option value="double" ${currentMode === 'double' ? 'selected' : ''}>Double Elimination (Perkemi)</option>
+                        <option value="single" ${currentMode === 'single' ? 'selected' : ''}>Single Elimination (Gugur Biasa)</option>
+                    </select>
+                </div>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
+                    <h3 class="text-md font-black text-blue-400 mb-2"><i class="fas fa-sync-alt mr-2"></i>URUTAN EMBU B2</h3>
+                    <p class="text-[10px] text-slate-400 mb-3">Sistem urut Babak 2 (Khusus Single Pool).</p>
+                    <select id="setting-embu-mode" onchange="saveEmbuB2Mode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-blue-500 transition-colors">
+                        <option value="reverse" ${currentEmbuMode === 'reverse' ? 'selected' : ''}>Dibalik dari Babak 1 (Baku)</option>
+                        <option value="redraw" ${currentEmbuMode === 'redraw' ? 'selected' : ''}>Diacak Ulang (Re-Draw)</option>
+                    </select>
+                </div>
             </div>
+            
             <h2 class="text-xl font-black text-white mb-2"><i class="fas fa-download text-green-500 mr-2"></i>Pusat Export Data (Makro)</h2>
             <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori).</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-sitemap text-2xl"></i><span>Semua Jadwal & Drawing</span></button>
-                <button onclick="exportHasilCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-trophy text-2xl"></i><span>Semua Hasil & Juara</span></button>
-                <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl transition-transform hover:scale-105 shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-medal text-2xl"></i><span>Klasemen Medali Akhir</span></button>
+                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-sitemap text-2xl"></i><span>Semua Jadwal & Drawing</span></button>
+                <button onclick="exportHasilCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-trophy text-2xl"></i><span>Semua Hasil & Juara</span></button>
+                <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-medal text-2xl"></i><span>Klasemen Medali Akhir</span></button>
             </div>
         `;
     }
@@ -134,7 +147,7 @@ function saveTournamentMode() {
     saveToLocalStorage();
     alert("Sistem turnamen berhasil diubah menjadi: " + (STATE.settings.tournamentMode === 'single' ? "SINGLE ELIMINATION (Gugur)" : "DOUBLE ELIMINATION (Perkemi)"));
 }
-
+function saveEmbuB2Mode() { if(!STATE.settings) STATE.settings = {}; STATE.settings.embuB2Mode = document.getElementById('setting-embu-mode').value; saveToLocalStorage(); alert("Aturan urutan Babak 2 Embu disimpan."); checkExistingDrawing(); filterPesertaScoring(); }
 function refreshAllData() { renderCategoryList(); updateAllDropdowns(); renderParticipantTable(); }
 
 function switchTab(targetTab) {
