@@ -1339,7 +1339,39 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
 });
 document.getElementById('select-kategori').addEventListener('change', filterPesertaScoring);
 
-function updateScoringButtonsUI() { const pId = parseInt(document.getElementById('select-peserta').value); const selectBabak = document.getElementById('select-babak'); const btnB1 = document.getElementById('btn-save-b1'); const btnB2 = document.getElementById('btn-save-b2'); const btnPen = document.getElementById('btn-save-penyisihan'); const btnFin = document.getElementById('btn-save-final'); if(!pId || !selectBabak || !btnB1) return; const p = STATE.participants.find(i => i.id === pId); selectBabak.innerHTML = ''; const isFinalMode = STATE.participants.some(x => x.kategori === p.kategori && x.isFinalist); if(isFinalMode && p.isFinalist) selectBabak.innerHTML = `<option value="b2">Babak Final</option>`; else if(p.pool === 'A' || p.pool === 'B') selectBabak.innerHTML = `<option value="b1">Babak Penyisihan</option>`; else selectBabak.innerHTML = `<option value="b1">Babak 1</option><option value="b2">Babak 2</option>`; btnB1.classList.add('hidden'); btnB2.classList.add('hidden'); btnPen.classList.add('hidden'); btnFin.classList.add('hidden'); if(isFinalMode && p.isFinalist) btnFin.classList.remove('hidden'); else if(p.pool === 'A' || p.pool === 'B') btnPen.classList.remove('hidden'); else { btnB1.classList.remove('hidden'); btnB2.classList.remove('hidden'); } loadExistingScores(); }
+function updateScoringButtonsUI() { 
+    const val = document.getElementById('select-peserta').value; 
+    
+    // Menyembunyikan Dropdown Babak Lama yang mengganggu
+    const selectBabakOld = document.getElementById('select-babak');
+    if (selectBabakOld) selectBabakOld.parentElement.classList.add('hidden');
+
+    const btnB1 = document.getElementById('btn-save-b1'); 
+    const btnB2 = document.getElementById('btn-save-b2'); 
+    const btnPen = document.getElementById('btn-save-penyisihan'); 
+    const btnFin = document.getElementById('btn-save-final'); 
+    
+    if(!val || !val.includes('|')) return; 
+    const [pIdStr, babak] = val.split('|');
+    
+    // Sembunyikan semua tombol dulu
+    if(btnB1) btnB1.classList.add('hidden'); 
+    if(btnB2) btnB2.classList.add('hidden'); 
+    if(btnPen) btnPen.classList.add('hidden'); 
+    if(btnFin) btnFin.classList.add('hidden'); 
+
+    // Tampilkan tombol cerdas berdasarkan ID yang di-split
+    if (babak === 'b1') {
+        if(btnPen && val.includes('[Pool')) { btnPen.classList.remove('hidden'); }
+        else if(btnB1) { btnB1.classList.remove('hidden'); btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 1'; }
+    } else {
+        if(btnFin && val.includes('[FINAL]')) { btnFin.classList.remove('hidden'); }
+        else if(btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
+    }
+    
+    loadExistingScores(); 
+}
+
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     
@@ -1358,8 +1390,34 @@ function setJudges(n) {
     } 
     calculateLive(); 
 }
-function loadExistingScores() { const pId = parseInt(document.getElementById('select-peserta').value); const babak = document.getElementById('select-babak').value; if(!pId || !babak) return; const p = STATE.participants.find(i => i.id === pId); const scoreData = p.scores[babak]; if(scoreData && scoreData.raw && scoreData.raw.length > 0) { const nJudges = scoreData.raw.length; if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); for(let i=1; i<=nJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = scoreData.raw[i-1] || ''; if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; } UI.timerSeconds = scoreData.time || 0; updateTimerUI(); } else { for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; } UI.timerSeconds = 0; updateTimerUI(); } calculateLive(); }
+function loadExistingScores() { 
+    const val = document.getElementById('select-peserta').value; 
+    if(!val || !val.includes('|')) return; 
+    const [pIdStr, babak] = val.split('|'); 
+    const pId = parseInt(pIdStr);
 
+    const p = STATE.participants.find(i => i.id === pId); 
+    if(!p) return;
+
+    const scoreData = p.scores[babak]; 
+    if(scoreData && scoreData.raw && scoreData.raw.length > 0) { 
+        const nJudges = scoreData.raw.length; 
+        if(STATE.settings.numJudges !== nJudges) setJudges(nJudges); 
+        for(let i=1; i<=nJudges; i++) { 
+            let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); 
+            if(sEl) sEl.value = scoreData.raw[i-1] || ''; 
+            if(tEl) tEl.value = (scoreData.techRaw && scoreData.techRaw[i-1]) ? scoreData.techRaw[i-1] : ''; 
+        } 
+        UI.timerSeconds = scoreData.time || 0; updateTimerUI(); 
+    } else { 
+        for(let i=1; i<=STATE.settings.numJudges; i++) { 
+            let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); 
+            if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; 
+        } 
+        UI.timerSeconds = 0; updateTimerUI(); 
+    } 
+    calculateLive(); 
+}
 function calculateLive() {
     let raw = [];
     let techRaw = [];
