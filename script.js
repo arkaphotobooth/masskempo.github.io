@@ -1787,6 +1787,81 @@ function promoteToFinal() {
     }
 }
 
+// =========================================================
+// MAGIC BUTTON: AUTO GENERATE FINAL RANDORI DARI POOL
+// =========================================================
+function autoGenerateRandoriFinal(catName) {
+    const poolResults = calculateRandoriFinalists(catName);
+    if (!poolResults) return alert("Belum ada hasil pertandingan yang selesai.");
+
+    let poolA = poolResults.find(r => r.pool === 'A');
+    let poolB = poolResults.find(r => r.pool === 'B');
+
+    // Validasi Cerdas: Tolak jika belum ada juara yang sah
+    if (!poolA || !poolA.emas || !poolA.perak || !poolB || !poolB.emas || !poolB.perak) {
+        return alert("❌ PENOLAKAN SISTEM:\nTurnamen Pool A dan Pool B belum selesai sepenuhnya. Pastikan masing-masing Pool sudah mendapatkan Juara 1 dan 2.");
+    }
+
+    const finalCatName = "FINAL " + catName;
+
+    if (confirm(`🌟 MAGIC BUTTON AKTIF!\n\nSistem akan otomatis:\n1. Membuat kategori baru bernama "${finalCatName}"\n2. Menyalin Juara 1 & 2 dari Pool A dan B.\n3. Menyiapkan susunan Crossover (Silang).\n\nLanjutkan?`)) {
+
+        // 1. Buat Kategori "FINAL ..." jika belum ada
+        if (!STATE.categories.some(c => c.name === finalCatName)) {
+            const originalCat = STATE.categories.find(c => c.name === catName);
+            STATE.categories.push({
+                id: Date.now(),
+                name: finalCatName,
+                type: originalCat ? originalCat.type : 1,
+                discipline: 'randori'
+            });
+        }
+
+        // 2. Ambil data atlet asli dari database
+        const p1A = STATE.participants.find(p => p.nama === poolA.emas && p.kategori === catName);
+        const p2A = STATE.participants.find(p => p.nama === poolA.perak && p.kategori === catName);
+        const p1B = STATE.participants.find(p => p.nama === poolB.emas && p.kategori === catName);
+        const p2B = STATE.participants.find(p => p.nama === poolB.perak && p.kategori === catName);
+
+        // 3. Bersihkan peserta lama di kategori Final (agar tidak dobel jika tombol diklik 2x)
+        STATE.participants = STATE.participants.filter(p => p.kategori !== finalCatName);
+
+        // 4. INJEKSI ATLET (Urutan SANGAT PENTING: 1A, 2A, 1B, 2B untuk menjamin bagan Crossover akurat)
+        let timeOffset = 0;
+        [p1A, p2A, p1B, p2B].forEach(pOriginal => {
+            if (pOriginal) {
+                // Buat kloningan data atlet
+                STATE.participants.push({
+                    id: Date.now() + timeOffset++,
+                    nama: pOriginal.nama,
+                    kontingen: pOriginal.kontingen,
+                    kategori: finalCatName,
+                    urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0,
+                    scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } },
+                    finalScore: 0, techScore: 0
+                });
+            }
+        });
+
+        // 5. Simpan dan Lemparkan Panitia ke Tab Drawing!
+        let updates = {};
+        updates['turnamen_data/categories'] = STATE.categories;
+        updates['turnamen_data/participants'] = STATE.participants;
+
+        database.ref().update(updates).then(() => {
+            alert("✅ Kategori FINAL berhasil disiapkan!\n\nAnda akan otomatis diarahkan ke Tab Drawing. Silakan klik tombol merah 'GENERATE BAGAN BARU' untuk memunculkan bagan silang (Crossover).");
+            
+            updateAllDropdowns(); // Perbarui seluruh list dropdown
+            
+            // Auto-pilih kategori final dan pindah tab
+            let drawSelect = document.getElementById('draw-select-kategori');
+            if(drawSelect) drawSelect.value = finalCatName;
+            switchTab('drawing');
+            
+        }).catch(err => alert("Gagal membuat Final: " + err));
+    }
+}
+
 // INJEKSI DOM UNTUK TOMBOL UNDUH HASIL (MIKRO)
 function renderRanking() { 
     const filter = document.getElementById('rank-filter-kategori').value; 
@@ -1828,6 +1903,21 @@ function renderRanking() {
             btnPromote.innerHTML = '<i class="fas fa-undo mr-2"></i>BATALKAN FINALIS';
             btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm";
             btnPromote.onclick = cancelFinalist;
+        }
+    } else if (catObj && catObj.discipline === 'randori') {
+        const poolResults = calculateRandoriFinalists(filter);
+        const hasPoolA = poolResults && poolResults.some(r => r.pool === 'A');
+        const hasPoolB = poolResults && poolResults.some(r => r.pool === 'B');
+        const isAlreadyFinal = filter.toUpperCase().includes('FINAL');
+
+        // FIX MAGIC BUTTON: Munculkan tombol generate jika ada Pool A & B dan belum masuk kategori Final
+        if (hasPoolA && hasPoolB && !isAlreadyFinal) {
+            btnPromote.classList.remove('hidden');
+            btnPromote.innerHTML = '<i class="fas fa-magic mr-2"></i>GENERATE PARTAI FINAL';
+            btnPromote.className = "whitespace-nowrap bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm animate-pulse";
+            btnPromote.onclick = () => autoGenerateRandoriFinal(filter);
+        } else {
+            btnPromote.classList.add('hidden'); 
         }
     } else {
         btnPromote.classList.add('hidden'); 
