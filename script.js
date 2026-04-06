@@ -113,16 +113,24 @@ function injectAdminExportButtons() {
     const adminExportSection = document.querySelector('#section-admin .bg-dark-card.text-center');
     if (adminExportSection) {
         let currentMode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+        let currentFinalMode = (STATE.settings && STATE.settings.finalRandoriMode) ? STATE.settings.finalRandoriMode : 'single';
         let currentEmbuMode = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
         
         adminExportSection.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
-                    <h3 class="text-md font-black text-red-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM RANDORI</h3>
-                    <p class="text-[10px] text-slate-400 mb-3">Aturan bagan yang akan di-generate.</p>
-                    <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-red-500 transition-colors">
+                    <h3 class="text-md font-black text-red-400 mb-2"><i class="fas fa-cogs mr-2"></i>SISTEM RANDORI (UTAMA)</h3>
+                    <p class="text-[10px] text-slate-400 mb-3">Aturan bagan untuk penyisihan Pool.</p>
+                    <select id="setting-tournament-mode" onchange="saveTournamentMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-red-500 transition-colors mb-4">
                         <option value="double" ${currentMode === 'double' ? 'selected' : ''}>Double Elimination (Perkemi)</option>
                         <option value="single" ${currentMode === 'single' ? 'selected' : ''}>Single Elimination (Gugur Biasa)</option>
+                    </select>
+                    
+                    <h3 class="text-md font-black text-orange-400 mb-2 border-t border-slate-700 pt-3"><i class="fas fa-project-diagram mr-2"></i>SISTEM FINAL RANDORI</h3>
+                    <p class="text-[10px] text-slate-400 mb-3">Aturan khusus bagan "FINAL" (Crossover).</p>
+                    <select id="setting-final-mode" onchange="saveFinalMode()" class="w-full text-sm bg-slate-900 border border-slate-600 rounded p-2 text-white font-bold cursor-pointer hover:border-orange-500 transition-colors">
+                        <option value="single" ${currentFinalMode === 'single' ? 'selected' : ''}>Gugur Biasa (Crossover Standar)</option>
+                        <option value="double" ${currentFinalMode === 'double' ? 'selected' : ''}>Double Elimination (Perkemi Crossover)</option>
                     </select>
                 </div>
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 text-left shadow-lg">
@@ -150,7 +158,13 @@ function saveTournamentMode() {
     if(!STATE.settings) STATE.settings = {};
     STATE.settings.tournamentMode = document.getElementById('setting-tournament-mode').value;
     saveToLocalStorage();
-    alert("Sistem turnamen berhasil diubah menjadi: " + (STATE.settings.tournamentMode === 'single' ? "SINGLE ELIMINATION (Gugur)" : "DOUBLE ELIMINATION (Perkemi)"));
+    alert("Sistem penyisihan berhasil diubah menjadi: " + (STATE.settings.tournamentMode === 'single' ? "SINGLE ELIMINATION" : "DOUBLE ELIMINATION"));
+}
+function saveFinalMode() {
+    if(!STATE.settings) STATE.settings = {};
+    STATE.settings.finalRandoriMode = document.getElementById('setting-final-mode').value;
+    saveToLocalStorage();
+    alert("Sistem Final Randori (Crossover) berhasil disimpan.");
 }
 function saveEmbuB2Mode() { if(!STATE.settings) STATE.settings = {}; STATE.settings.embuB2Mode = document.getElementById('setting-embu-mode').value; saveToLocalStorage(); alert("Aturan urutan Babak 2 Embu disimpan."); checkExistingDrawing(); filterPesertaScoring(); }
 function refreshAllData() { 
@@ -595,10 +609,18 @@ function generateRandoriBracket() {
 
         let poolConfigs = [];
         let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+        // Ambil setting mode khusus untuk final
+        let finalMode = (STATE.settings && STATE.settings.finalRandoriMode) ? STATE.settings.finalRandoriMode : 'single';
 
         if(count <= 4) {
-            // FIX: Gunakan templat Crossover khusus jika ini adalah kategori FINAL
-            let temp4 = mode === 'single' ? (isFinalCategory ? SINGLE_TEMPLATE_4_CROSS : SINGLE_TEMPLATE_4) : (isFinalCategory ? TEMPLATE_4_CROSS : TEMPLATE_4_STANDARD);
+            let temp4;
+            if (isFinalCategory) {
+                // Jika ini kategori Final, gunakan Mode Final
+                temp4 = finalMode === 'single' ? SINGLE_TEMPLATE_4_CROSS : TEMPLATE_4_CROSS;
+            } else {
+                // Jika ini penyisihan biasa, gunakan Mode Utama
+                temp4 = mode === 'single' ? SINGLE_TEMPLATE_4 : TEMPLATE_4_STANDARD;
+            }
             poolConfigs.push({ name: '-', template: temp4, size: 4, athletes: athletes, isCrossover: isFinalCategory });
         } else if (count <= 8) {
             let temp8 = mode === 'single' ? SINGLE_TEMPLATE_8 : TEMPLATE_8_PERKEMI;
@@ -1713,19 +1735,23 @@ function calculateRandoriFinalists(catName) {
         // --- LOGIKA CERDAS PENENTUAN JUARA 3 BERSAMA ---
         let perungguArr = [];
         let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+        let finalMode = (STATE.settings && STATE.settings.finalRandoriMode) ? STATE.settings.finalRandoriMode : 'single';
+        
+        let isFinalCategory = catName.toUpperCase().includes('FINAL');
+        // Jika sedang menghitung juara di Kategori Final, gunakan Setting Final
+        let activeMode = isFinalCategory ? finalMode : mode;
 
-        if (mode === 'single') {
-            // FIX BUG JUARA 3: Ambil dari partai yang menuju ke Grand Final, dan izinkan status 'auto-win'
+        if (activeMode === 'single') {
+            // MODE UMUM (SINGLE): Ambil 2 orang yang kalah di Semi-Final
             let sfs = poolMatches.filter(m => m.nextW === gf.matchNum && (m.status === 'done' || m.status === 'auto-win'));
             sfs.forEach(sf => {
-                // Pastikan yang kalah bukan -1 (Hantu / BYE)
                 if (sf.loserId && sf.loserId !== -1) {
                     let p3 = STATE.participants.find(p => p.id === sf.loserId);
                     if (p3) perungguArr.push({nama: p3.nama, kontingen: p3.kontingen});
                 }
             });
         } else {
-            // MODE PERKEMI: Ambil dari Looser Bracket
+            // MODE PERKEMI (DOUBLE): Ambil dari Looser Bracket
             let finalBawah = poolMatches.find(m => m.babak.toUpperCase() === "FINAL BAWAH" || m.babak.toUpperCase() === "LB FINAL");
             let juara3a = (finalBawah && finalBawah.status === 'done') ? STATE.participants.find(p => p.id === finalBawah.loserId) : null;
             
