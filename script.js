@@ -955,17 +955,19 @@ function renderEmbuLayout(catName, container, poolsConfig) {
         let borderColor = pool.isFinal || pool.isB2 ? 'border-yellow-600' : 'border-slate-600'; 
         let titleColor = pool.isFinal || pool.isB2 ? 'text-yellow-500' : 'text-purple-400'; 
         
-        // FIX: Identifikasi tipe pool agar klik tidak tertukar
         let poolType = pool.isFinal ? 'final' : (pool.isB2 ? 'b2' : 'b1');
 
         html += `<div class="bg-slate-800 p-4 md:p-5 rounded-xl border ${borderColor} shadow-sm w-full h-full flex flex-col">
             <h3 class="font-black text-center ${titleColor} mb-4 border-b border-slate-700 pb-3">${pool.title}</h3>
             <div class="space-y-3 flex-1">`; 
             
-        pool.data.forEach((p) => { 
+        // FIX: Tambahkan parameter 'index' di sini untuk menghitung baris
+        pool.data.forEach((p, index) => { 
             let noUrut = pool.isFinal ? p.urutFinal : (pool.isB2 ? p.urutB2 : p.urut); 
             
-            // FIX: Sensor klik sekarang mendeteksi ID dan Tipe Babaknya
+            // FIX "UNDEFINED": Jika noUrut kosong/undefined, gunakan nomor baris (index + 1)
+            if (!noUrut) noUrut = index + 1;
+            
             let isSelected = (EMBU_SWAP_SELECTION && EMBU_SWAP_SELECTION.id === p.id && EMBU_SWAP_SELECTION.type === poolType);
             let activeClass = isSelected 
                 ? 'bg-yellow-600/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
