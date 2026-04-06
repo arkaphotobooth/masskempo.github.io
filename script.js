@@ -1637,26 +1637,6 @@ function saveScore() {
     }).catch(err => alert("Gagal Simpan: " + err));
 }
 
-function toggleTimer() { 
-    const btn = document.getElementById('btn-timer'); 
-    if(UI.timerInterval) { 
-        clearInterval(UI.timerInterval); UI.timerInterval = null; 
-        btn.innerText = 'LANJUTKAN'; 
-        btn.classList.replace('bg-red-600', 'bg-yellow-600'); 
-        btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); 
-    } else { 
-        UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); 
-        btn.innerText = 'STOP'; 
-        btn.className = 'flex-1 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
-    } 
-}
-
-function resetTimer() { 
-    clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); 
-    document.getElementById('btn-timer').innerText = 'START'; 
-    document.getElementById('btn-timer').className = 'flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
-    calculateLive(); 
-}
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
 
 function calculateRandoriFinalists(catName) {
