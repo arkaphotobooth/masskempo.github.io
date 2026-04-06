@@ -1602,13 +1602,28 @@ function resetTimer() {
     calculateLive(); 
 }
 
+// =========================================================
+// FIX FINAL: TIMER & SAVE SCORE (Gembok Anti-Spam Klik)
+// =========================================================
+
+let isSaving = false; // <-- GEMBOK KEAMANAN GLOBAL
+
 function saveScore() { 
+    // 1. CEK GEMBOK: Jika sedang menyimpan, tolak semua klik!
+    if (isSaving) {
+        console.warn("Sabar Suhu, data sedang dikirim ke Firebase...");
+        return; 
+    }
+
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.includes('|')) return alert('Pilih atlet dari dropdown terlebih dahulu!'); 
     const [pIdStr, babak] = val.split('|');
     const pId = parseInt(pIdStr);
 
-    for(let i=1; i<=STATE.settings.numJudges; i++) { let sEl = document.getElementById(`score-${i}`); if(sEl && sEl.value === "") return alert(`TOTAL NILAI Wasit ${i} kosong!`); }
+    for(let i=1; i<=STATE.settings.numJudges; i++) { 
+        let sEl = document.getElementById(`score-${i}`); 
+        if(sEl && sEl.value === "") return alert(`TOTAL NILAI Wasit ${i} kosong!`); 
+    }
         
     const calc = calculateLive(); 
     const pIndex = STATE.participants.findIndex(i => i.id === pId); 
@@ -1626,18 +1641,32 @@ function saveScore() {
     let updates = {};
     updates[`turnamen_data/participants/${pIndex}`] = p;
     
+    // 2. KUNCI GEMBOK: Mulai proses pengiriman!
+    isSaving = true; 
+    
+    // (Opsional: Anda bisa mengubah teks kursor di sini menjadi 'wait' jika mau)
+    document.body.style.cursor = 'wait';
+
     database.ref().update(updates).then(() => {
+        // 3. BUKA GEMBOK: Data berhasil masuk
+        isSaving = false; 
+        document.body.style.cursor = 'default';
+
         alert(`SKOR TERSIMPAN!`); 
-        clearInterval(UI.timerInterval); UI.timerInterval = null; 
-        document.getElementById('btn-timer').innerText = 'START'; 
-        document.getElementById('btn-timer').className = 'flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
+        resetTimer();
         
         let selectEl = document.getElementById('select-peserta');
         if(selectEl && selectEl.selectedIndex < selectEl.options.length - 1) {
              selectEl.selectedIndex++;
+             document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
              updateScoringButtonsUI();
         }
-    }).catch(err => alert("Gagal Simpan: " + err));
+    }).catch(err => {
+        // 4. BUKA GEMBOK MESKI ERROR: Agar panitia bisa mencoba lagi
+        isSaving = false; 
+        document.body.style.cursor = 'default';
+        alert("Gagal Simpan: " + err);
+    });
 }
 
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
