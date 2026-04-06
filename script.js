@@ -534,6 +534,11 @@ const SINGLE_TEMPLATE_4 = [
     { matchNum: 2, babak: "Semi-Final", col: 1, slot1: 3, slot2: 4, nextW: 3, nextWSlot: 2, nextL: null, nextLSlot: null },
     { matchNum: 3, babak: "FINAL", col: 2, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
 ];
+const SINGLE_TEMPLATE_4_CROSS = [
+    { matchNum: 1, babak: "S-Final Crossover", col: 1, slot1: 1, slot2: 4, nextW: 3, nextWSlot: 1, nextL: null, nextLSlot: null },
+    { matchNum: 2, babak: "S-Final Crossover", col: 1, slot1: 3, slot2: 2, nextW: 3, nextWSlot: 2, nextL: null, nextLSlot: null },
+    { matchNum: 3, babak: "GRAND FINAL", col: 2, slot1: null, slot2: null, nextW: 'WINNER', nextL: 'SECOND' }
+];
 const SINGLE_TEMPLATE_8 = [
     { matchNum: 1, babak: "Quarter-Final", col: 1, slot1: 1, slot2: 2, nextW: 5, nextWSlot: 1, nextL: null, nextLSlot: null },
     { matchNum: 2, babak: "Quarter-Final", col: 1, slot1: 3, slot2: 4, nextW: 5, nextWSlot: 2, nextL: null, nextLSlot: null },
@@ -588,8 +593,9 @@ function generateRandoriBracket() {
         let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
 
         if(count <= 4) {
-            let temp4 = mode === 'single' ? SINGLE_TEMPLATE_4 : (isFinalCategory ? TEMPLATE_4_CROSS : TEMPLATE_4_STANDARD);
-            poolConfigs.push({ name: '-', template: temp4, size: 4, athletes: athletes, isCrossover: (isFinalCategory && mode === 'double') });
+            // FIX: Gunakan templat Crossover khusus jika ini adalah kategori FINAL
+            let temp4 = mode === 'single' ? (isFinalCategory ? SINGLE_TEMPLATE_4_CROSS : SINGLE_TEMPLATE_4) : (isFinalCategory ? TEMPLATE_4_CROSS : TEMPLATE_4_STANDARD);
+            poolConfigs.push({ name: '-', template: temp4, size: 4, athletes: athletes, isCrossover: isFinalCategory });
         } else if (count <= 8) {
             let temp8 = mode === 'single' ? SINGLE_TEMPLATE_8 : TEMPLATE_8_PERKEMI;
             poolConfigs.push({ name: '-', template: temp8, size: 8, athletes: athletes, isCrossover: false });
@@ -1705,11 +1711,14 @@ function calculateRandoriFinalists(catName) {
         let mode = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
 
         if (mode === 'single') {
-            // MODE UMUM: Ambil 2 orang yang kalah di Semi-Final
-            let sfs = poolMatches.filter(m => m.nextW === gf.matchNum && m.status === 'done');
+            // FIX BUG JUARA 3: Ambil dari partai yang menuju ke Grand Final, dan izinkan status 'auto-win'
+            let sfs = poolMatches.filter(m => m.nextW === gf.matchNum && (m.status === 'done' || m.status === 'auto-win'));
             sfs.forEach(sf => {
-                let p3 = STATE.participants.find(p => p.id === sf.loserId);
-                if (p3) perungguArr.push({nama: p3.nama, kontingen: p3.kontingen});
+                // Pastikan yang kalah bukan -1 (Hantu / BYE)
+                if (sf.loserId && sf.loserId !== -1) {
+                    let p3 = STATE.participants.find(p => p.id === sf.loserId);
+                    if (p3) perungguArr.push({nama: p3.nama, kontingen: p3.kontingen});
+                }
             });
         } else {
             // MODE PERKEMI: Ambil dari Looser Bracket
