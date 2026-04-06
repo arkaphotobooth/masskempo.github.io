@@ -149,7 +149,12 @@ function saveTournamentMode() {
     alert("Sistem turnamen berhasil diubah menjadi: " + (STATE.settings.tournamentMode === 'single' ? "SINGLE ELIMINATION (Gugur)" : "DOUBLE ELIMINATION (Perkemi)"));
 }
 function saveEmbuB2Mode() { if(!STATE.settings) STATE.settings = {}; STATE.settings.embuB2Mode = document.getElementById('setting-embu-mode').value; saveToLocalStorage(); alert("Aturan urutan Babak 2 Embu disimpan."); checkExistingDrawing(); filterPesertaScoring(); }
-function refreshAllData() { renderCategoryList(); updateAllDropdowns(); renderParticipantTable(); }
+function refreshAllData() { 
+    renderCategoryList(); 
+    updateAllDropdowns(); 
+    renderParticipantTable(); 
+    filterPesertaScoring(); // FIX BUG 1: Langsung muat daftar atlet di tab Scoring saat web dibuka
+}
 
 function switchTab(targetTab) {
     UI.tabs.forEach(tab => {
@@ -1408,21 +1413,33 @@ function updateScoringButtonsUI() {
 function setJudges(n) { 
     STATE.settings.numJudges = n; 
     
-    // Warnai tombol aktif (dengan proteksi jika elemen null)
+    // Warnai tombol aktif
     let btnJ3 = document.getElementById('btn-j3');
     let btnJ5 = document.getElementById('btn-j5');
     if(btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     if(btnJ5) btnJ5.className = n === 5 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white'; 
     
     const container = document.getElementById('judge-inputs'); 
-    if(!container) return; // Mencegah crash jika sedang tidak di tab Scoring
+    if(!container) return;
+
+    // --- FIX BUG JURI: Simpan nilai yang sudah diketik sebelum kotak di-reset ---
+    let tempScores = [];
+    let tempTechs = [];
+    for(let i=1; i<=5; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        tempScores.push(sEl ? sEl.value : '');
+        tempTechs.push(tEl ? tEl.value : '');
+    }
 
     container.innerHTML = ''; 
     for(let i=1; i<=n; i++) { 
-        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
+        // Menggambar kotak baru sambil memasukkan kembali nilai dari memori (tempScores)
+        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i===1?'<span class="text-yellow-500 font-bold">TIE-BREAK</span>':''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i-1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i===1?'text-yellow-400':'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`; 
     } 
     calculateLive(); 
 }
+
 function loadExistingScores() { 
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.includes('|')) return; 
@@ -1717,21 +1734,65 @@ function renderRanking() {
 
             if(poolList.length === 0) return; 
             
-            if(poolKey === 'FINAL') poolList.sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
-            else poolList.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech); 
+            // --- FIX BUG KLASEMEN B2: Kalkulasi Rata-rata dan Sorting Cerdas ---
+            if(poolKey === 'FINAL') {
+                poolList.sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
+            } else if (poolKey === 'SINGLE') {
+                poolList.forEach(p => {
+                    let s1 = p.scores.b1.final || 0; let s2 = p.scores.b2.final || 0;
+                    p.calcFinal = (s1 > 0 && s2 > 0) ? ((s1 + s2) / 2) : (s1 > 0 ? s1 : s2);
+                    let t1 = p.scores.b1.tech || 0; let t2 = p.scores.b2.tech || 0;
+                    p.calcTech = (s1 > 0 && s2 > 0) ? ((t1 + t2) / 2) : (s1 > 0 ? t1 : t2);
+                });
+                poolList.sort((a,b) => b.calcFinal - a.calcFinal || b.calcTech - a.calcTech);
+            } else {
+                poolList.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech); 
+            }
             
             let poolTitle = poolKey === 'SINGLE' ? 'KLASEMEN AKHIR' : poolKey === 'FINAL' ? '<i class="fas fa-star text-yellow-400"></i> KLASEMEN FINAL' : `KLASEMEN POOL ${poolKey}`; 
             htmlOutput += `<h4 class="text-md font-bold text-blue-400 mt-6 mb-3 pl-2 border-l-4 border-blue-500">${poolTitle}</h4>`; 
             
             htmlOutput += poolList.map((p, i) => { 
-                let scoreVal = poolKey === 'FINAL' ? p.scores.b2.final : p.scores.b1.final;
-                let isWaiting = poolKey === 'FINAL' && scoreVal === 0;
+                let scoreB1 = p.scores.b1.final || 0;
+                let scoreB2 = p.scores.b2.final || 0;
+                let finalScore = (poolKey === 'SINGLE') ? p.calcFinal : (poolKey === 'FINAL' ? scoreB2 : scoreB1);
+
+                let isWaiting = finalScore === 0;
                 let medal = isWaiting ? `<span class="text-xl font-bold text-slate-600">-</span>` : i === 0 ? '<i class="fas fa-medal text-yellow-400 text-2xl"></i>' : i === 1 ? '<i class="fas fa-medal text-slate-300 text-2xl"></i>' : i === 2 ? '<i class="fas fa-medal text-amber-600 text-2xl"></i>' : `<span class="text-2xl font-black text-slate-600">${i+1}</span>`;
-                let displayScore = isWaiting ? "000.0" : scoreVal.toFixed(2);
-                let displayLabel = isWaiting ? "Menunggu Nilai" : "Nilai Akhir";
+                
+                let displayB1 = scoreB1 > 0 ? scoreB1.toFixed(1) : '-';
+                let displayB2 = scoreB2 > 0 ? scoreB2.toFixed(1) : '-';
+                let displayFinal = isWaiting ? "000.0" : finalScore.toFixed(2);
                 let displayColor = isWaiting ? "text-slate-500" : "text-white";
 
-                return `<div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4 mb-3 hover:bg-slate-800/50 transition-colors"><div class="w-12 text-center flex-shrink-0">${medal}</div><div class="flex-1 w-full"><div class="font-bold text-lg ${displayColor} whitespace-normal break-words">${p.nama} ${poolKey !== 'FINAL' && p.isFinalist ? '<span class="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded ml-2 shadow-sm font-black tracking-wide">LULUS FINAL</span>' : ''}</div><div class="text-xs text-slate-400 mt-1"><span class="bg-slate-800 px-2 py-1 rounded border border-slate-700 shadow-sm">${p.kontingen}</span></div></div><div class="flex gap-4 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700"><div class="text-center md:text-right flex-1"><div class="text-[10px] ${isWaiting ? 'text-slate-500' : 'text-green-400'} font-bold uppercase tracking-wider">${displayLabel}</div><div class="text-2xl font-black ${displayColor}">${displayScore}</div></div></div></div>`; 
+                // Membangun UI Info Babak 1 dan Babak 2
+                let extraScoresHTML = '';
+                if (poolKey === 'SINGLE' && scoreB1 > 0) {
+                   extraScoresHTML = `
+                   <div class="text-center md:text-right px-3 border-r border-slate-700">
+                        <div class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Babak 1</div>
+                        <div class="text-lg font-bold text-slate-300">${displayB1}</div>
+                   </div>
+                   <div class="text-center md:text-right px-3 border-r border-slate-700">
+                        <div class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Babak 2</div>
+                        <div class="text-lg font-bold text-slate-300">${displayB2}</div>
+                   </div>`;
+                }
+
+                return `<div class="flex flex-col md:flex-row items-start md:items-center bg-dark-card p-4 rounded-xl border border-slate-700 gap-4 mb-3 hover:bg-slate-800/50 transition-colors">
+                    <div class="w-12 text-center flex-shrink-0">${medal}</div>
+                    <div class="flex-1 w-full">
+                        <div class="font-bold text-lg ${displayColor} whitespace-normal break-words">${p.nama} ${poolKey !== 'FINAL' && p.isFinalist ? '<span class="text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded ml-2 shadow-sm font-black tracking-wide">LULUS FINAL</span>' : ''}</div>
+                        <div class="text-xs text-slate-400 mt-1"><span class="bg-slate-800 px-2 py-1 rounded border border-slate-700 shadow-sm">${p.kontingen}</span></div>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-700 items-center justify-end">
+                        ${extraScoresHTML}
+                        <div class="text-center md:text-right pl-3">
+                            <div class="text-[10px] ${isWaiting ? 'text-slate-500' : 'text-green-400'} font-bold uppercase tracking-wider">${isWaiting ? 'Menunggu' : 'Nilai Akhir'}</div>
+                            <div class="text-2xl font-black ${displayColor}">${displayFinal}</div>
+                        </div>
+                    </div>
+                </div>`; 
             }).join(''); 
         }); 
     } else {
