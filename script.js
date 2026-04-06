@@ -1360,11 +1360,8 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
     if(e.target.selectedIndex >= 0) { 
         if(e.target.value.startsWith('match-')) {
             document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
-            
-            // Sembunyikan Grid Absensi jika masuk ke Randori
             let gridEl = document.getElementById('scoring-athlete-grid');
             if(gridEl) gridEl.className = 'hidden'; 
-            
             loadRandoriMatch(); 
         } else { 
             document.getElementById('randori-nama-merah').innerText = "-"; 
@@ -1398,35 +1395,42 @@ function updateScoringButtonsUI() {
     const [pIdStr, babak] = val.split('|');
     const pId = parseInt(pIdStr);
 
-    // --- MANUVER C: AUTO-GRID ABSENSI & JUDUL CERDAS ---
+    // --- MANUVER C-REVISI: ABSENSI MINI & JUDUL CERDAS ---
     const p = STATE.participants.find(x => x.id === pId);
     if (p) {
         let babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
         let noUrut = babak === 'b1' ? p.urut : (p.isFinalist ? p.urutFinal : p.urutB2);
         
+        let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
+        
+        // FIX JUDUL: Jika beregu dan tidak ada kontingen, beri nama singkatan "dkk"
+        let displayNama = names.length > 1 ? `${names[0]} dkk` : p.nama;
+        
         let titleText = (p.kontingen && p.kontingen !== "-") 
             ? `[${babakText}] No.${noUrut} - Kontingen ${p.kontingen}` 
-            : `[${babakText}] No.${noUrut} - ${p.nama}`;
+            : `[${babakText}] No.${noUrut} - ${displayNama}`;
         
-        document.getElementById('scoring-athlete-name').innerText = titleText;
+        let titleEl = document.getElementById('scoring-athlete-name');
+        titleEl.innerText = titleText;
+        
+        // Hapus kelas 'truncate' agar jika nama panjang (misal kontingen panjang), ia bisa turun ke baris bawah dengan rapi
+        titleEl.classList.remove('truncate'); 
+        titleEl.classList.add('whitespace-normal', 'break-words');
 
-        // Injeksi otomatis kotak Grid ke dalam HTML tanpa perlu edit manual
         let gridEl = document.getElementById('scoring-athlete-grid');
         if (!gridEl) {
             gridEl = document.createElement('div');
             gridEl.id = 'scoring-athlete-grid';
-            document.getElementById('scoring-athlete-name').after(gridEl);
+            titleEl.after(gridEl);
         }
 
-        // Pecah nama berdasarkan koma, tanda tambah (+), atau simbol dan (&)
-        let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
-        
         if (names.length > 1) {
-            gridEl.className = "grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-inner mt-4 animate-fade-in";
+            // FIX GRID KECIL: Grid 2 kolom, padding dikurangi, teks ukuran 11px
+            gridEl.className = "grid grid-cols-2 gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700 shadow-inner mt-3 animate-fade-in";
             gridEl.innerHTML = names.map((n, i) => `
-                <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700/50 shadow-sm">
-                    <span class="w-8 h-8 rounded-full bg-blue-900/50 text-blue-400 border border-blue-700/50 text-[13px] flex items-center justify-center font-black shadow-sm flex-shrink-0">${i+1}</span>
-                    <span class="text-[15px] font-black text-white leading-tight uppercase tracking-wide">${n}</span>
+                <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-md border border-slate-700/50 shadow-sm overflow-hidden">
+                    <span class="w-5 h-5 rounded-full bg-blue-900/50 text-blue-400 border border-blue-700/50 text-[10px] flex items-center justify-center font-black shadow-sm flex-shrink-0">${i+1}</span>
+                    <span class="text-[11px] font-bold text-slate-200 leading-tight uppercase tracking-wider truncate" title="${n}">${n}</span>
                 </div>
             `).join('');
         } else {
@@ -1446,7 +1450,7 @@ function updateScoringButtonsUI() {
     } else {
         if(btnFin && val.includes('[FINAL]')) { btnFin.classList.remove('hidden'); }
         else if(btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
-    }
+    }  
     loadExistingScores(); 
 }
 
@@ -1578,7 +1582,7 @@ function toggleTimer() {
     const btn = document.getElementById('btn-timer'); 
     if(UI.timerInterval) { 
         clearInterval(UI.timerInterval); UI.timerInterval = null; 
-        btn.innerText = 'LANJUTKAN'; 
+        btn.innerText = 'LANJUT'; // <--- FIX: Huruf dipendekkan agar tidak mendorong tombol reset
         btn.classList.replace('bg-red-600', 'bg-yellow-600'); 
         btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); 
     } else { 
