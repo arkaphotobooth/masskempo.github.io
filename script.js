@@ -1358,14 +1358,15 @@ function saveRandoriMatchResult() {
 
 document.getElementById('select-peserta').addEventListener('change', (e) => { 
     if(e.target.selectedIndex >= 0) { 
-        // Ubah judul nama atlet di atas
-        document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
-        
         if(e.target.value.startsWith('match-')) {
-            // LANJUT OTOMATIS: Jika ini Randori dan partai belum habis, langsung muat data partai selanjutnya
+            document.getElementById('scoring-athlete-name').innerText = e.target.options[e.target.selectedIndex].text; 
+            
+            // Sembunyikan Grid Absensi jika masuk ke Randori
+            let gridEl = document.getElementById('scoring-athlete-grid');
+            if(gridEl) gridEl.className = 'hidden'; 
+            
             loadRandoriMatch(); 
         } else { 
-            // TUTUP OTOMATIS: Jika partai Randori sudah habis, bersihkan papan skor sepenuhnya
             document.getElementById('randori-nama-merah').innerText = "-"; 
             document.getElementById('randori-kont-merah').innerText = "-";
             document.getElementById('randori-nama-putih').innerText = "-"; 
@@ -1373,7 +1374,6 @@ document.getElementById('select-peserta').addEventListener('change', (e) => {
             currentRandoriMatchId = null;
             resetRandoriBoard(); 
             
-            // JALUR EMBU: Embu tidak terpengaruh oleh pembersihan di atas dan akan tetap terbuka/bisa diedit
             updateScoringButtonsUI(); 
         }
     }
@@ -1383,7 +1383,6 @@ document.getElementById('select-kategori').addEventListener('change', filterPese
 function updateScoringButtonsUI() { 
     const val = document.getElementById('select-peserta').value; 
     
-    // FIX: Hanya sembunyikan elemen dropdown-nya saja, BUKAN kotaknya!
     const selectBabakOld = document.getElementById('select-babak');
     if (selectBabakOld) {
         selectBabakOld.style.display = 'none';
@@ -1397,14 +1396,50 @@ function updateScoringButtonsUI() {
     
     if(!val || !val.includes('|')) return; 
     const [pIdStr, babak] = val.split('|');
-    
-    // Sembunyikan semua tombol dulu
+    const pId = parseInt(pIdStr);
+
+    // --- MANUVER C: AUTO-GRID ABSENSI & JUDUL CERDAS ---
+    const p = STATE.participants.find(x => x.id === pId);
+    if (p) {
+        let babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
+        let noUrut = babak === 'b1' ? p.urut : (p.isFinalist ? p.urutFinal : p.urutB2);
+        
+        let titleText = (p.kontingen && p.kontingen !== "-") 
+            ? `[${babakText}] No.${noUrut} - Kontingen ${p.kontingen}` 
+            : `[${babakText}] No.${noUrut} - ${p.nama}`;
+        
+        document.getElementById('scoring-athlete-name').innerText = titleText;
+
+        // Injeksi otomatis kotak Grid ke dalam HTML tanpa perlu edit manual
+        let gridEl = document.getElementById('scoring-athlete-grid');
+        if (!gridEl) {
+            gridEl = document.createElement('div');
+            gridEl.id = 'scoring-athlete-grid';
+            document.getElementById('scoring-athlete-name').after(gridEl);
+        }
+
+        // Pecah nama berdasarkan koma, tanda tambah (+), atau simbol dan (&)
+        let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
+        
+        if (names.length > 1) {
+            gridEl.className = "grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-inner mt-4 animate-fade-in";
+            gridEl.innerHTML = names.map((n, i) => `
+                <div class="flex items-center gap-3 bg-slate-900 p-3 rounded-lg border border-slate-700/50 shadow-sm">
+                    <span class="w-8 h-8 rounded-full bg-blue-900/50 text-blue-400 border border-blue-700/50 text-[13px] flex items-center justify-center font-black shadow-sm flex-shrink-0">${i+1}</span>
+                    <span class="text-[15px] font-black text-white leading-tight uppercase tracking-wide">${n}</span>
+                </div>
+            `).join('');
+        } else {
+            gridEl.className = "hidden";
+            gridEl.innerHTML = '';
+        }
+    }
+
     if(btnB1) btnB1.classList.add('hidden'); 
     if(btnB2) btnB2.classList.add('hidden'); 
     if(btnPen) btnPen.classList.add('hidden'); 
     if(btnFin) btnFin.classList.add('hidden'); 
 
-    // Tampilkan tombol cerdas berdasarkan ID yang di-split
     if (babak === 'b1') {
         if(btnPen && val.includes('[Pool')) { btnPen.classList.remove('hidden'); }
         else if(btnB1) { btnB1.classList.remove('hidden'); btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 1'; }
@@ -1412,7 +1447,6 @@ function updateScoringButtonsUI() {
         if(btnFin && val.includes('[FINAL]')) { btnFin.classList.remove('hidden'); }
         else if(btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
     }
-    
     loadExistingScores(); 
 }
 
@@ -1540,8 +1574,28 @@ function calculateLive() {
     return { raw: raw, techRaw: techRaw, penalty: penalty, final: finalScore, tieBreaker: totalTech };
 }
 
+function toggleTimer() { 
+    const btn = document.getElementById('btn-timer'); 
+    if(UI.timerInterval) { 
+        clearInterval(UI.timerInterval); UI.timerInterval = null; 
+        btn.innerText = 'LANJUTKAN'; 
+        btn.classList.replace('bg-red-600', 'bg-yellow-600'); 
+        btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); 
+    } else { 
+        UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); 
+        btn.innerText = 'STOP'; 
+        btn.className = 'flex-1 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
+    } 
+}
+
+function resetTimer() { 
+    clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); 
+    document.getElementById('btn-timer').innerText = 'START'; 
+    document.getElementById('btn-timer').className = 'flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
+    calculateLive(); 
+}
+
 function saveScore() { 
-    // Ambil ID dan Babak langsung dari dropdown!
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.includes('|')) return alert('Pilih atlet dari dropdown terlebih dahulu!'); 
     const [pIdStr, babak] = val.split('|');
@@ -1555,7 +1609,6 @@ function saveScore() {
     
     p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; 
     
-    // Kalkulasi Rata-rata / Final
     if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
     else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } 
     else { 
@@ -1563,26 +1616,43 @@ function saveScore() {
         else { p.finalScore = p.scores[babak].final; p.techScore = p.scores[babak].tech; } 
     } 
     
-    // Kirim Granular ke Firebase
     let updates = {};
     updates[`turnamen_data/participants/${pIndex}`] = p;
     
     database.ref().update(updates).then(() => {
         alert(`SKOR TERSIMPAN!`); 
         clearInterval(UI.timerInterval); UI.timerInterval = null; 
-        document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; 
+        document.getElementById('btn-timer').innerText = 'START'; 
+        document.getElementById('btn-timer').className = 'flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
         
-        // Cerdas: Jika sudah save Babak 1, pindah fokus ke atlet berikutnya
         let selectEl = document.getElementById('select-peserta');
         if(selectEl && selectEl.selectedIndex < selectEl.options.length - 1) {
              selectEl.selectedIndex++;
-             document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
              updateScoringButtonsUI();
         }
     }).catch(err => alert("Gagal Simpan: " + err));
 }
-function toggleTimer() { const btn = document.getElementById('btn-timer'); if(UI.timerInterval) { clearInterval(UI.timerInterval); UI.timerInterval = null; btn.innerText = 'LANJUTKAN'; btn.classList.replace('bg-red-600', 'bg-yellow-600'); btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); } else { UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); btn.innerText = 'STOP'; btn.className = 'bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg w-full font-bold'; } }
-function resetTimer() { clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); document.getElementById('btn-timer').innerText = 'START'; document.getElementById('btn-timer').className = 'bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg w-full font-bold'; calculateLive(); }
+
+function toggleTimer() { 
+    const btn = document.getElementById('btn-timer'); 
+    if(UI.timerInterval) { 
+        clearInterval(UI.timerInterval); UI.timerInterval = null; 
+        btn.innerText = 'LANJUTKAN'; 
+        btn.classList.replace('bg-red-600', 'bg-yellow-600'); 
+        btn.classList.replace('hover:bg-red-500', 'hover:bg-yellow-500'); 
+    } else { 
+        UI.timerInterval = setInterval(() => { UI.timerSeconds++; updateTimerUI(); calculateLive(); }, 1000); 
+        btn.innerText = 'STOP'; 
+        btn.className = 'flex-1 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
+    } 
+}
+
+function resetTimer() { 
+    clearInterval(UI.timerInterval); UI.timerInterval = null; UI.timerSeconds = 0; updateTimerUI(); 
+    document.getElementById('btn-timer').innerText = 'START'; 
+    document.getElementById('btn-timer').className = 'flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold transition-colors'; 
+    calculateLive(); 
+}
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
 
 function calculateRandoriFinalists(catName) {
