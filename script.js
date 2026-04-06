@@ -1154,7 +1154,6 @@ function filterPesertaScoring() {
     
     if(!categoryObj) return;
 
-    // SIMPAN MEMORI: Ingat partai apa yang sedang dinilai saat ini
     const currentSelectedMatchOrAthlete = selectEl.value; 
 
     if(categoryObj.discipline === 'randori') {
@@ -1162,6 +1161,11 @@ function filterPesertaScoring() {
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
         
+        // --- FIX BUG HANTU BEREGU: Sapu bersih grid absensi Embu! ---
+        let gridEl = document.getElementById('scoring-athlete-grid');
+        if(gridEl) gridEl.className = 'hidden'; 
+        // ------------------------------------------------------------
+
         let catMatches = STATE.matches.filter(m => 
             m.kategori === catName && 
             m.status === 'pending' && 
@@ -1189,13 +1193,11 @@ function filterPesertaScoring() {
             return `<option value="match-${m.id}">G-${displayNum} [${pLabel}] [${m.babak}] ${mrh.nama} vs ${pth.nama}</option>`;
         }).join('');
 
-        // LOGIKA ANTI-STUCK: Pindahkan pilihan secara manual, bukan via event
         let stillExists = Array.from(selectEl.options).some(opt => opt.value === currentSelectedMatchOrAthlete);
         
         if (stillExists) {
             selectEl.value = currentSelectedMatchOrAthlete;
         } else {
-            // Jika partai hilang (karena sudah di-save), paksa browser pilih opsi pertama dan muat langsung
             if (selectEl.options.length > 0) {
                 selectEl.value = selectEl.options[0].value;
                 document.getElementById('scoring-athlete-name').innerText = selectEl.options[0].text;
@@ -1204,7 +1206,7 @@ function filterPesertaScoring() {
         }
 
     } else {
-        // --- BAGIAN EMBU (SMART DROPDOWN BABAK 1 & 2) ---
+        // --- BAGIAN EMBU ---
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
@@ -1223,14 +1225,11 @@ function filterPesertaScoring() {
 
         if (hasFinal) {
             let finalL = listCat.filter(p => p.isFinalist).sort((a,b) => a.urutFinal - b.urutFinal);
-            // Tambahkan |b2 pada value agar sistem tahu ini Final (Babak 2)
             optionsHTML = finalL.map(p => `<option value="${p.id}|b2">[FINAL] No.${p.urutFinal} - ${p.nama} (${p.kontingen})</option>`).join('');
         } else if (listCat.some(p => p.pool === 'A' || p.pool === 'B')) {
             let sorted = listCat.sort((a,b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
-            // Tambahkan |b1 pada value agar sistem tahu ini Penyisihan (Babak 1)
             optionsHTML = sorted.map(p => `<option value="${p.id}|b1">[Pool ${p.pool}] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
         } else {
-            // JALUR SINGLE POOL: Pecah Babak 1 dan 2 langsung di Dropdown
             let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
             let sortedB1 = [...listCat].sort((a,b) => a.urut - b.urut);
             
@@ -1266,7 +1265,6 @@ function filterPesertaScoring() {
         
         selectEl.innerHTML = optionsHTML;
         
-        // Logika Anti-Stuck Embu yang sudah disesuaikan dengan value baru (p.id|babak)
         let stillExists = Array.from(selectEl.options).some(opt => opt.value === currentSelectedMatchOrAthlete);
         if(stillExists) {
             selectEl.value = currentSelectedMatchOrAthlete;
@@ -1279,15 +1277,18 @@ function filterPesertaScoring() {
         }
     }
 }
-
 let currentRandoriMatchId = null;
 function loadRandoriMatch() {
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.startsWith('match-')) return;
     
+    // --- FIX BUG HANTU BEREGU (LAPIS KEDUA): Sapu bersih saat muat partai ---
+    let gridEl = document.getElementById('scoring-athlete-grid');
+    if(gridEl) gridEl.className = 'hidden'; 
+    // -----------------------------------------------------------------------
+
     const newMatchId = parseInt(val.replace('match-', '')); 
     
-    // KUNCI PENGAMAN: Cegah reset skor jika match yang dimuat masih sama!
     if (currentRandoriMatchId === newMatchId) return; 
 
     currentRandoriMatchId = newMatchId; 
