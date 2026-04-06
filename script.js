@@ -1937,55 +1937,106 @@ function exportDrawingCSV(filterCatName = null) {
 
 function exportHasilCSV(filterCatName = null) {
     let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
-    let isOnlyEmbu = categoriesToExport.length > 0 && categoriesToExport.every(c => c.discipline === 'embu');
     let rows = [];
-    
-    if (isOnlyEmbu) {
-        rows.push(["Peringkat / Medali", "Kategori", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu (MM:SS)", "Denda", "Nilai Akhir"]);
-    } else {
-        rows.push(["Disiplin", "Kategori", "Peringkat / Medali", "Nama Atlet", "Kontingen", "Nilai Akhir / Keterangan"]);
-    }
+
+    // Header Global
+    rows.push(["REKAPITULASI HASIL PERTANDINGAN - MASS KEMPO"]);
+    rows.push(["Dicetak pada:", new Date().toLocaleString('id-ID')]);
+    rows.push([]);
 
     categoriesToExport.forEach(cat => {
+        // KOP KATEGORI
+        rows.push(["==============================================================="]);
+        rows.push(["KATEGORI:", cat.name.toUpperCase()]);
+        rows.push(["DISIPLIN:", cat.discipline.toUpperCase()]);
+        rows.push(["==============================================================="]);
+
         if (cat.discipline === 'embu') {
-            let finalis = STATE.participants.filter(p => p.kategori === cat.name && p.isFinalist && p.scores.b2.final > 0);
-            if(finalis.length > 0) {
-                finalis.sort((a,b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
-                finalis.forEach((p, i) => {
-                    let medali = i === 0 ? "Emas" : i === 1 ? "Perak" : i === 2 ? "Perunggu" : `Peringkat ${i+1}`;
+            let catParts = STATE.participants.filter(p => p.kategori === cat.name);
+
+            // --- 1. TABEL BABAK 1 / PENYISIHAN ---
+            rows.push([]);
+            rows.push(["[ HASIL BABAK 1 / PENYISIHAN ]"]);
+            rows.push(["Peringkat", "Pool", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu", "Denda", "Nilai B1"]);
+
+            let hasB1Data = false;
+            ['SINGLE', 'A', 'B'].forEach(poolKey => {
+                let poolParts = catParts.filter(p => p.pool === poolKey && p.urut > 0);
+                if(poolParts.length === 0) return;
+
+                // Urutkan berdasarkan nilai B1
+                poolParts.sort((a,b) => (b.scores.b1.final || 0) - (a.scores.b1.final || 0) || (b.scores.b1.tech || 0) - (a.scores.b1.tech || 0));
+
+                poolParts.forEach((p, i) => {
+                    hasB1Data = true;
+                    let s = p.scores.b1;
+                    let rank = (s.final > 0) ? (i + 1) : "-";
+                    let w = s.raw || [];
+                    let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
+                    let finalScore = s.final > 0 ? s.final.toFixed(2).replace('.', ',') : "Menunggu";
+
+                    rows.push([rank, poolKey, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, finalScore]);
+                });
+            });
+            if (!hasB1Data) rows.push(["-", "-", "Belum ada peserta diundi / dimainkan", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+
+            // --- 2. TABEL BABAK 2 / FINAL ---
+            rows.push([]);
+            rows.push(["[ HASIL BABAK 2 / FINAL ]"]);
+            rows.push(["Peringkat", "Status", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu", "Denda", "Nilai B2", "Nilai GABUNGAN (Akhir)"]);
+
+            let hasFinalists = catParts.some(p => p.isFinalist);
+            let b2Parts = [];
+
+            // Siapa yang masuk ke tabel B2? Finalis ATAU semua yang ada di Single Pool
+            if (hasFinalists) {
+                b2Parts = catParts.filter(p => p.isFinalist);
+            } else if (catParts.some(p => p.pool === 'SINGLE')) {
+                b2Parts = catParts.filter(p => p.pool === 'SINGLE' && p.urut > 0);
+            }
+
+            if (b2Parts.length > 0) {
+                // Kalkulasi Gabungan & Peringkat B2
+                b2Parts.forEach(p => {
+                    let s1 = p.scores.b1.final || 0; let s2 = p.scores.b2.final || 0;
+                    p.calcFinal = hasFinalists ? s2 : ((s1 > 0 && s2 > 0) ? ((s1 + s2) / 2) : (s1 > 0 ? s1 : s2));
+                    let t1 = p.scores.b1.tech || 0; let t2 = p.scores.b2.tech || 0;
+                    p.calcTech = hasFinalists ? t2 : ((s1 > 0 && s2 > 0) ? ((t1 + t2) / 2) : (s1 > 0 ? t1 : t2));
+                });
+
+                b2Parts.sort((a,b) => b.calcFinal - a.calcFinal || b.calcTech - a.calcTech);
+
+                b2Parts.forEach((p, i) => {
                     let s = p.scores.b2;
+                    let hasPlayedB2 = (s.final > 0);
+                    let rank = hasPlayedB2 ? (i + 1) : "-";
+                    let statusLabel = hasFinalists ? "FINALIS" : "BABAK 2";
+                    let w = s.raw || [];
+                    let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
                     
-                    if (isOnlyEmbu) {
-                        let w = s.raw || [];
-                        let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
-                        
-                        // UBAH: Format semua nilai pecahan dengan koma
-                        rows.push([medali, cat.name, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, s.final.toFixed(2).replace('.', ',')]);
+                    let finalB2 = hasPlayedB2 ? s.final.toFixed(2).replace('.', ',') : "Menunggu";
+                    
+                    // Logika Nilai Gabungan
+                    let gabungan = "Menunggu";
+                    if (hasFinalists) {
+                        gabungan = hasPlayedB2 ? s.final.toFixed(2).replace('.', ',') : "Menunggu";
                     } else {
-                        rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2).replace('.', ',')]);
+                        gabungan = p.calcFinal > 0 ? p.calcFinal.toFixed(2).replace('.', ',') : "Menunggu";
                     }
+
+                    rows.push([rank, statusLabel, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, finalB2, gabungan]);
                 });
             } else {
-                ['SINGLE', 'A', 'B'].forEach(poolKey => {
-                    let poolList = STATE.participants.filter(p => p.kategori === cat.name && p.pool === poolKey && p.scores.b1.final > 0);
-                    poolList.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
-                    poolList.forEach((p, i) => { 
-                        let medali = poolKey === 'SINGLE' ? `Peringkat ${i+1}` : `Pool ${poolKey} Rank ${i+1}`;
-                        let s = p.scores.b1;
-
-                        if (isOnlyEmbu) {
-                            let w = s.raw || [];
-                            let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
-                            
-                            // UBAH: Format semua nilai pecahan dengan koma
-                            rows.push([medali, cat.name, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, s.final.toFixed(2).replace('.', ',')]);
-                        } else {
-                            rows.push(["EMBU", cat.name, medali, p.nama, p.kontingen, s.final.toFixed(2).replace('.', ',')]);
-                        }
-                    });
-                });
+                rows.push(["-", "-", "Peserta Babak 2 / Final belum ditetapkan", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
             }
+            
+            rows.push([]); // Baris kosong sebelum kategori berikutnya
+            rows.push([]); 
+
         } else {
+            // --- TABEL RANDORI ---
+            rows.push([]);
+            rows.push(["Peringkat / Medali", "Nama Atlet", "Kontingen", "Keterangan"]);
             let poolResults = calculateRandoriFinalists(cat.name);
             if (poolResults) {
                 poolResults.forEach(res => {
@@ -1995,16 +2046,20 @@ function exportHasilCSV(filterCatName = null) {
                     let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
                     let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
 
-                    if(res.emas) rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Emas":`Juara 1 P-${res.pool}`, res.emas, res.emasKontingen, label1]);
-                    if(res.perak) rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Perak":`Runner-Up P-${res.pool}`, res.perak, res.perakKontingen, label2]);
+                    if(res.emas) rows.push(["Emas", res.emas, res.emasKontingen, label1]);
+                    if(res.perak) rows.push(["Perak", res.perak, res.perakKontingen, label2]);
                     res.perunggu.forEach(p => {
-                        rows.push(["RANDORI", cat.name, isFinalCat||isSinglePool?"Perunggu":`Juara 3 P-${res.pool}`, p.nama, p.kontingen, label3]);
+                        rows.push(["Perunggu", p.nama, p.kontingen, label3]);
                     });
                 });
+            } else {
+                rows.push(["-", "Belum ada juara / Turnamen masih berjalan", "-", "-"]);
             }
+            rows.push([]);
+            rows.push([]);
         }
     });
-    
+
     let prefix = filterCatName ? `Hasil_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Hasil_Pertandingan`;
     downloadCSV(`${prefix}_${new Date().toISOString().slice(0,10)}.csv`, rows);
 }
