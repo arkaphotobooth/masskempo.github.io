@@ -1238,6 +1238,9 @@ function filterPesertaScoring() {
     const panelWaktu = document.getElementById('panel-waktu-embu'); 
     const selectEl = document.getElementById('select-peserta');
     
+    // NEW: Deklarasi Tombol Simpan Randori di Header
+    const topActionRandori = document.getElementById('top-action-randori');
+    
     if(!categoryObj) return;
 
     const currentSelectedMatchOrAthlete = selectEl.value; 
@@ -1247,11 +1250,12 @@ function filterPesertaScoring() {
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
         
-        // --- FIX BUG HANTU BEREGU: Sapu bersih grid absensi Embu! ---
+        // NEW: Tampilkan tombol Simpan Randori
+        if(topActionRandori) topActionRandori.classList.remove('hidden');
+        
         let gridEl = document.getElementById('scoring-athlete-grid');
         if(gridEl) gridEl.className = 'hidden'; 
         // ------------------------------------------------------------
-
         let catMatches = STATE.matches.filter(m => 
             m.kategori === catName && 
             m.status === 'pending' && 
