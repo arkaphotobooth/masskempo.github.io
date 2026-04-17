@@ -912,19 +912,19 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            // FIX: Margin bawah (mb) diperkecil dari 10 ke 4 agar tidak ada ruang kosong berlebih
-            let poolHTML = `<div class="mb-6 w-full min-w-max">
-                <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-2">
-                    <div class="flex items-center gap-4">
-                        <h3 class="text-xl font-black text-yellow-400 m-0 uppercase tracking-widest drop-shadow-md">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
-                        <span class="text-[10px] text-slate-500 font-mono border-l border-slate-700 pl-4 py-1">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
+            // --- FIX 1: Pangkas Habis Ruang Kosong Pool ---
+            let poolHTML = `<div class="mb-2 w-full min-w-max">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-700/50 pb-1 px-1">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-black text-yellow-500 m-0 uppercase tracking-widest">BAGAN ${poolName !== '-' ? poolName : 'UTAMA'}</h3>
+                        <span class="text-[8px] text-slate-600 font-mono tracking-wider border-l border-slate-800 pl-2">Klk Nama=Swap | Undo=<i class="fas fa-undo text-red-500 mx-0.5"></i></span>
                     </div>
-                    <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/30 border border-red-700/50 text-red-400 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded flex items-center transition-all shadow-sm font-bold text-[10px] uppercase tracking-wider" title="Kosongkan Nilai Saja (Bagan Tetap)">
-                        <i class="fas fa-eraser mr-2"></i> Kosongkan Nilai
+                    <button onclick="resetNilaiKategoriLokal()" class="bg-red-950/20 border border-red-800/40 text-red-500 hover:bg-red-900/40 px-2 py-1 rounded transition-all text-[9px] font-bold uppercase tracking-tight" title="Kosongkan Nilai (Bagan Tetap)">
+                        <i class="fas fa-eraser mr-1"></i>ERASE SCORE
                     </button>
                 </div>
                 
-                <div class="flex gap-[40px] pt-10 pb-4 relative">`;
+                <div class="flex gap-[32px] pt-6 pb-2 relative items-start">`;
             
             let columns = [];
             poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
@@ -935,11 +935,12 @@ function renderVisualBracket(catName) {
                 let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
                 if(colMatches.length === 0) return;
 
-                // CONTAINER KOLOM
-                let colHTML = `<div class="flex flex-col gap-6 justify-center min-w-[260px] relative z-10">`;
+                // --- CONTAINER KOLOM & HEADER BABAK (ROUND) ---
+                // FIX: Gunakan gap-4 (vertical) agar sangat rapat antar match
+                let colHTML = `<div class="flex flex-col gap-4 justify-center min-w-[210px] relative z-10">`;
                 
-                // FIX: Posisi tulisan BABAK disempurnakan
-                colHTML += `<div class="text-center absolute -top-8 left-0 right-0"><span class="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] bg-[#0f172a] px-2 rounded-md">BABAK ${colNum}</span></div>`;
+                // FIX: Header Babak diperkecil (text-[8px]), tracking wide, rapat di atas box
+                colHTML += `<div class="text-center absolute -top-5 left-0 right-0 z-0"><span class="text-[8px] font-black uppercase text-slate-600 tracking-[0.3em]">Babak ${colNum}</span></div>`;
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
@@ -948,43 +949,50 @@ function renderVisualBracket(catName) {
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
                     
-                    let bgStyle = m.status === 'done' ? 'border-green-600/80 bg-slate-900/95 shadow-[0_0_15px_rgba(22,163,74,0.15)]' : m.status === 'auto-win' ? 'border-slate-700 bg-slate-900/60 opacity-60' : 'border-blue-600/80 bg-slate-900/95 shadow-[0_4px_20px_rgba(37,99,235,0.15)]';
+                    // WARNA BORDER & BAYANGAN (Glow Blue ala Mockup)
+                    let bgStyle = m.status === 'done' ? 'border-green-600/60 bg-slate-900 shadow-[0_0_10px_rgba(22,163,74,0.1)]' : m.status === 'auto-win' ? 'border-slate-800 bg-slate-950 opacity-50' : 'border-blue-600/70 bg-slate-900 shadow-[0_2px_15px_rgba(37,99,235,0.12)]';
                     
+                    // --- FIX 3: CIUTKAN UKURAN TEKS NAMA (text-[10px]) ---
                     let mIsWaiting = !pMerah && m.merahId !== -1;
                     let pIsWaiting = !pPutih && m.putihId !== -1;
                     
-                    let wMerah = m.winnerId === m.merahId ? 'text-green-400 drop-shadow-md' : (m.winnerId && m.winnerId !== m.merahId ? 'text-slate-600 line-through' : (mIsWaiting ? 'text-emerald-500 font-black' : (m.merahId === -1 ? 'text-slate-500 font-bold' : 'text-red-400 font-bold')));
-                    let wPutih = m.winnerId === m.putihId ? 'text-green-400 drop-shadow-md' : (m.winnerId && m.winnerId !== m.putihId ? 'text-slate-600 line-through' : (pIsWaiting ? 'text-emerald-500 font-black' : (m.putihId === -1 ? 'text-slate-500 font-bold' : 'text-white font-bold')));
+                    // Warna teks kemerahan untuk Pita Merah, Putih untuk Pita Putih, Hijau untuk Winner, Abu-abu untuk Bye/Waiting
+                    let wMerah = m.winnerId === m.merahId ? 'text-green-400 font-black' : (m.winnerId && m.winnerId !== m.merahId ? 'text-slate-600 line-through font-normal' : (mIsWaiting ? 'text-emerald-600 font-bold' : (m.merahId === -1 ? 'text-slate-700 font-normal' : 'text-red-400 font-bold')));
+                    let wPutih = m.winnerId === m.putihId ? 'text-green-400 font-black' : (m.winnerId && m.winnerId !== m.putihId ? 'text-slate-600 line-through font-normal' : (pIsWaiting ? 'text-emerald-600 font-bold' : (m.putihId === -1 ? 'text-slate-700 font-normal' : 'text-white font-bold')));
 
+                    // LOGIKA INTERAKTIF (SWAP)
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
-                    let activeM = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'merah') ? 'bg-yellow-600/30 shadow-inner' : '';
-                    let activeP = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'putih') ? 'bg-yellow-600/30 shadow-inner' : '';
+                    let cursorM = isInteractive ? `cursor-pointer hover:bg-slate-800/60` : '';
+                    let cursorP = isInteractive ? `cursor-pointer hover:bg-slate-800/60` : '';
                     
-                    let cursorM = isInteractive ? `cursor-pointer hover:bg-slate-800 transition-colors ${activeM}` : '';
-                    let cursorP = isInteractive ? `cursor-pointer hover:bg-slate-800 transition-colors ${activeP}` : '';
-                    
-                    let swapIconM = isInteractive ? `<i class="fas fa-exchange-alt text-[10px] text-yellow-500/80 mr-2 shrink-0"></i>` : '';
-                    let swapIconP = isInteractive ? `<i class="fas fa-exchange-alt text-[10px] text-yellow-500/80 mr-2 shrink-0"></i>` : '';
+                    let swapIconM = isInteractive ? `<i class="fas fa-retweet text-[8px] text-yellow-500/60 mr-1.5 shrink-0"></i>` : '';
+                    let swapIconP = isInteractive ? `<i class="fas fa-retweet text-[8px] text-yellow-500/60 mr-1.5 shrink-0"></i>` : '';
 
-                    let nMerahHTML = `<div class="flex items-center w-full py-1.5 px-1 -ml-1 rounded ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${swapIconM}<span class="${wMerah} truncate w-full tracking-wide">${nMerahRaw}</span></div>`;
-                    let nPutihHTML = `<div class="flex items-center w-full py-1.5 px-1 -ml-1 rounded ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${swapIconP}<span class="${wPutih} truncate w-full tracking-wide">${nPutihRaw}</span></div>`;
+                    let nMerahHTML = `<div class="flex items-center w-full py-0.5 px-1 rounded ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)"` : ''}>${swapIconM}<span class="${wMerah} truncate w-full tracking-tight text-[10px] uppercase font-bold">${nMerahRaw}</span></div>`;
+                    let nPutihHTML = `<div class="flex items-center w-full py-0.5 px-1 rounded ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)"` : ''}>${swapIconP}<span class="${wPutih} truncate w-full tracking-tight text-[10px] uppercase font-bold">${nPutihRaw}</span></div>`;
 
-                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white text-[10px] w-6 h-6 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.6)] border border-slate-800 z-30 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil"><i class="fas fa-undo"></i></button>` : '';
+                    // Undo Button Kecil di Top-Right
+                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] w-5 h-5 rounded-full z-30 flex items-center justify-center transition-all hover:scale-110" title="Batal Hasil"><i class="fas fa-undo-alt"></i></button>` : '';
 
+                    // --- FIX 4: STRUKTUR BOX RANDORI SUPER COMPACT (Mimikri Total) ---
                     colHTML += `
-                        <div class="bracket-match p-3 rounded-xl border-[1.5px] ${bgStyle} relative transition-all mx-0">
-                            <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
+                        <div class="bracket-match p-2 rounded-lg border ${bgStyle} relative z-10">
                             ${undoBtn}
                             
-                            <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-widest pl-3">${m.babak}</span>
+                            <div class="flex items-center justify-between mb-1.5 px-0.5">
+                                <span class="bg-slate-800 text-slate-400 text-[8px] px-1 py-0.5 rounded font-black border border-slate-700 font-mono">G${displayNum}</span>
+                                <span class="text-[8px] uppercase text-slate-500 font-black tracking-[0.2em]">${m.babak}</span>
+                                <div class="w-3"></div> </div>
                             
-                            <div class="flex justify-between items-center text-[12px] border-b border-dashed border-slate-600/70 pb-1.5 mb-1.5 mt-1">
-                                ${nMerahHTML}
-                                <span class="text-[11px] text-slate-400 font-mono font-black ml-2 bg-slate-800/80 px-2 py-0.5 rounded shadow-inner">${m.skorMerah > 0 ? m.skorMerah : '-'}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-[12px] pt-0.5">
-                                ${nPutihHTML}
-                                <span class="text-[11px] text-slate-400 font-mono font-black ml-2 bg-slate-800/80 px-2 py-0.5 rounded shadow-inner">${m.skorPutih > 0 ? m.skorPutih : '-'}</span>
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between items-center text-[11px] bg-slate-800/30 rounded pl-1">
+                                    ${nMerahHTML}
+                                    <span class="text-[10px] text-slate-400 font-mono font-black w-7 text-center border-l border-slate-700/50 py-0.5 ml-1">${m.skorMerah > 0 ? m.skorMerah : '-'}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-[11px] bg-slate-800/30 rounded pl-1">
+                                    ${nPutihHTML}
+                                    <span class="text-[10px] text-slate-400 font-mono font-black w-7 text-center border-l border-slate-700/50 py-0.5 ml-1">${m.skorPutih > 0 ? m.skorPutih : '-'}</span>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -994,7 +1002,7 @@ function renderVisualBracket(catName) {
                 if(colNum < maxCol) {
                     colHTML += `
                     <div class="flex flex-col justify-center relative w-[0px]">
-                        <div class="w-[40px] border-b-2 border-slate-600/80 absolute right-[-20px]"></div>
+                        <div class="w-[32px] border-b-2 border-slate-700 absolute right-[-16px]"></div>
                     </div>`;
                 }
                 poolHTML += colHTML;
