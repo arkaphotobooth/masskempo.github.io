@@ -912,7 +912,6 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            // Header Utama
             let poolHTML = `<div class="mb-10 w-full min-w-max">
                 <div class="flex items-center justify-between mb-4 border-b border-slate-700/80 pb-3 px-2">
                     <div class="flex items-center gap-4">
@@ -935,14 +934,11 @@ function renderVisualBracket(catName) {
                 let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
                 if(colMatches.length === 0) return;
 
-                // Mengatur jarak (gap) antar kotak yang semakin renggang di babak berikutnya
-                let colGap = colNum === 1 ? 'gap-6' : (colNum === 2 ? 'gap-16' : (colNum === 3 ? 'gap-32' : 'gap-48'));
+                // Menggunakan class bracket-col bawaan referensi
+                let colHTML = `<div class="bracket-col min-w-[260px] relative w-64">`;
                 
-                // Menggunakan .bracket-col asli dari CSS
-                let colHTML = `<div class="bracket-col ${colGap} min-w-[260px]">`;
-                
-                // Tulisan Babak yang menempel di atas kolom
-                colHTML += `<div class="text-center absolute -top-12 left-0 right-0"><span class="text-[11px] font-black uppercase text-slate-500 tracking-[0.2em]">BABAK ${colNum}</span></div>`;
+                // Tulisan Babak
+                colHTML += `<div class="text-center absolute -top-8 left-0 right-0 h-8"><span class="text-[11px] font-black uppercase text-slate-500 tracking-[0.2em]">BABAK ${colNum}</span></div>`;
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
@@ -951,7 +947,7 @@ function renderVisualBracket(catName) {
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
                     
-                    let bgStyle = m.status === 'done' ? 'border-slate-500 bg-slate-900/90' : m.status === 'auto-win' ? 'border-slate-700 bg-[#0f172a] opacity-60' : 'border-blue-600 bg-slate-900/90 shadow-[0_0_15px_rgba(37,99,235,0.15)]';
+                    let bgStyle = m.status === 'done' ? 'border-slate-600 bg-[#1e293b]' : m.status === 'auto-win' ? 'border-slate-800 bg-[#0f172a] opacity-50' : 'border-blue-600/80 bg-[#1e293b] shadow-[0_0_15px_rgba(37,99,235,0.15)]';
                     
                     let mIsWaiting = !pMerah && m.merahId !== -1;
                     let pIsWaiting = !pPutih && m.putihId !== -1;
@@ -963,35 +959,36 @@ function renderVisualBracket(catName) {
                     let cursorM = isInteractive ? `cursor-pointer hover:text-yellow-400` : '';
                     let cursorP = isInteractive ? `cursor-pointer hover:text-yellow-400` : '';
                     
-                    let swapIconM = isInteractive ? `<i class="fas fa-exchange-alt text-[9px] text-yellow-600 mr-2 shrink-0"></i>` : '';
-                    let swapIconP = isInteractive ? `<i class="fas fa-exchange-alt text-[9px] text-yellow-600 mr-2 shrink-0"></i>` : '';
+                    let swapIconM = isInteractive ? `<i class="fas fa-exchange-alt text-[9px] text-slate-500 mr-2 shrink-0"></i>` : '';
+                    let swapIconP = isInteractive ? `<i class="fas fa-exchange-alt text-[9px] text-slate-500 mr-2 shrink-0"></i>` : '';
 
-                    // Format nama dengan garis putus-putus di bawahnya ala referensi
-                    let nMerahHTML = `<div class="flex items-center w-full py-1 ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)"` : ''}>${swapIconM}<span class="${wMerah} truncate w-full tracking-wide text-[13px] border-b border-dashed border-slate-600/50 pb-1">${nMerahRaw}</span></div>`;
-                    let nPutihHTML = `<div class="flex items-center w-full py-1 ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)"` : ''}>${swapIconP}<span class="${wPutih} truncate w-full tracking-wide text-[13px] border-b border-dashed border-slate-600/50 pb-1">${nPutihRaw}</span></div>`;
+                    let nMerahHTML = `<div class="flex items-center w-full py-1 ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)"` : ''}>${swapIconM}<span class="${wMerah} truncate w-full tracking-wide text-xs">${nMerahRaw}</span></div>`;
+                    let nPutihHTML = `<div class="flex items-center w-full py-1 ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)"` : ''}>${swapIconP}<span class="${wPutih} truncate w-full tracking-wide text-xs">${nPutihRaw}</span></div>`;
 
                     let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] w-6 h-6 rounded-full z-30 flex items-center justify-center transition-all hover:scale-110 shadow-lg" title="Batal Hasil"><i class="fas fa-undo"></i></button>` : '';
 
-                    // Injeksi class penentu garis CSS (has-next dan not-first)
-                    let bracketClasses = `bracket-match p-3.5 rounded-xl border ${bgStyle} transition-all duration-300`;
-                    if (colNum < maxCol) bracketClasses += " has-next";
-                    if (colNum > 1) bracketClasses += " not-first";
+                    // BUNGKUSAN AJAIB: Menahan flex stretch dari CSS pusat
+                    let wrapperClasses = `bracket-match flex-1 flex flex-col justify-center py-4 px-2`;
+                    if (colNum < maxCol) wrapperClasses += " has-next";
+                    if (colNum > 1) wrapperClasses += " not-first";
 
                     colHTML += `
-                        <div class="${bracketClasses}">
-                            <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-7 h-7 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
-                            ${undoBtn}
-                            
-                            <span class="text-[9px] uppercase text-slate-500 block mb-3 font-black tracking-widest pl-3">${m.babak}</span>
-                            
-                            <div class="flex flex-col gap-1 mt-1 pl-2">
-                                <div class="flex justify-between items-center">
-                                    ${nMerahHTML}
-                                    <span class="text-xs text-slate-500 font-mono font-bold ml-2">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    ${nPutihHTML}
-                                    <span class="text-xs text-slate-500 font-mono font-bold ml-2">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                        <div class="${wrapperClasses}">
+                            <div class="relative w-full h-fit shrink-0 rounded-xl border ${bgStyle} p-3 pt-4 transition-all duration-300 hover:border-slate-500">
+                                <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
+                                ${undoBtn}
+                                
+                                <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-widest">${m.babak}</span>
+                                
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-600/50 pb-1.5">
+                                        ${nMerahHTML}
+                                        <span class="text-xs text-slate-400 font-mono font-bold ml-2">${m.skorMerah > 0 ? m.skorMerah : ''}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-0.5">
+                                        ${nPutihHTML}
+                                        <span class="text-xs text-slate-400 font-mono font-bold ml-2">${m.skorPutih > 0 ? m.skorPutih : ''}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1000,8 +997,6 @@ function renderVisualBracket(catName) {
                 colHTML += `</div>`;
                 poolHTML += colHTML;
             });
-            
-            // Tutup container pool
             poolHTML += `</div></div>`;
             container.innerHTML += poolHTML;
         });
