@@ -13,14 +13,13 @@
         .active-tab { border-bottom: 2px solid #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
         
         /* Custom Scrollbar */
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Randori Bracket Styling (ORIGINAL E-SPORTS) */
-        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 2rem; overflow-x: auto; align-items: stretch; padding-top: 4rem; }
+        /* Mengunci jarak gap persis 48px (3rem) dan tambah padding kiri agar label G tidak terpotong */
+        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 2rem; overflow-x: auto; align-items: stretch; padding-top: 3rem; }
         .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; }
         .bracket-match { position: relative; z-index: 10; }
         
@@ -34,7 +33,7 @@
         
         /* Garis Vertikal (Menyambungkan dahan atas-bawah) */
         .bracket-col:not(:last-child)::after {
-            content: ''; position: absolute; top: 25%; bottom: 25%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
+            content: ''; position: absolute; top: 15%; bottom: 15%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
