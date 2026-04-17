@@ -1235,7 +1235,8 @@ function filterPesertaScoring() {
     const panelRandori = document.getElementById('panel-randori');
     const badgeEmbu = document.getElementById('scoring-badge-embu'); 
     const badgeRandori = document.getElementById('scoring-badge-randori');
-    const panelWaktu = document.getElementById('panel-waktu-embu'); 
+    const panelWaktu = document.getElementById('panel-waktu-embu');
+    const panelJuri = document.getElementById('panel-juri-embu');
     const selectEl = document.getElementById('select-peserta');
     
     // NEW: Deklarasi Tombol Simpan Randori di Header
@@ -1249,7 +1250,7 @@ function filterPesertaScoring() {
         panelEmbu.classList.add('hidden'); panelRandori.classList.remove('hidden'); 
         badgeEmbu.classList.add('hidden'); badgeRandori.classList.remove('hidden');
         if(panelWaktu) panelWaktu.classList.add('hidden'); 
-        
+        if(panelJuri) panelJuri.classList.add('hidden');
         // NEW: Tampilkan tombol Simpan Randori
         if(topActionRandori) topActionRandori.classList.remove('hidden');
         
@@ -1300,7 +1301,7 @@ function filterPesertaScoring() {
         panelEmbu.classList.remove('hidden'); panelRandori.classList.add('hidden'); 
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
-        
+        if(panelJuri) panelJuri.classList.remove('hidden');
         // NEW: Sembunyikan tombol Simpan Randori
         if(topActionRandori) topActionRandori.classList.add('hidden');
         
@@ -1565,8 +1566,8 @@ function updateScoringButtonsUI() {
         }
 
         if (names.length > 1) {
-            // FIX GRID KECIL: Grid 2 kolom, padding dikurangi, teks ukuran 11px
-            gridEl.className = "grid grid-cols-2 gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700 shadow-inner mt-3 animate-fade-in";
+            // FIX GRID 3 KOLOM: Menggunakan md:grid-cols-3 agar proporsional
+            gridEl.className = "grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700 shadow-inner mt-3 animate-fade-in";
             gridEl.innerHTML = names.map((n, i) => `
                 <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-md border border-slate-700/50 shadow-sm overflow-hidden">
                     <span class="w-5 h-5 rounded-full bg-blue-900/50 text-blue-400 border border-blue-700/50 text-[10px] flex items-center justify-center font-black shadow-sm flex-shrink-0">${i+1}</span>
