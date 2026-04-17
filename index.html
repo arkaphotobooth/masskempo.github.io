@@ -13,15 +13,28 @@
         .active-tab { border-bottom: 2px solid #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
         
         /* Custom Scrollbar */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Randori Bracket Styling (TOTAL COMPACT E-SPORTS) */
-        .bracket-match::before { content: ''; position: absolute; top: 50%; left: -16px; width: 16px; height: 1px; background-color: #334155; z-index: -1;}
-        .bracket-match::after { content: ''; position: absolute; top: 50%; right: -16px; width: 16px; height: 1px; background-color: #334155; z-index: -1;}
-        .bracket-container { display: flex; gap: 0; padding: 10px; overflow-x: auto; align-items: center; justify-content: start; }
+        /* Randori Bracket Styling (ORIGINAL E-SPORTS) */
+        .bracket-container { display: flex; gap: 3rem; padding: 1.5rem 2rem; overflow-x: auto; align-items: stretch; padding-top: 4rem; }
+        .bracket-col { position: relative; display: flex; flex-direction: column; justify-content: center; }
+        .bracket-match { position: relative; z-index: 10; }
+        
+        /* Garis Keluar (Ke Kanan) -> Setengah gap = 24px */
+        .bracket-match.has-next::after {
+            content: ''; position: absolute; top: 50%; right: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
+        
+        /* Garis Masuk (Dari Kiri) -> Setengah gap = 24px */
+        .bracket-match.not-first::before {
+            content: ''; position: absolute; top: 50%; left: -24px; width: 24px; height: 2px; background-color: #475569; z-index: -1;}
+        
+        /* Garis Vertikal (Menyambungkan dahan atas-bawah) */
+        .bracket-col:not(:last-child)::after {
+            content: ''; position: absolute; top: 25%; bottom: 25%; right: -24px; width: 2px; background-color: #475569; z-index: -1;}
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
