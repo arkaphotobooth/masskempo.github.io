@@ -912,16 +912,19 @@ function renderVisualBracket(catName) {
         pools.forEach(poolName => {
             let poolMatches = catMatches.filter(m => m.pool === poolName);
             
-            // HEADER POOL
-            let poolHTML = `<div class="mb-10 w-full min-w-max">
-                <div class="flex items-center gap-3 mb-10 border-b border-slate-700 pb-3">
-                    <h3 class="text-2xl font-black text-yellow-400 m-0 uppercase tracking-widest drop-shadow-md">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
-                    <span class="text-[10px] text-slate-500 font-mono ml-3 border-l border-slate-700 pl-3">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
-                    <button onclick="resetNilaiKategoriLokal()" class="ml-auto bg-red-900/30 border border-red-700/50 text-red-400 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg flex items-center justify-center transition-all shadow-sm font-bold text-[10px] uppercase tracking-wider" title="Kosongkan Nilai Saja (Bagan Tetap)">
+            // FIX: Margin bawah (mb) diperkecil dari 10 ke 4 agar tidak ada ruang kosong berlebih
+            let poolHTML = `<div class="mb-6 w-full min-w-max">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-2">
+                    <div class="flex items-center gap-4">
+                        <h3 class="text-xl font-black text-yellow-400 m-0 uppercase tracking-widest drop-shadow-md">BAGAN ${poolName !== '-' ? 'POOL ' + poolName : 'UTAMA'}</h3>
+                        <span class="text-[10px] text-slate-500 font-mono border-l border-slate-700 pl-4 py-1">Swap: Klik Nama | Undo: Klik <i class="fas fa-undo text-red-400 mx-1"></i></span>
+                    </div>
+                    <button onclick="resetNilaiKategoriLokal()" class="bg-red-900/30 border border-red-700/50 text-red-400 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded flex items-center transition-all shadow-sm font-bold text-[10px] uppercase tracking-wider" title="Kosongkan Nilai Saja (Bagan Tetap)">
                         <i class="fas fa-eraser mr-2"></i> Kosongkan Nilai
                     </button>
                 </div>
-                <div class="flex gap-[50px] pb-4 relative items-start">`;
+                
+                <div class="flex gap-[40px] pt-10 pb-4 relative">`;
             
             let columns = [];
             poolMatches.forEach(m => { if(columns.indexOf(m.col) === -1) columns.push(m.col); });
@@ -932,9 +935,11 @@ function renderVisualBracket(catName) {
                 let colMatches = poolMatches.filter(m => m.col === colNum).sort((a,b) => a.matchNum - b.matchNum);
                 if(colMatches.length === 0) return;
 
-                // CONTAINER KOLOM & HEADER BABAK
-                let colHTML = `<div class="flex flex-col gap-8 justify-center min-w-[280px] relative z-10">`;
-                colHTML += `<div class="text-center absolute -top-10 left-0 right-0"><span class="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Babak ${colNum}</span></div>`;
+                // CONTAINER KOLOM
+                let colHTML = `<div class="flex flex-col gap-6 justify-center min-w-[260px] relative z-10">`;
+                
+                // FIX: Posisi tulisan BABAK disempurnakan
+                colHTML += `<div class="text-center absolute -top-8 left-0 right-0"><span class="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] bg-[#0f172a] px-2 rounded-md">BABAK ${colNum}</span></div>`;
                 
                 colMatches.forEach(m => {
                     let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50; 
@@ -943,17 +948,14 @@ function renderVisualBracket(catName) {
                     let pPutih = STATE.participants.find(p => p.id === m.putihId);
                     let nPutihRaw = m.putihId === -1 ? "BYE" : (pPutih ? pPutih.nama : (m.putihId ? "Hantu" : "Menunggu..."));
                     
-                    // WARNA KOTAK (Border & Background)
                     let bgStyle = m.status === 'done' ? 'border-green-600/80 bg-slate-900/95 shadow-[0_0_15px_rgba(22,163,74,0.15)]' : m.status === 'auto-win' ? 'border-slate-700 bg-slate-900/60 opacity-60' : 'border-blue-600/80 bg-slate-900/95 shadow-[0_4px_20px_rgba(37,99,235,0.15)]';
                     
-                    // WARNA TEKS SESUAI MOCKUP
                     let mIsWaiting = !pMerah && m.merahId !== -1;
                     let pIsWaiting = !pPutih && m.putihId !== -1;
                     
                     let wMerah = m.winnerId === m.merahId ? 'text-green-400 drop-shadow-md' : (m.winnerId && m.winnerId !== m.merahId ? 'text-slate-600 line-through' : (mIsWaiting ? 'text-emerald-500 font-black' : (m.merahId === -1 ? 'text-slate-500 font-bold' : 'text-red-400 font-bold')));
                     let wPutih = m.winnerId === m.putihId ? 'text-green-400 drop-shadow-md' : (m.winnerId && m.winnerId !== m.putihId ? 'text-slate-600 line-through' : (pIsWaiting ? 'text-emerald-500 font-black' : (m.putihId === -1 ? 'text-slate-500 font-bold' : 'text-white font-bold')));
 
-                    // LOGIKA INTERAKTIF (SWAP)
                     let isInteractive = (m.col === 1 && (m.status === 'pending' || m.status === 'auto-win'));
                     let activeM = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'merah') ? 'bg-yellow-600/30 shadow-inner' : '';
                     let activeP = (SWAP_SELECTION && SWAP_SELECTION.matchId === m.id && SWAP_SELECTION.corner === 'putih') ? 'bg-yellow-600/30 shadow-inner' : '';
@@ -967,20 +969,20 @@ function renderVisualBracket(catName) {
                     let nMerahHTML = `<div class="flex items-center w-full py-1.5 px-1 -ml-1 rounded ${cursorM}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'merah', ${m.merahId}, event)" title="Klik untuk Tukar"` : ''}>${swapIconM}<span class="${wMerah} truncate w-full tracking-wide">${nMerahRaw}</span></div>`;
                     let nPutihHTML = `<div class="flex items-center w-full py-1.5 px-1 -ml-1 rounded ${cursorP}" ${isInteractive ? `onclick="handleSwap(${m.id}, 'putih', ${m.putihId}, event)" title="Klik untuk Tukar"` : ''}>${swapIconP}<span class="${wPutih} truncate w-full tracking-wide">${nPutihRaw}</span></div>`;
 
-                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white text-[10px] w-7 h-7 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.6)] border border-slate-800 z-10 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil Partai Ini"><i class="fas fa-undo"></i></button>` : '';
+                    let undoBtn = m.status === 'done' ? `<button onclick="undoMatchResult(${m.id})" class="absolute -top-3 -right-3 bg-red-600 hover:bg-red-500 text-white text-[10px] w-6 h-6 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.6)] border border-slate-800 z-30 flex items-center justify-center transition-transform hover:scale-110" title="Batalkan Hasil"><i class="fas fa-undo"></i></button>` : '';
 
                     colHTML += `
-                        <div class="bracket-match p-4 rounded-xl border-[1.5px] ${bgStyle} relative transition-all mx-0">
-                            <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-7 h-7 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md">G${displayNum}</span>
+                        <div class="bracket-match p-3 rounded-xl border-[1.5px] ${bgStyle} relative transition-all mx-0">
+                            <span class="absolute -top-3 -left-3 bg-slate-800 text-slate-300 text-[10px] w-6 h-6 flex items-center justify-center rounded-full font-black border border-slate-600 shadow-md z-30">G${displayNum}</span>
                             ${undoBtn}
                             
-                            <span class="text-[9px] uppercase text-slate-500 block mb-3 font-black tracking-widest pl-4">${m.babak}</span>
+                            <span class="text-[9px] uppercase text-slate-500 block mb-2 font-black tracking-widest pl-3">${m.babak}</span>
                             
-                            <div class="flex justify-between items-center text-[13px] border-b border-dashed border-slate-600/70 pb-2 mb-2">
+                            <div class="flex justify-between items-center text-[12px] border-b border-dashed border-slate-600/70 pb-1.5 mb-1.5 mt-1">
                                 ${nMerahHTML}
                                 <span class="text-[11px] text-slate-400 font-mono font-black ml-2 bg-slate-800/80 px-2 py-0.5 rounded shadow-inner">${m.skorMerah > 0 ? m.skorMerah : '-'}</span>
                             </div>
-                            <div class="flex justify-between items-center text-[13px] pt-1">
+                            <div class="flex justify-between items-center text-[12px] pt-0.5">
                                 ${nPutihHTML}
                                 <span class="text-[11px] text-slate-400 font-mono font-black ml-2 bg-slate-800/80 px-2 py-0.5 rounded shadow-inner">${m.skorPutih > 0 ? m.skorPutih : '-'}</span>
                             </div>
@@ -989,11 +991,10 @@ function renderVisualBracket(catName) {
                 });
                 colHTML += `</div>`;
                 
-                // GARIS TENGAH (Horizontal Penghubung Antar Kolom)
                 if(colNum < maxCol) {
                     colHTML += `
                     <div class="flex flex-col justify-center relative w-[0px]">
-                        <div class="w-[50px] border-b-2 border-slate-600/80 absolute right-[-25px]"></div>
+                        <div class="w-[40px] border-b-2 border-slate-600/80 absolute right-[-20px]"></div>
                     </div>`;
                 }
                 poolHTML += colHTML;
