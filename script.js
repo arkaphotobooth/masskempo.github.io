@@ -21,6 +21,7 @@ const database = firebase.database();
 let STATE = { categories: [], participants: [], matches: [], settings: { numJudges: 5, minPesertaJuara: 1 } };
 const UI = { tabs: ['kategori', 'atlet', 'drawing', 'scoring', 'ranking', 'juara', 'admin'], timerInterval: null, timerSeconds: 0 };
 let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { score: 0, warn1: false, warn2: false } };
+let RANDORI_HISTORY = []
 let SWAP_SELECTION = null;
 let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang diklik
 
@@ -1390,10 +1391,54 @@ function loadRandoriMatch() {
     resetRandoriBoard(); 
 }
 
-function resetRandoriBoard() { RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; updateRandoriUI(); }
-function addRandoriScore(corner, points) { RANDORI_STATE[corner].score += points; if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; updateRandoriUI(); }
-function updateRandoriUI() { document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; }
+function resetRandoriBoard() { 
+    RANDORI_STATE = { merah: { score: 0 }, putih: { score: 0 } }; 
+    RANDORI_HISTORY = []; // Bersihkan riwayat saat ganti partai
+    updateRandoriUI(); 
+}
 
+function addRandoriScore(corner, points, label = "POIN") { 
+    // 1. Simpan aksi ini ke dalam buku riwayat (Log)
+    RANDORI_HISTORY.push({ corner: corner, points: points, label: label });
+    
+    // 2. Tambahkan nilainya
+    RANDORI_STATE[corner].score += points; 
+    if(RANDORI_STATE[corner].score < 0) RANDORI_STATE[corner].score = 0; 
+    
+    updateRandoriUI(); 
+}
+
+function undoLastRandoriScore() {
+    if (RANDORI_HISTORY.length === 0) return alert("Belum ada aksi poin yang bisa dibatalkan.");
+    
+    // 1. Ambil (Pop) aksi paling terakhir dari riwayat
+    let lastAction = RANDORI_HISTORY.pop(); 
+    
+    // 2. Kurangi skor sesuai poin yang dicatat di riwayat tersebut
+    RANDORI_STATE[lastAction.corner].score -= lastAction.points;
+    if(RANDORI_STATE[lastAction.corner].score < 0) RANDORI_STATE[lastAction.corner].score = 0;
+    
+    updateRandoriUI();
+}
+
+function updateRandoriUI() { 
+    document.getElementById('score-merah').innerText = RANDORI_STATE.merah.score; 
+    document.getElementById('score-putih').innerText = RANDORI_STATE.putih.score; 
+    
+    // Update Tampilan Teks Log di Layar
+    let logTextEl = document.getElementById('randori-log-text');
+    if (logTextEl) {
+        if (RANDORI_HISTORY.length === 0) {
+            logTextEl.innerHTML = "Belum ada poin tercatat...";
+            logTextEl.className = "text-sm font-medium text-slate-500 italic tracking-wide";
+        } else {
+            let last = RANDORI_HISTORY[RANDORI_HISTORY.length - 1];
+            let cornerName = last.corner === 'merah' ? '<span class="text-red-500 font-black tracking-widest bg-red-900/30 px-2 py-0.5 rounded">MERAH</span>' : '<span class="text-white font-black tracking-widest bg-slate-700 px-2 py-0.5 rounded border border-slate-500">PUTIH</span>';
+            logTextEl.innerHTML = `Poin Terakhir: ${cornerName} mendapat <span class="font-black text-blue-400 ml-1 tracking-wider">${last.label} (+${last.points})</span>`;
+            logTextEl.className = "text-sm font-medium text-slate-300 flex items-center";
+        }
+    }
+}
 function saveRandoriMatchResult() {
     if(!currentRandoriMatchId) return alert("Pilih partai!");
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
