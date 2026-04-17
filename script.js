@@ -1301,6 +1301,9 @@ function filterPesertaScoring() {
         badgeEmbu.classList.remove('hidden'); badgeRandori.classList.add('hidden');
         if(panelWaktu) panelWaktu.classList.remove('hidden'); 
         
+        // NEW: Sembunyikan tombol Simpan Randori
+        if(topActionRandori) topActionRandori.classList.add('hidden');
+        
         let listCat = STATE.participants.filter(p => p.kategori === catName && p.urut > 0); 
         
         if(listCat.length === 0) { 
