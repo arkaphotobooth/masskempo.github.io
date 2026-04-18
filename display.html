@@ -211,13 +211,36 @@
                 document.getElementById('tv-score-denda').innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
                 document.getElementById('tv-score-final').innerText = sData.nilaiAkhir;
 
+                // Build Name Grid (Gaya List Angka)
                 let names = sData.nama.split('&').map(n => n.trim());
-                document.getElementById('tv-score-name-container').innerHTML = names.map((n, idx) => `<div class="name-row"><div class="name-num">${idx+1}</div><div class="name-text">${n}</div></div>`).join('');
+                let nameHTML = '';
+                names.forEach((n, idx) => {
+                    nameHTML += `
+                    <div class="flex items-center text-2xl text-white font-bold tracking-wide">
+                        <span class="w-8 text-right mr-3">${idx+1}.</span>
+                        <span class="truncate">${n}</span>
+                    </div>`;
+                });
+                document.getElementById('tv-score-name-container').innerHTML = nameHTML;
 
+                // Build Judge Panels (Gaya Kotak Bawah)
+                let wasitHTML = '';
                 let rawScores = sData.rawScores || [];
                 while(rawScores.length < 5) rawScores.push('-');
-                document.getElementById('tv-score-wasit-container').innerHTML = rawScores.map((score, i) => `<div class="judge-box flex-1"><div class="judge-header">WASIT ${i+1}</div><div class="judge-score text-white">${score > 0 ? parseFloat(score).toFixed(1) : '-'}</div></div>`).join('');
-
+                
+                rawScores.forEach((score, i) => {
+                    wasitHTML += `
+                    <div class="border border-slate-400 flex flex-col text-center">
+                        <div class="border-b border-slate-400 py-2 text-sm font-bold text-slate-300 uppercase tracking-widest">
+                            WASIT ${i+1}
+                        </div>
+                        <div class="flex-grow flex items-center justify-center">
+                            <span class="text-6xl font-black text-white">${score > 0 ? parseFloat(score).toFixed(2) : '-'}</span>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('tv-score-wasit-container').innerHTML = wasitHTML;
+                
                 displayTimer = setTimeout(() => {
                     if (savedPreviewData) {
                         document.getElementById('tv-header-kategori').innerText = savedPreviewData.kategori;
