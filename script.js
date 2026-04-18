@@ -1691,6 +1691,30 @@ function updateScoringButtonsUI() {
             gridEl.className = "hidden";
             gridEl.innerHTML = '';
         }
+       // --- INJEKSI STATUS TV (STANDBY / PREVIEW) ---
+        let tvStatusEl = document.getElementById('operator-tv-status');
+        if (!tvStatusEl) {
+            tvStatusEl = document.createElement('div');
+            tvStatusEl.id = 'operator-tv-status';
+            tvStatusEl.className = "mt-3 p-2 bg-slate-900 border border-slate-700 rounded-lg flex items-center justify-between text-xs transition-all";
+            gridEl.after(tvStatusEl); 
+        }
+
+        if (DEVICE_ROLE !== 'admin') {
+            tvStatusEl.innerHTML = `<span class="flex items-center gap-2 text-slate-400"><i class="fas fa-tv"></i> Status TV:</span> <span class="font-bold text-yellow-500 animate-pulse">STANDBY / PERSIAPAN</span>`;
+            
+            // Tembakkan data Standby/Preview ke Firebase secara diam-diam
+            let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+            database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
+                current_action: 'preview',
+                preview_data: {
+                    kategori: p.kategori,
+                    nama: displayNama,
+                    kontingen: p.kontingen
+                }
+            });
+        }
+        // --------------------------------------------- 
     }
 
     if(btnB1) btnB1.classList.add('hidden'); 
@@ -1925,6 +1949,29 @@ function saveScore() {
         // 3. BUKA GEMBOK: Data berhasil masuk
         isSaving = false; 
         document.body.style.cursor = 'default';
+
+        // --- INJEKSI SUTRADARA TV (POP-UP NILAI) ---
+        if (DEVICE_ROLE !== 'admin') {
+            let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+            let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
+            
+            let tvStatusEl = document.getElementById('operator-tv-status');
+            if(tvStatusEl) tvStatusEl.innerHTML = `<span class="flex items-center gap-2 text-slate-400"><i class="fas fa-tv"></i> Status TV:</span> <span class="font-bold text-green-400">MENAMPILKAN NILAI (10 Detik)</span>`;
+
+            database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
+                current_action: 'show_score',
+                score_data: {
+                    kategori: p.kategori,
+                    nama: displayNama,
+                    kontingen: p.kontingen,
+                    rawScores: calc.raw,
+                    waktu: timerFmt,
+                    denda: calc.penalty,
+                    nilaiAkhir: calc.final.toFixed(2)
+                }
+            });
+        }
+        // -------------------------------------------
 
         alert(`SKOR TERSIMPAN!`); 
         resetTimer();
