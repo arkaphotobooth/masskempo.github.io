@@ -1434,7 +1434,8 @@ function filterPesertaScoring() {
                 let sortedB2 = [...listCat].filter(p => p.scores.b1.final > 0).sort((a,b) => a.scores.b1.final - b.scores.b1.final || a.scores.b1.tech - b.scores.b1.tech);
                 if(sortedB2.length > 0) {
                     optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : NILAI B1 TERTINGGI TAMPIL TERAKHIR) ---">`;
-                    optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] ${p.nama} (B1: ${p.scores.b1.final})</option>`).join('');
+                    // FIX: Gunakan (i + 1) agar label urut main menjadi No.1, No.2, dst.
+                    optionsHTML += sortedB2.map((p, i) => `<option value="${p.id}|b2">[Babak 2] No.${i+1} - ${p.nama} (B1: ${p.scores.b1.final})</option>`).join('');
                     optionsHTML += `</optgroup>`;
                 } else {
                     optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : SELESAIKAN BABAK 1 DULU) ---"></optgroup>`;
@@ -1442,7 +1443,8 @@ function filterPesertaScoring() {
             } else {
                 let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut);
                 optionsHTML += `<optgroup label="--- TAMPIL KEDUA (BABAK 2 : URUTAN DIBALIK) ---">`;
-                optionsHTML += sortedB2.map(p => `<option value="${p.id}|b2">[Babak 2] No.${p.urut} - ${p.nama} (${p.kontingen})</option>`).join('');
+                // FIX: Gunakan (i + 1) agar label urut main menjadi No.1, No.2, dst.
+                optionsHTML += sortedB2.map((p, i) => `<option value="${p.id}|b2">[Babak 2] No.${i+1} - ${p.nama} (${p.kontingen})</option>`).join('');
                 optionsHTML += `</optgroup>`;
             }
         }
@@ -1623,8 +1625,30 @@ function updateScoringButtonsUI() {
     const p = STATE.participants.find(x => x.id === pId);
     if (p) {
         let babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
-        let noUrut = babak === 'b1' ? p.urut : (p.isFinalist ? p.urutFinal : p.urutB2);
         
+        // --- FIX BUG UNDEFINED NOMOR B2 ---
+        let noUrut = p.urut; 
+        if (babak === 'b1') {
+            noUrut = p.urut; // Jika B1, ambil nomor urut B1
+        } else if (p.isFinalist) {
+            noUrut = p.urutFinal; // Jika Final, ambil nomor urut Final
+        } else {
+            // Jika B2 Single Pool, hitung urutan main berdasarkan mode Admin
+            let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
+            if (modeB2 === 'redraw') {
+                noUrut = p.urutB2;
+            } else if (modeB2 === 'highscore') {
+                let listCat = STATE.participants.filter(x => x.kategori === p.kategori && x.urut > 0);
+                let sortedB2 = [...listCat].filter(x => x.scores.b1.final > 0).sort((a,b) => a.scores.b1.final - b.scores.b1.final || a.scores.b1.tech - b.scores.b1.tech);
+                noUrut = sortedB2.findIndex(x => x.id === p.id) + 1;
+            } else {
+                let listCat = STATE.participants.filter(x => x.kategori === p.kategori && x.urut > 0);
+                let sortedB2 = [...listCat].sort((a,b) => b.urut - a.urut);
+                noUrut = sortedB2.findIndex(x => x.id === p.id) + 1;
+            }
+        }
+        // Pengaman agar tidak pernah muncul tulisan undefined
+        if (!noUrut) noUrut = "?";
         let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
         
         // FIX JUDUL: Jika beregu dan tidak ada kontingen, beri nama singkatan "dkk"
