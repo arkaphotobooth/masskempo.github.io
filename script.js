@@ -1668,6 +1668,9 @@ function updateScoringButtonsUI() {
     if(btnPen) btnPen.classList.add('hidden'); 
     if(btnFin) btnFin.classList.add('hidden'); 
 
+    // --- FIX BUG TOMBOL HILANG: Cari dulu data kategorinya! ---
+    let catObj = STATE.categories.find(c => c.name === p.kategori);
+
     if (catObj && catObj.discipline === 'festival') {
         // Mode One-Shot untuk Festival
         if(btnB1) { 
@@ -1684,7 +1687,7 @@ function updateScoringButtonsUI() {
             if(btnFin && val.includes('[FINAL]')) { btnFin.classList.remove('hidden'); }
             else if(btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
         }  
-    } 
+    }
     loadExistingScores(); 
 }
 
