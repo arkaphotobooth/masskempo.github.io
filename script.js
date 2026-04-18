@@ -1786,6 +1786,14 @@ function loadExistingScores() {
     const p = STATE.participants.find(i => i.id === pId); 
     if(!p) return;
 
+    // --- FIX BUG WASIT 4 & 5 NYANGKUT ---
+    // SAPU BERSIH: Hapus semua 5 kotak fisik di layar tanpa ampun!
+    for(let i=1; i<=5; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        let tEl = document.getElementById(`tech-${i}`);
+        if(sEl) sEl.value = '';
+        if(tEl) tEl.value = '';
+    }
     const scoreData = p.scores[babak]; 
     if(scoreData && scoreData.raw && scoreData.raw.length > 0) { 
         const nJudges = scoreData.raw.length; 
@@ -1797,14 +1805,13 @@ function loadExistingScores() {
         } 
         UI.timerSeconds = scoreData.time || 0; updateTimerUI(); 
     } else { 
-        for(let i=1; i<=STATE.settings.numJudges; i++) { 
-            let sEl = document.getElementById(`score-${i}`); let tEl = document.getElementById(`tech-${i}`); 
-            if(sEl) sEl.value = ''; if(tEl) tEl.value = ''; 
-        } 
+        // Karena kotak nilainya sudah disapu bersih di awal fungsi,
+        // di sini kita hanya perlu me-reset timer-nya saja.
         UI.timerSeconds = 0; updateTimerUI(); 
     } 
     calculateLive(); 
 }
+
 function calculateLive() {
     let raw = [];
     let techRaw = [];
