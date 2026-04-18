@@ -293,7 +293,7 @@ function handleCSVUpload(event) {
     reader.readAsText(file); 
 }
 
-// Fungsi Baru: Upload CSV Khusus Kategori
+// Fungsi Baru: Upload CSV Khusus Kategori (Mendukung Festival)
 function handleCategoryCSVUpload(event) {
     const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
@@ -304,7 +304,11 @@ function handleCategoryCSVUpload(event) {
             if(i === 0 || !row.trim()) return; // Lewati baris pertama (header)
             let cols = row.split(',').map(item => item.replace(/^"|"$/g, '').trim());
             if(cols.length >= 3) {
-                const discipline = cols[0].toLowerCase().includes('randori') ? 'randori' : 'embu';
+                
+                // --- FIX ALGORITMA IMPORT DISIPLIN ---
+                let discRaw = cols[0].toLowerCase();
+                let discipline = discRaw.includes('randori') ? 'randori' : (discRaw.includes('festival') ? 'festival' : 'embu');
+                
                 const name = cols[1];
                 const type = parseInt(cols[2]) || 1;
                 
@@ -319,7 +323,6 @@ function handleCategoryCSVUpload(event) {
     };
     reader.readAsText(file);
 }
-
 // Fungsi Baru: Simpan Setting Minimal Peserta
 function saveMinPesertaSetting() {
     const val = parseInt(document.getElementById('setting-min-peserta').value);
