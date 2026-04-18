@@ -1624,16 +1624,23 @@ function updateScoringButtonsUI() {
     // --- MANUVER C-REVISI: ABSENSI MINI & JUDUL CERDAS ---
     const p = STATE.participants.find(x => x.id === pId);
     if (p) {
-        let babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
+        // Pindahkan catObj ke atas agar bisa mendeteksi Festival
+        let catObj = STATE.categories.find(c => c.name === p.kategori);
+
+        // --- FIX 1: PENYESUAIAN LABEL FESTIVAL / EMBU ---
+        let babakText = "";
+        if (catObj && catObj.discipline === 'festival') {
+            babakText = `Kelompok ${p.pool}`; // Cetak Kelompok A, B, dst.
+        } else {
+            babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
+        }
         
-        // --- FIX BUG UNDEFINED NOMOR B2 ---
         let noUrut = p.urut; 
         if (babak === 'b1') {
-            noUrut = p.urut; // Jika B1, ambil nomor urut B1
+            noUrut = p.urut; 
         } else if (p.isFinalist) {
-            noUrut = p.urutFinal; // Jika Final, ambil nomor urut Final
+            noUrut = p.urutFinal; 
         } else {
-            // Jika B2 Single Pool, hitung urutan main berdasarkan mode Admin
             let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
             if (modeB2 === 'redraw') {
                 noUrut = p.urutB2;
@@ -1647,21 +1654,19 @@ function updateScoringButtonsUI() {
                 noUrut = sortedB2.findIndex(x => x.id === p.id) + 1;
             }
         }
-        // Pengaman agar tidak pernah muncul tulisan undefined
         if (!noUrut) noUrut = "?";
-        let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
         
-        // FIX JUDUL: Jika beregu dan tidak ada kontingen, beri nama singkatan "dkk"
+        let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
         let displayNama = names.length > 1 ? `${names[0]} dkk` : p.nama;
         
+        // --- FIX 2: NAMA ATLET DIMUNCULKAN BERSAMA KONTINGEN ---
         let titleText = (p.kontingen && p.kontingen !== "-") 
-            ? `[${babakText}] No.${noUrut} - Kontingen ${p.kontingen}` 
+            ? `[${babakText}] No.${noUrut} - ${displayNama} (${p.kontingen})` 
             : `[${babakText}] No.${noUrut} - ${displayNama}`;
         
         let titleEl = document.getElementById('scoring-athlete-name');
         titleEl.innerText = titleText;
         
-        // Hapus kelas 'truncate' agar jika nama panjang (misal kontingen panjang), ia bisa turun ke baris bawah dengan rapi
         titleEl.classList.remove('truncate'); 
         titleEl.classList.add('whitespace-normal', 'break-words');
 
