@@ -2505,25 +2505,68 @@ function exportRawHasilCSV(filterCatName = null) {
                 rows.push(["-", "-", "Peserta Babak 2 / Final belum ditetapkan", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
             }
             rows.push([]); rows.push([]); 
-        } else {
-            // RANDORI RAW
+        } else if (cat.discipline === 'festival') {
+            // --- FIX 3: RAW CETAK FESTIVAL ---
+            rows.push([]);
+            rows.push(["[ HASIL FESTIVAL ]"]);
+            rows.push(["Kelompok", "Peringkat", "Nama Atlet", "Kontingen", "Wasit 1", "Wasit 2", "Wasit 3", "Wasit 4", "Wasit 5", "Waktu", "Denda", "Nilai Akhir"]);
+            
+            let catParts = STATE.participants.filter(p => p.kategori === cat.name && p.urut > 0);
+            let unikPools = [...new Set(catParts.map(p => p.pool))].sort();
+            
+            if (unikPools.length === 0) {
+                rows.push(["-", "-", "Belum ada peserta diundi / dimainkan", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+            } else {
+                let adaPemenang = false;
+                unikPools.forEach(poolKey => {
+                    let poolParts = catParts.filter(p => p.pool === poolKey && p.scores.b1.final > 0);
+                    if (poolParts.length > 0) {
+                        adaPemenang = true;
+                        poolParts.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
+                        poolParts.forEach((p, i) => {
+                            let s = p.scores.b1;
+                            let rank = (i === 0) ? "Emas (1)" : (i === 1) ? "Perak (2)" : (i === 2 || i === 3) ? "Perunggu (3)" : (i + 1);
+                            let w = s.raw || [];
+                            let waktuFmt = `${Math.floor((s.time||0)/60).toString().padStart(2,'0')}:${((s.time||0)%60).toString().padStart(2,'0')}`;
+                            let finalScore = s.final.toFixed(2).replace('.', ',');
+                            
+                            rows.push([`Kelompok ${poolKey}`, rank, p.nama, p.kontingen, String(w[0]||'-').replace('.', ','), String(w[1]||'-').replace('.', ','), String(w[2]||'-').replace('.', ','), String(w[3]||'-').replace('.', ','), String(w[4]||'-').replace('.', ','), waktuFmt, s.penalty || 0, finalScore]);
+                        });
+                    }
+                });
+                if (!adaPemenang) rows.push(["-", "-", "Belum ada nilai tersimpan", "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+            }
+            rows.push([]); rows.push([]);
+
+        } else { 
+            // --- FIX 4: RAW CETAK RANDORI ---
             rows.push([]);
             rows.push(["Peringkat / Medali", "Nama Atlet", "Kontingen", "Keterangan"]);
-            let poolResults = calculateRandoriFinalists(cat.name);
-            if (poolResults) {
-                poolResults.forEach(res => {
-                    let isFinalCat = cat.name.toUpperCase().includes('FINAL');
-                    let isSinglePool = res.pool === '-';
-                    let label1 = isFinalCat || isSinglePool ? "Juara 1 (Emas)" : `Juara 1 Pool ${res.pool}`;
-                    let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
-                    let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
+            
+            let catMatches = STATE.matches.filter(m => m.kategori === cat.name);
+            let hasPools = catMatches.some(m => m.pool === 'A' || m.pool === 'B');
+            let isFinalCat = cat.name.toUpperCase().includes('FINAL');
 
-                    if(res.emas) rows.push(["Emas", res.emas, res.emasKontingen, label1]);
-                    if(res.perak) rows.push(["Perak", res.perak, res.perakKontingen, label2]);
-                    res.perunggu.forEach(p => rows.push(["Perunggu", p.nama, p.kontingen, label3]));
-                });
+            if (hasPools && !isFinalCat) {
+                rows.push(["-", "Sistem Pool. Hasil akhir berada di kategori FINAL.", "-", "-"]);
             } else {
-                rows.push(["-", "Belum ada juara / Turnamen masih berjalan", "-", "-"]);
+                let poolResults = calculateRandoriFinalists(cat.name);
+                if (poolResults) {
+                    poolResults.forEach(res => {
+                        let isSinglePool = res.pool === '-';
+                        if (isFinalCat || isSinglePool) {
+                            let label1 = isFinalCat || isSinglePool ? "Juara 1 (Emas)" : `Juara 1 Pool ${res.pool}`;
+                            let label2 = isFinalCat || isSinglePool ? "Juara 2 (Perak)" : `Runner-Up Pool ${res.pool}`;
+                            let label3 = isFinalCat || isSinglePool ? "Juara 3 Bersama (Perunggu)" : `Juara 3 Pool ${res.pool}`;
+
+                            if(res.emas) rows.push(["Emas", res.emas, res.emasKontingen, label1]);
+                            if(res.perak) rows.push(["Perak", res.perak, res.perakKontingen, label2]);
+                            res.perunggu.forEach(p => rows.push(["Perunggu", p.nama, p.kontingen, label3]));
+                        }
+                    });
+                } else {
+                    rows.push(["-", "Belum ada juara / Turnamen masih berjalan", "-", "-"]);
+                }
             }
             rows.push([]); rows.push([]);
         }
@@ -2585,26 +2628,62 @@ function exportRekapJuaraCSV(filterCatName = null) {
             }
             rows.push([]); rows.push([]); 
 
-        } else {
-            rows.push(["Peringkat", "Nama Atlet", "Kontingen"]);
-            let poolResults = calculateRandoriFinalists(cat.name);
-            let foundFinalResult = false;
-
-            if (poolResults) {
-                poolResults.forEach(res => {
-                    let isFinalCat = cat.name.toUpperCase().includes('FINAL');
-                    let isSinglePool = res.pool === '-';
-
-                    if (isFinalCat || isSinglePool) {
-                        foundFinalResult = true;
-                        if(res.emas) rows.push(["Emas (1)", res.emas, res.emasKontingen]);
-                        if(res.perak) rows.push(["Perak (2)", res.perak, res.perakKontingen]);
-                        res.perunggu.forEach(p => rows.push(["Perunggu (3)", p.nama, p.kontingen]));
-                    }
-                });
-            } 
+        } else if (cat.discipline === 'festival') {
+            // --- FIX 1: LOGIKA CETAK KHUSUS FESTIVAL ---
+            rows.push(["Kelompok", "Peringkat", "Nama Atlet", "Kontingen", "Nilai Akhir"]);
+            let catParts = STATE.participants.filter(p => p.kategori === cat.name && p.urut > 0);
+            let unikPools = [...new Set(catParts.map(p => p.pool))].sort();
             
-            if (!foundFinalResult) rows.push(["-", "Belum ada pemenang / Menunggu", "-"]);
+            if (unikPools.length === 0) {
+                rows.push(["-", "-", "Belum ada peserta diundi / dimainkan", "-", "-"]);
+            } else {
+                let adaPemenang = false;
+                unikPools.forEach(poolKey => {
+                    let poolParts = catParts.filter(p => p.pool === poolKey && p.scores.b1.final > 0);
+                    if (poolParts.length === 0) return;
+                    
+                    adaPemenang = true;
+                    poolParts.sort((a,b) => b.scores.b1.final - a.scores.b1.final || b.scores.b1.tech - a.scores.b1.tech);
+                    
+                    poolParts.forEach((p, i) => {
+                        let rank = (i === 0) ? "Emas (1)" : (i === 1) ? "Perak (2)" : (i === 2 || i === 3) ? "Perunggu (3)" : (i + 1);
+                        let nilaiAkhir = p.scores.b1.final.toFixed(2).replace('.', ',');
+                        rows.push([`Kelompok ${poolKey}`, rank, p.nama, p.kontingen, nilaiAkhir]);
+                    });
+                });
+                if (!adaPemenang) rows.push(["-", "-", "Belum ada nilai tersimpan", "-", "-"]);
+            }
+            rows.push([]); rows.push([]); 
+
+        } else {
+            // --- FIX 2: LOGIKA CETAK RANDORI (FILTER FINAL / SINGLE) ---
+            rows.push(["Peringkat", "Nama Atlet", "Kontingen"]);
+            
+            let catMatches = STATE.matches.filter(m => m.kategori === cat.name);
+            let hasPools = catMatches.some(m => m.pool === 'A' || m.pool === 'B');
+            let isFinalCat = cat.name.toUpperCase().includes('FINAL');
+
+            // Aturan: Jika pakai Pool, abaikan cetak juara pool-nya. Suruh lihat ke Kategori Final.
+            if (hasPools && !isFinalCat) {
+                rows.push(["-", "Turnamen sistem Pool. Lihat kategori 'FINAL' untuk rekap juara akhir.", "-"]);
+            } else {
+                let poolResults = calculateRandoriFinalists(cat.name);
+                let foundFinalResult = false;
+
+                if (poolResults) {
+                    poolResults.forEach(res => {
+                        let isSinglePool = res.pool === '-';
+
+                        if (isFinalCat || isSinglePool) {
+                            foundFinalResult = true;
+                            if(res.emas) rows.push(["Emas (1)", res.emas, res.emasKontingen]);
+                            if(res.perak) rows.push(["Perak (2)", res.perak, res.perakKontingen]);
+                            res.perunggu.forEach(p => rows.push(["Perunggu (3)", p.nama, p.kontingen]));
+                        }
+                    });
+                } 
+                if (!foundFinalResult) rows.push(["-", "Belum ada pemenang / Menunggu", "-"]);
+            }
             
             rows.push([]); rows.push([]);
         }
