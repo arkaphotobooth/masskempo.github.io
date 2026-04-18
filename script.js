@@ -1538,6 +1538,7 @@ function updateRandoriUI() {
             logTextEl.className = "text-sm font-medium text-slate-300 flex items-center";
         }
     }
+    pushRandoriToTV();
 }
 function saveRandoriMatchResult() {
     if(!currentRandoriMatchId) return alert("Pilih partai!");
@@ -1894,8 +1895,17 @@ function saveScore() {
     const p = STATE.participants[pIndex]; 
     
     p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; 
-    
-    if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
+    // --- INJEKSI BROADCAST EMBU ---
+    if (DEVICE_ROLE !== 'admin' && ACTIVE_BROADCAST_ID === val) {
+        let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+        let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
+        database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+            type: 'embu', status: 'final', kategori: p.kategori, nama: displayNama, kontingen: p.kontingen,
+            rawScores: calc.raw, waktu: timerFmt, denda: calc.penalty, nilaiAkhir: calc.final.toFixed(2)
+        });
+    }
+    // ------------------------------
+        if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
     else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } 
     else { 
         if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } 
@@ -1933,7 +1943,7 @@ function saveScore() {
     });
 }
 
-function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; }
+function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; pushRandoriToTV();}
 
 function calculateRandoriFinalists(catName) {
     let catMatches = STATE.matches.filter(m => m.kategori === catName);
@@ -2952,4 +2962,96 @@ function handleEmbuSwap(participantId, poolType) {
         EMBU_SWAP_SELECTION = null;
         checkExistingDrawing();
     }
+}
+// =========================================================
+// SISTEM BROADCAST TV SUTRADARA
+// =========================================================
+let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
+let ACTIVE_BROADCAST_ID = null; // Gembok pelacak atlet mana yang sedang tayang
+
+document.addEventListener('DOMContentLoaded', () => {
+    let roleSelect = document.getElementById('setting-device-role');
+    if (roleSelect) roleSelect.value = DEVICE_ROLE;
+    updateTVButtonVisibility();
+});
+
+function changeDeviceRole() {
+    DEVICE_ROLE = document.getElementById('setting-device-role').value;
+    localStorage.setItem('mass_device_role', DEVICE_ROLE);
+    updateTVButtonVisibility();
+    alert(`Perangkat diubah menjadi: ${DEVICE_ROLE.replace('_', ' ').toUpperCase()}`);
+}
+
+function updateTVButtonVisibility() {
+    const btnOpenTV = document.getElementById('btn-open-tv');
+    const btnBroadcast = document.getElementById('btn-broadcast-tv');
+    
+    if (DEVICE_ROLE !== 'admin') {
+        if(btnOpenTV) {
+            btnOpenTV.classList.remove('hidden');
+            btnOpenTV.href = `display.html?court=${DEVICE_ROLE}`;
+        }
+        if(btnBroadcast) btnBroadcast.style.display = 'flex'; // Munculkan tombol TV di Scoring
+    } else {
+        if(btnOpenTV) btnOpenTV.classList.add('hidden');
+        if(btnBroadcast) btnBroadcast.style.display = 'none';
+    }
+}
+
+// Fungsi Trigger Manual oleh Panitera
+function manualBroadcastTV() {
+    if (DEVICE_ROLE === 'admin') return;
+    
+    const catName = document.getElementById('select-kategori').value;
+    const val = document.getElementById('select-peserta').value; 
+    if(!val) return alert("Pilih pertandingan/atlet terlebih dahulu!");
+
+    ACTIVE_BROADCAST_ID = val; // Kunci target yang sedang disiarkan
+
+    const categoryObj = STATE.categories.find(c => c.name === catName);
+    
+    if (categoryObj.discipline === 'randori') {
+        // Tembak skor awal Randori (0-0)
+        pushRandoriToTV();
+    } else {
+        // Tembak layar Pre-view Embu (Hanya Nama, belum ada nilai)
+        const [pIdStr, babak] = val.split('|');
+        const p = STATE.participants.find(x => x.id === parseInt(pIdStr));
+        if(!p) return;
+        
+        let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+        
+        database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+            type: 'embu',
+            status: 'preview',
+            kategori: p.kategori,
+            nama: displayNama,
+            kontingen: p.kontingen
+        });
+    }
+}
+
+// Fungsi Otomatis Mengirim Live Score Randori
+function pushRandoriToTV() {
+    if (DEVICE_ROLE === 'admin' || !currentRandoriMatchId) return;
+    
+    // Pastikan yang tayang di TV adalah partai yang SAMA dengan yang dipilih Sutradara
+    const val = document.getElementById('select-peserta').value; 
+    if (val !== `match-${currentRandoriMatchId}` || val !== ACTIVE_BROADCAST_ID) return;
+
+    const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
+    if (!match) return;
+
+    const mrh = STATE.participants.find(p => p.id === match.merahId) || {nama: '-', kontingen: '-'};
+    const pth = STATE.participants.find(p => p.id === match.putihId) || {nama: '-', kontingen: '-'};
+    
+    let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
+
+    database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+        type: 'randori',
+        kategori: match.kategori,
+        waktu: timerFmt,
+        merah: { nama: mrh.nama, kontingen: mrh.kontingen, skor: RANDORI_STATE.merah.score },
+        putih: { nama: pth.nama, kontingen: pth.kontingen, skor: RANDORI_STATE.putih.score }
+    });
 }
