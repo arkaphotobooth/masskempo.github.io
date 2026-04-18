@@ -1622,16 +1622,13 @@ function updateScoringButtonsUI() {
     const [pIdStr, babak] = val.split('|');
     const pId = parseInt(pIdStr);
 
-    // --- MANUVER C-REVISI: ABSENSI MINI & JUDUL CERDAS ---
     const p = STATE.participants.find(x => x.id === pId);
     if (p) {
-        // Pindahkan catObj ke atas agar bisa mendeteksi Festival
         let catObj = STATE.categories.find(c => c.name === p.kategori);
 
-        // --- FIX 1: PENYESUAIAN LABEL FESTIVAL / EMBU ---
         let babakText = "";
         if (catObj && catObj.discipline === 'festival') {
-            babakText = `Kelompok ${p.pool}`; // Cetak Kelompok A, B, dst.
+            babakText = `Kelompok ${p.pool}`; 
         } else {
             babakText = babak === 'b1' ? (p.pool === 'A' || p.pool === 'B' ? `Pool ${p.pool}` : `Babak 1`) : (p.isFinalist ? 'FINAL' : 'Babak 2');
         }
@@ -1660,7 +1657,6 @@ function updateScoringButtonsUI() {
         let names = p.nama.split(/[,+&]/).map(n => n.trim()).filter(n => n);
         let displayNama = names.length > 1 ? `${names[0]} dkk` : p.nama;
         
-        // --- FIX 2: NAMA ATLET DIMUNCULKAN BERSAMA KONTINGEN ---
         let titleText = (p.kontingen && p.kontingen !== "-") 
             ? `[${babakText}] No.${noUrut} - ${displayNama} (${p.kontingen})` 
             : `[${babakText}] No.${noUrut} - ${displayNama}`;
@@ -1679,7 +1675,6 @@ function updateScoringButtonsUI() {
         }
 
         if (names.length > 1) {
-            // FIX GRID 3 KOLOM: Menggunakan md:grid-cols-3 agar proporsional
             gridEl.className = "grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700 shadow-inner mt-3 animate-fade-in";
             gridEl.innerHTML = names.map((n, i) => `
                 <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-md border border-slate-700/50 shadow-sm overflow-hidden">
@@ -1691,30 +1686,6 @@ function updateScoringButtonsUI() {
             gridEl.className = "hidden";
             gridEl.innerHTML = '';
         }
-       // --- INJEKSI STATUS TV (STANDBY / PREVIEW) ---
-        let tvStatusEl = document.getElementById('operator-tv-status');
-        if (!tvStatusEl) {
-            tvStatusEl = document.createElement('div');
-            tvStatusEl.id = 'operator-tv-status';
-            tvStatusEl.className = "mt-3 p-2 bg-slate-900 border border-slate-700 rounded-lg flex items-center justify-between text-xs transition-all";
-            gridEl.after(tvStatusEl); 
-        }
-
-        if (DEVICE_ROLE !== 'admin') {
-            tvStatusEl.innerHTML = `<span class="flex items-center gap-2 text-slate-400"><i class="fas fa-tv"></i> Status TV:</span> <span class="font-bold text-yellow-500 animate-pulse">STANDBY / PERSIAPAN</span>`;
-            
-            // Tembakkan data Standby/Preview ke Firebase secara diam-diam
-            let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
-            database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
-                current_action: 'preview',
-                preview_data: {
-                    kategori: p.kategori,
-                    nama: displayNama,
-                    kontingen: p.kontingen
-                }
-            });
-        }
-        // --------------------------------------------- 
     }
 
     if(btnB1) btnB1.classList.add('hidden'); 
@@ -1722,18 +1693,15 @@ function updateScoringButtonsUI() {
     if(btnPen) btnPen.classList.add('hidden'); 
     if(btnFin) btnFin.classList.add('hidden'); 
 
-    // --- FIX BUG TOMBOL HILANG: Cari dulu data kategorinya! ---
     let catObj = STATE.categories.find(c => c.name === p.kategori);
 
     if (catObj && catObj.discipline === 'festival') {
-        // Mode One-Shot untuk Festival
         if(btnB1) { 
             btnB1.classList.remove('hidden'); 
             btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN NILAI'; 
             btnB1.className = "flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(34,197,94,0.39)]";
         }
     } else {
-        // Mode Normal Embu
         if (babak === 'b1') {
             if(btnPen && val.includes('[Pool')) { btnPen.classList.remove('hidden'); }
             else if(btnB1) { btnB1.classList.remove('hidden'); btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 1'; btnB1.className = "flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"; }
@@ -1742,7 +1710,29 @@ function updateScoringButtonsUI() {
             else if(btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
         }  
     }
+    
     loadExistingScores(); 
+
+    // ===========================================
+    // SISTEM MARATON (ALWAYS LIVE TV)
+    // ===========================================
+    if (typeof updateBroadcastUI === "function") updateBroadcastUI();
+
+    // Jika TV masih menyala (LIVE) saat pindah ke atlet baru,
+    // diam-diam perbarui data "Antrean / Standby" di dalam TV.
+    if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && DEVICE_ROLE !== 'admin') {
+        let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+        
+        database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
+            // Kita HANYA mengupdate preview_data, 
+            // agar tidak mengganggu timer skor 10 detik yang sedang berjalan di TV.
+            preview_data: {
+                kategori: p.kategori,
+                nama: displayNama,
+                kontingen: p.kontingen
+            }
+        });
+    }
 }
 
 function setJudges(n) { 
@@ -1945,19 +1935,16 @@ function saveScore() {
     // (Opsional: Anda bisa mengubah teks kursor di sini menjadi 'wait' jika mau)
     document.body.style.cursor = 'wait';
 
-    database.ref().update(updates).then(() => {
-        // 3. BUKA GEMBOK: Data berhasil masuk
+        database.ref().update(updates).then(() => {
         isSaving = false; 
         document.body.style.cursor = 'default';
 
-        // --- INJEKSI SUTRADARA TV (POP-UP NILAI) ---
+        // --- INJEKSI BROADCAST EMBU (SUTRADARA OTOMATIS) ---
         if (DEVICE_ROLE !== 'admin') {
             let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
             let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
             
-            let tvStatusEl = document.getElementById('operator-tv-status');
-            if(tvStatusEl) tvStatusEl.innerHTML = `<span class="flex items-center gap-2 text-slate-400"><i class="fas fa-tv"></i> Status TV:</span> <span class="font-bold text-green-400">MENAMPILKAN NILAI (10 Detik)</span>`;
-
+            // Tembakkan SURAT PERINTAH Pop-Up Skor ke TV
             database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
                 current_action: 'show_score',
                 score_data: {
@@ -1971,7 +1958,7 @@ function saveScore() {
                 }
             });
         }
-        // -------------------------------------------
+        // ---------------------------------------------------
 
         alert(`SKOR TERSIMPAN!`); 
         resetTimer();
@@ -1979,8 +1966,7 @@ function saveScore() {
         let selectEl = document.getElementById('select-peserta');
         if(selectEl && selectEl.selectedIndex < selectEl.options.length - 1) {
              selectEl.selectedIndex++;
-             document.getElementById('scoring-athlete-name').innerText = selectEl.options[selectEl.selectedIndex].text;
-             updateScoringButtonsUI();
+             updateScoringButtonsUI(); // Ini akan otomatis men-trigger tombol TV kembali OFF!
         }
     }).catch(err => {
         // 4. BUKA GEMBOK MESKI ERROR: Agar panitia bisa mencoba lagi
