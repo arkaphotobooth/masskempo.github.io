@@ -18,26 +18,14 @@
         <h1 class="text-3xl font-black text-slate-700 tracking-widest uppercase">TV Sutradara Offline</h1>
     </div>
 
-    <div id="view-preview" class="absolute inset-0 z-40 flex flex-col hidden bg-[#111]">
-        <div class="flex-grow flex items-center justify-center">
-            <div class="border border-[#444] bg-black p-12 text-center w-2/3 shadow-2xl">
-                <div class="text-slate-500 text-xl font-bold tracking-[0.3em] mb-6 uppercase">PERSIAPAN MATRAS</div>
-                <div id="preview-nama" class="text-6xl font-light text-white leading-tight mb-6 tracking-wide">-</div>
-                <div class="inline-block bg-[#222] border border-[#444] px-8 py-3 text-2xl font-bold text-slate-300 tracking-widest">
-                    KONTINGEN: <span id="preview-kontingen" class="text-white ml-2">-</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-score" class="absolute inset-0 z-40 flex flex-col hidden bg-[#111] p-8 gap-6 font-sans text-white">
+    <div id="view-score" class="absolute inset-0 z-40 flex flex-col hidden bg-[#111] p-8 font-sans text-white">
         
-        <div class="flex-none">
-            <h1 class="text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">Kejuaraan Nasional Beladiri Seni 2024</h1>
+        <div class="flex-none mb-6">
+            <h1 id="tv-global-judul" class="text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">KEJUARAAN NASIONAL BELADIRI SENI 2024</h1>
             <h2 id="tv-score-kategori-head" class="text-4xl text-white font-light uppercase tracking-wide">-</h2>
         </div>
 
-        <div class="flex justify-between items-stretch gap-6 flex-none h-[100px]">
+        <div class="flex justify-between items-stretch gap-6 flex-none h-[100px] mb-6">
             <div class="border border-[#444] flex items-center p-5 gap-6 min-w-[400px]">
                 <div class="w-[80px] h-[55px] flex flex-col border border-slate-500 shadow-sm">
                     <div class="flex-1 bg-red-600"></div>
@@ -55,8 +43,8 @@
             </div>
         </div>
 
-        <div class="flex gap-6 flex-grow min-h-0">
-            <div class="border border-[#444] flex flex-col w-[35%]">
+        <div class="flex gap-6 flex-grow min-h-0 mb-6">
+            <div class="border border-[#444] flex flex-col w-[35%] bg-black/10">
                 <div class="border-b border-[#444] text-center py-2 text-sm font-bold tracking-widest text-slate-400">
                     ATLET
                 </div>
@@ -64,13 +52,9 @@
                     </div>
             </div>
 
-            <div class="border border-[#444] flex flex-col flex-1 relative items-center justify-center overflow-hidden" style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%);">
-                <div class="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                    <img src="logo-saya.svg" class="w-[600px] object-contain" onerror="this.style.display='none'">
-                </div>
-                
+            <div class="border border-[#444] flex flex-col flex-1 relative items-center justify-center overflow-hidden bg-black/10" style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%);">
                 <div class="text-4xl font-bold tracking-widest text-white z-10 mb-4 drop-shadow-md">NILAI AKHIR</div>
-                <div id="tv-score-final" class="text-[16rem] font-black text-[#cca650] leading-none z-10 drop-shadow-lg font-display">0.00</div>
+                <div id="tv-score-final" class="text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display">-</div>
             </div>
         </div>
 
@@ -78,10 +62,10 @@
             <div id="tv-score-wasit-container" class="flex flex-1 gap-6">
                 </div>
             
-            <div class="border border-[#444] flex flex-col w-[15%]">
+            <div class="border border-[#444] flex flex-col w-[15%] bg-black/10">
                 <div class="border-b border-[#444] text-center py-2 text-sm font-bold tracking-widest text-slate-400">DENDA</div>
                 <div class="flex-grow flex items-center justify-center">
-                    <span id="tv-score-denda" class="text-6xl font-black text-red-500 font-display">0</span>
+                    <span id="tv-score-denda" class="text-6xl font-black text-slate-700 font-display">-</span>
                 </div>
             </div>
         </div>
@@ -131,7 +115,6 @@
 
         const views = {
             idle: document.getElementById('view-idle'),
-            preview: document.getElementById('view-preview'),
             score: document.getElementById('view-score'),
             randori: document.getElementById('view-randori')
         };
@@ -141,8 +124,56 @@
             views[target].classList.remove('hidden');
         }
 
+        // Sensor Judul TV Real-Time
+        database.ref('turnamen_data/settings/judulTV').on('value', (snap) => {
+            const judulEl = document.getElementById('tv-global-judul');
+            if (judulEl) judulEl.innerText = snap.val() || "KEJUARAAN NASIONAL BELADIRI SENI 2024";
+        });
+
         let displayTimer = null; 
         let savedPreviewData = null; 
+
+        // Fungsi UI Standby (Kosong/Abu-abu)
+        function renderEmptyScoreLayout(previewData) {
+            if(!previewData) return;
+            document.getElementById('tv-score-kategori-head').innerText = previewData.kategori;
+            document.getElementById('tv-score-waktu').innerText = '00:00';
+            document.getElementById('tv-score-kontingen').innerText = previewData.kontingen;
+
+            let finalEl = document.getElementById('tv-score-final');
+            finalEl.innerText = "-";
+            finalEl.className = "text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display";
+
+            let dendaEl = document.getElementById('tv-score-denda');
+            dendaEl.innerText = "-";
+            dendaEl.className = "text-6xl font-black text-slate-700 font-display";
+
+            let names = previewData.nama.split('&').map(n => n.trim());
+            let nameHTML = '';
+            names.forEach((n, idx) => {
+                nameHTML += `
+                <div class="flex items-center text-2xl text-white font-light border-b border-[#333] pb-2">
+                    <span class="w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
+                    <span class="truncate tracking-wide">${n}</span>
+                </div>`;
+            });
+            document.getElementById('tv-score-name-container').innerHTML = nameHTML;
+
+            let wasitHTML = '';
+            for(let i=0; i<5; i++) {
+                wasitHTML += `
+                <div class="border border-[#444] flex-1 flex flex-col text-center bg-black/10">
+                    <div class="border-b border-[#444] py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        WASIT ${i+1}
+                    </div>
+                    <div class="flex-grow flex items-center justify-center">
+                        <span class="text-6xl font-black text-slate-700 font-display leading-none">-</span>
+                    </div>
+                </div>`;
+            }
+            document.getElementById('tv-score-wasit-container').innerHTML = wasitHTML;
+            switchView('score');
+        }
 
         database.ref(`live_broadcast/${courtId}`).on('value', (snapshot) => {
             const data = snapshot.val();
@@ -170,17 +201,20 @@
 
             if (data.current_action === 'show_score' && data.score_data) {
                 if(displayTimer) clearTimeout(displayTimer);
-                switchView('score');
                 
                 const sData = data.score_data;
-                
                 document.getElementById('tv-score-kategori-head').innerText = sData.kategori;
                 document.getElementById('tv-score-waktu').innerText = sData.waktu;
                 document.getElementById('tv-score-kontingen').innerText = sData.kontingen;
-                document.getElementById('tv-score-denda').innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
-                document.getElementById('tv-score-final').innerText = sData.nilaiAkhir;
+                
+                let finalEl = document.getElementById('tv-score-final');
+                finalEl.innerText = sData.nilaiAkhir;
+                finalEl.className = "text-[16rem] font-black text-[#cca650] leading-none z-10 drop-shadow-lg font-display";
 
-                // --- MAPPING NAMA (1 Kolom Rapi) ---
+                let dendaEl = document.getElementById('tv-score-denda');
+                dendaEl.innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
+                dendaEl.className = "text-6xl font-black text-red-500 font-display";
+
                 let names = sData.nama.split('&').map(n => n.trim());
                 let nameHTML = '';
                 names.forEach((n, idx) => {
@@ -192,7 +226,6 @@
                 });
                 document.getElementById('tv-score-name-container').innerHTML = nameHTML;
 
-                // --- MAPPING WASIT (Sejajar dengan Denda di bawah) ---
                 let wasitHTML = '';
                 let rawScores = sData.rawScores || [];
                 while(rawScores.length < 5) rawScores.push('-');
@@ -209,20 +242,17 @@
                     </div>`;
                 });
                 document.getElementById('tv-score-wasit-container').innerHTML = wasitHTML;
+                switchView('score');
 
                 displayTimer = setTimeout(() => {
                     if (savedPreviewData) {
-                        document.getElementById('preview-nama').innerText = savedPreviewData.nama;
-                        document.getElementById('preview-kontingen').innerText = savedPreviewData.kontingen;
+                        renderEmptyScoreLayout(savedPreviewData);
                     }
-                    switchView('preview');
                     displayTimer = null; 
                 }, 10000); 
             } 
             else if (data.current_action === 'preview' && !displayTimer) {
-                document.getElementById('preview-nama').innerText = data.preview_data.nama;
-                document.getElementById('preview-kontingen').innerText = data.preview_data.kontingen;
-                switchView('preview');
+                renderEmptyScoreLayout(data.preview_data);
             }
         });
     </script>
