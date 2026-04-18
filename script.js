@@ -1885,10 +1885,8 @@ function resetTimer() {
 // FIX FINAL: TIMER & SAVE SCORE (Gembok Anti-Spam Klik)
 // =========================================================
 
-let isSaving = false; // <-- GEMBOK KEAMANAN GLOBAL
-
+let isSaving = false; 
 function saveScore() { 
-    // 1. CEK GEMBOK: Jika sedang menyimpan, tolak semua klik!
     if (isSaving) {
         console.warn("Sabar Suhu, data sedang dikirim ke Firebase...");
         return; 
@@ -1909,17 +1907,8 @@ function saveScore() {
     const p = STATE.participants[pIndex]; 
     
     p.scores[babak] = { raw: calc.raw, techRaw: calc.techRaw, penalty: calc.penalty, final: calc.final, tech: calc.tieBreaker, time: UI.timerSeconds }; 
-    // --- INJEKSI BROADCAST EMBU ---
-    if (DEVICE_ROLE !== 'admin' && ACTIVE_BROADCAST_ID === val) {
-        let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
-        let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
-        database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
-            type: 'embu', status: 'final', kategori: p.kategori, nama: displayNama, kontingen: p.kontingen,
-            rawScores: calc.raw, waktu: timerFmt, denda: calc.penalty, nilaiAkhir: calc.final.toFixed(2)
-        });
-    }
-    // ------------------------------
-        if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
+    
+    if (p.isFinalist) { p.finalScore = p.scores.b2.final; p.techScore = p.scores.b2.tech; } 
     else if (p.pool === 'A' || p.pool === 'B') { p.finalScore = p.scores.b1.final; p.techScore = p.scores.b1.tech; } 
     else { 
         if(p.scores.b1.final > 0 && p.scores.b2.final > 0) { p.finalScore = (p.scores.b1.final + p.scores.b2.final) / 2; p.techScore = (p.scores.b1.tech + p.scores.b2.tech) / 2; } 
@@ -1929,23 +1918,19 @@ function saveScore() {
     let updates = {};
     updates[`turnamen_data/participants/${pIndex}`] = p;
     
-    // 2. KUNCI GEMBOK: Mulai proses pengiriman!
     isSaving = true; 
-    
-    // (Opsional: Anda bisa mengubah teks kursor di sini menjadi 'wait' jika mau)
     document.body.style.cursor = 'wait';
 
-        database.ref().update(updates).then(() => {
+    database.ref().update(updates).then(() => {
         isSaving = false; 
         document.body.style.cursor = 'default';
 
-        // --- INJEKSI BROADCAST EMBU (SUTRADARA OTOMATIS) ---
-        if (DEVICE_ROLE !== 'admin') {
+        // --- INJEKSI SUTRADARA OTOMATIS (HANYA MENGIRIM JIKA TV SEDANG LIVE) ---
+        if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && DEVICE_ROLE !== 'admin') {
             let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
             let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
             
-            // Tembakkan SURAT PERINTAH Pop-Up Skor ke TV
-            database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
+            database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
                 current_action: 'show_score',
                 score_data: {
                     kategori: p.kategori,
@@ -1958,7 +1943,7 @@ function saveScore() {
                 }
             });
         }
-        // ---------------------------------------------------
+        // -----------------------------------------------------------------------
 
         alert(`SKOR TERSIMPAN!`); 
         resetTimer();
@@ -1966,10 +1951,9 @@ function saveScore() {
         let selectEl = document.getElementById('select-peserta');
         if(selectEl && selectEl.selectedIndex < selectEl.options.length - 1) {
              selectEl.selectedIndex++;
-             updateScoringButtonsUI(); // Ini akan otomatis men-trigger tombol TV kembali OFF!
+             updateScoringButtonsUI(); 
         }
     }).catch(err => {
-        // 4. BUKA GEMBOK MESKI ERROR: Agar panitia bisa mencoba lagi
         isSaving = false; 
         document.body.style.cursor = 'default';
         alert("Gagal Simpan: " + err);
@@ -2997,87 +2981,91 @@ function handleEmbuSwap(participantId, poolType) {
     }
 }
 // =========================================================
-// SISTEM BROADCAST TV SUTRADARA
+// SISTEM TOGGLE BROADCAST TV (MARATON TV LIVE)
 // =========================================================
 let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
-let ACTIVE_BROADCAST_ID = null; // Gembok pelacak atlet mana yang sedang tayang
+let IS_TV_LIVE = false; // Memori pelacak TV menyala/mati
 
 document.addEventListener('DOMContentLoaded', () => {
     let roleSelect = document.getElementById('setting-device-role');
     if (roleSelect) roleSelect.value = DEVICE_ROLE;
-    updateTVButtonVisibility();
+    if (typeof updateBroadcastUI === "function") updateBroadcastUI();
 });
 
 function changeDeviceRole() {
     DEVICE_ROLE = document.getElementById('setting-device-role').value;
     localStorage.setItem('mass_device_role', DEVICE_ROLE);
-    updateTVButtonVisibility();
+    updateBroadcastUI();
     alert(`Perangkat diubah menjadi: ${DEVICE_ROLE.replace('_', ' ').toUpperCase()}`);
 }
 
-function updateTVButtonVisibility() {
+function toggleBroadcast() {
+    if (DEVICE_ROLE === 'admin') return alert('Ubah peran ke Tatami/Court di Tab Admin terlebih dahulu!');
+    
+    const val = document.getElementById('select-peserta').value; 
+    if(!val) return alert('Pilih pertandingan/atlet terlebih dahulu!');
+
+    IS_TV_LIVE = !IS_TV_LIVE; 
+    updateBroadcastUI();
+
+    if (IS_TV_LIVE) {
+        if (val.startsWith('match-')) {
+            // Tembak Randori
+            pushRandoriToTV();
+        } else {
+            // Tembak Embu (Standby)
+            const [pIdStr, babak] = val.split('|');
+            const p = STATE.participants.find(x => x.id === parseInt(pIdStr));
+            if(p) {
+                let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+                database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+                    current_action: 'preview',
+                    preview_data: { kategori: p.kategori, nama: displayNama, kontingen: p.kontingen }
+                });
+            }
+        }
+    } else {
+        // Matikan TV
+        database.ref(`live_broadcast/${DEVICE_ROLE}`).set({ current_action: 'idle' });
+    }
+}
+
+function updateBroadcastUI() {
     const btnOpenTV = document.getElementById('btn-open-tv');
-    const btnBroadcast = document.getElementById('btn-broadcast-tv');
+    const btn = document.getElementById('btn-broadcast-toggle');
+    const icon = document.getElementById('icon-broadcast');
+    const text = document.getElementById('text-broadcast');
     
     if (DEVICE_ROLE !== 'admin') {
-        if(btnOpenTV) {
-            btnOpenTV.classList.remove('hidden');
-            btnOpenTV.href = `display.html?court=${DEVICE_ROLE}`;
-        }
-        if(btnBroadcast) btnBroadcast.style.display = 'flex'; // Munculkan tombol TV di Scoring
+        if(btnOpenTV) { btnOpenTV.classList.remove('hidden'); btnOpenTV.href = `display.html?court=${DEVICE_ROLE}`; }
+        if(btn) { btn.classList.remove('hidden'); btn.style.display = 'flex'; }
     } else {
         if(btnOpenTV) btnOpenTV.classList.add('hidden');
-        if(btnBroadcast) btnBroadcast.style.display = 'none';
+        if(btn) { btn.classList.add('hidden'); btn.style.display = 'none'; }
+        return;
     }
-}
 
-// Fungsi Trigger Manual oleh Panitera
-function manualBroadcastTV() {
-    if (DEVICE_ROLE === 'admin') return;
-    
-    const catName = document.getElementById('select-kategori').value;
-    const val = document.getElementById('select-peserta').value; 
-    if(!val) return alert("Pilih pertandingan/atlet terlebih dahulu!");
+    if(!btn || !icon || !text) return;
 
-    ACTIVE_BROADCAST_ID = val; // Kunci target yang sedang disiarkan
-
-    const categoryObj = STATE.categories.find(c => c.name === catName);
-    
-    if (categoryObj.discipline === 'randori') {
-        // Tembak skor awal Randori (0-0)
-        pushRandoriToTV();
+    if (IS_TV_LIVE) {
+        btn.className = "w-full mt-3 bg-red-900/40 hover:bg-red-800 border border-red-500 text-red-400 font-bold py-2.5 px-4 rounded-lg shadow-[0_0_15px_rgba(220,38,38,0.4)] text-xs transition-all flex items-center justify-center gap-2 tracking-widest";
+        icon.className = "fas fa-tv animate-pulse text-sm";
+        text.innerText = "LIVE DI TV";
     } else {
-        // Tembak layar Pre-view Embu (Hanya Nama, belum ada nilai)
-        const [pIdStr, babak] = val.split('|');
-        const p = STATE.participants.find(x => x.id === parseInt(pIdStr));
-        if(!p) return;
-        
-        let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
-        
-        database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
-            type: 'embu',
-            status: 'preview',
-            kategori: p.kategori,
-            nama: displayNama,
-            kontingen: p.kontingen
-        });
+        btn.className = "w-full mt-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 font-bold py-2.5 px-4 rounded-lg shadow-md text-xs transition-all flex items-center justify-center gap-2 tracking-widest";
+        icon.className = "fas fa-tv-slash text-sm";
+        text.innerText = "TV OFFLINE";
     }
 }
 
-// Fungsi Otomatis Mengirim Live Score Randori
 function pushRandoriToTV() {
-    if (DEVICE_ROLE === 'admin' || !currentRandoriMatchId) return;
+    if (DEVICE_ROLE === 'admin' || !currentRandoriMatchId || !IS_TV_LIVE) return;
     
-    // Pastikan yang tayang di TV adalah partai yang SAMA dengan yang dipilih Sutradara
-    const val = document.getElementById('select-peserta').value; 
-    if (val !== `match-${currentRandoriMatchId}` || val !== ACTIVE_BROADCAST_ID) return;
-
     const match = STATE.matches.find(m => m.id === currentRandoriMatchId);
     if (!match) return;
 
     const mrh = STATE.participants.find(p => p.id === match.merahId) || {nama: '-', kontingen: '-'};
     const pth = STATE.participants.find(p => p.id === match.putihId) || {nama: '-', kontingen: '-'};
-    
     let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
 
     database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
