@@ -202,6 +202,9 @@ function switchTab(targetTab) {
         
         let modeEl = document.getElementById('setting-tournament-mode');
         if(modeEl) modeEl.value = (STATE.settings && STATE.settings.tournamentMode) ? STATE.settings.tournamentMode : 'double';
+
+        let judulEl = document.getElementById('setting-judul-tv');
+        if(judulEl) judulEl.value = (STATE.settings && STATE.settings.judulTV) ? STATE.settings.judulTV : "KEJUARAAN NASIONAL BELADIRI SENI 2024";
     }
 }
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if(!name) return; if(STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
@@ -324,6 +327,15 @@ function handleCategoryCSVUpload(event) {
     reader.readAsText(file);
 }
 // Fungsi Baru: Simpan Setting Minimal Peserta
+function saveJudulTV() {
+    const val = document.getElementById('setting-judul-tv').value;
+    if (!val) return alert("Judul tidak boleh kosong!");
+    if (!STATE.settings) STATE.settings = {};
+    
+    STATE.settings.judulTV = val.toUpperCase();
+    saveToLocalStorage(); // Ini akan otomatis menembak ke Firebase!
+    alert("Sip! Judul TV berhasil diubah menjadi:\n" + val.toUpperCase());
+}
 function saveMinPesertaSetting() {
     const val = parseInt(document.getElementById('setting-min-peserta').value);
     if(!val || val < 1) return alert("Angka minimal adalah 1.");
