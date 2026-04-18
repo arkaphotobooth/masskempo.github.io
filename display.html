@@ -6,159 +6,183 @@
     <title>TV Broadcast - MASS KEMPO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow: hidden; }
-        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .text-glow { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+        /* Desain mendekati referensi gambar */
+        body { font-family: 'Inter', sans-serif; background-color: #262626; color: #fff; overflow: hidden; }
+        .bg-carbon { background: #2f2f2f; }
+        .font-display { font-family: 'Oswald', sans-serif; }
+        
+        .judge-box { border: 2px solid #525252; text-align: center; background: rgba(0,0,0,0.2); }
+        .judge-header { border-bottom: 2px solid #525252; padding: 4px; font-size: 1rem; color: #a3a3a3; letter-spacing: 1px; }
+        .judge-score { font-size: 3.5rem; font-weight: 900; padding: 10px; font-family: 'Oswald', sans-serif; }
+        
+        .score-board { border: 4px solid #facc15; border-radius: 16px; background: #171717; position: relative; }
+        .score-header { background: #facc15; color: #000; font-weight: 900; font-size: 2.5rem; padding: 5px 20px; text-transform: uppercase; text-align: center;}
+        
+        .name-grid-container { border: 2px solid #525252; background: rgba(0,0,0,0.2); }
+        .name-row { display: flex; border-bottom: 1px solid #525252; }
+        .name-row:last-child { border-bottom: none; }
+        .name-num { width: 40px; text-align: center; padding: 8px; border-right: 1px solid #525252; color: #a3a3a3; }
+        .name-text { padding: 8px 16px; font-weight: 600; font-size: 1.25rem; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col justify-center items-center bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
+<body class="h-screen w-screen flex flex-col relative">
 
-    <div id="view-idle" class="flex flex-col items-center justify-center animate-pulse">
-        <img src="logo-saya.svg" class="w-40 h-40 mb-6 opacity-50" alt="Logo" onerror="this.style.display='none'">
-        <h1 class="text-4xl font-black text-slate-600 tracking-widest">MASS KEMPO</h1>
-        <p class="text-slate-700 mt-2 font-mono text-xl" id="court-name-display">MENUNGGU SINYAL...</p>
+    <div class="absolute inset-0 z-0 flex items-center justify-center opacity-5 pointer-events-none">
+        <img src="logo-saya.svg" class="w-[800px] grayscale" alt="">
     </div>
 
-    <div id="view-embu" class="hidden w-full h-full p-8 flex flex-col justify-between">
-        <div class="glass-panel rounded-3xl p-6 mb-6 text-center border-b-4 border-blue-500 shadow-2xl">
-            <div id="tv-embu-kategori" class="text-3xl font-bold text-blue-400 uppercase tracking-widest mb-2">KATEGORI</div>
-            <div id="tv-embu-nama" class="text-7xl font-black text-white text-glow leading-tight whitespace-nowrap overflow-hidden text-ellipsis">NAMA ATLET</div>
-            <div id="tv-embu-kontingen" class="text-3xl font-bold text-slate-400 mt-2 bg-slate-800 inline-block px-6 py-2 rounded-full border border-slate-600">KONTINGEN</div>
+    <div class="z-10 w-full p-8 flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-300 uppercase tracking-wide">MASS KEMPO TOURNAMENT</h1>
+            <h2 id="tv-header-kategori" class="text-5xl font-display font-bold text-white mt-1">MENUNGGU SINYAL...</h2>
         </div>
-
-        <div class="grid grid-cols-5 gap-6 mb-6" id="tv-embu-wasit-container">
-            </div>
-
-        <div class="grid grid-cols-3 gap-6 flex-grow">
-            <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center border border-slate-700">
-                <span class="text-2xl text-slate-400 font-bold uppercase tracking-widest">Waktu</span>
-                <span id="tv-embu-waktu" class="text-6xl font-mono font-black text-white mt-2">00:00</span>
-            </div>
-            <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center border border-red-900/50">
-                <span class="text-2xl text-slate-400 font-bold uppercase tracking-widest">Denda</span>
-                <span id="tv-embu-denda" class="text-6xl font-black text-red-500 mt-2">0</span>
-            </div>
-            <div class="glass-panel rounded-3xl p-6 flex flex-col items-center justify-center border-2 border-green-500 bg-green-900/20 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
-                <span class="text-2xl text-green-400 font-bold uppercase tracking-widest mb-2">NILAI AKHIR</span>
-                <span id="tv-embu-final" class="text-8xl font-black text-white text-glow">000.0</span>
-            </div>
+        <div class="text-right flex items-center gap-4">
+            <div class="text-xl text-slate-400 font-bold uppercase tracking-widest text-right">WAKTU<br><span id="tv-header-waktu" class="text-5xl font-display text-white">00:00</span></div>
+            <i class="fas fa-stopwatch text-5xl text-slate-500"></i>
         </div>
     </div>
 
-    <div id="view-randori" class="hidden w-full h-full flex">
-        <div class="flex-1 bg-red-600/90 flex flex-col justify-between p-10 border-r-8 border-slate-900 shadow-2xl relative">
-            <div class="text-center bg-red-950/50 p-4 rounded-2xl border border-red-400/30">
-                <div id="tv-randori-kategori" class="text-xl font-bold text-red-200 uppercase mb-2">KATEGORI</div>
-                <div id="tv-randori-nama-merah" class="text-6xl font-black text-white leading-tight">AKA (MERAH)</div>
-                <div id="tv-randori-kont-merah" class="text-2xl font-bold text-red-200 mt-2">KONTINGEN</div>
-            </div>
-            <div class="flex-grow flex items-center justify-center">
-                <div id="tv-randori-skor-merah" class="text-[20rem] font-mono font-black text-white leading-none text-glow">0</div>
+    <div class="z-10 flex-grow px-8 pb-8 flex flex-col justify-center">
+
+        <div id="view-preview" class="w-full flex flex-col items-center justify-center animate-fade-in hidden">
+            <div class="border border-slate-600 bg-black/40 p-10 rounded-3xl text-center w-3/4 shadow-2xl backdrop-blur-sm">
+                <div class="text-yellow-500 text-2xl font-bold tracking-[0.3em] mb-4 uppercase"><i class="fas fa-play-circle mr-2"></i> SEDANG TAMPIL DI MATRAS</div>
+                <div id="preview-nama" class="text-6xl font-black text-white leading-tight mb-4">-</div>
+                <div class="inline-block bg-slate-800 border border-slate-600 px-6 py-2 rounded-full text-2xl font-bold text-slate-300">
+                    KONTINGEN: <span id="preview-kontingen" class="text-white">-</span>
+                </div>
             </div>
         </div>
 
-        <div class="absolute left-1/2 top-10 -translate-x-1/2 z-50 glass-panel px-12 py-6 rounded-b-3xl border-x-4 border-b-4 border-slate-500 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <div class="text-center">
-                <span class="text-slate-400 font-bold uppercase tracking-widest block mb-2">Waktu Pertandingan</span>
-                <span id="tv-randori-waktu" class="text-7xl font-mono font-black text-yellow-400">00:00</span>
+        <div id="view-score" class="w-full hidden">
+            <div class="flex gap-8 items-start">
+                
+                <div class="w-5/12 flex flex-col gap-6">
+                    <div id="tv-score-name-container" class="name-grid-container flex flex-col">
+                        </div>
+                    
+                    <div class="border-2 border-slate-600 bg-black/30 p-4 flex items-center gap-6">
+                        <div class="w-16 h-12 bg-red-600 flex flex-col"><div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div></div>
+                        <div>
+                            <div class="text-lg text-slate-400 font-bold uppercase tracking-widest">KONTINGEN :</div>
+                            <div id="tv-score-kontingen" class="text-4xl font-black text-white uppercase tracking-wider">JAWA BARAT</div>
+                        </div>
+                    </div>
+
+                    <div class="w-48 border-2 border-slate-600 bg-black/30 mt-4">
+                        <div class="text-center border-b-2 border-slate-600 p-2 text-xl font-bold text-slate-400 uppercase">DENDA</div>
+                        <div id="tv-score-denda" class="text-center p-4 text-5xl font-black text-red-500 font-display">-0.0</div>
+                    </div>
+                </div>
+
+                <div class="w-7/12 flex flex-col">
+                    <div class="text-right mb-2 text-slate-400 font-bold tracking-widest"><i class="fas fa-users"></i> JUDGE PANEL</div>
+                    <div id="tv-score-wasit-container" class="flex justify-end gap-2 mb-10">
+                        </div>
+
+                    <div class="score-board self-end w-[90%] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                        <div class="score-header">SKOR AKHIR</div>
+                        <div class="text-center py-6">
+                            <span id="tv-score-final" class="text-[10rem] leading-none font-display text-[#cca650]">0.00</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="flex-1 bg-white flex flex-col justify-between p-10 border-l-8 border-slate-900 shadow-2xl relative">
-            <div class="text-center bg-slate-100 p-4 rounded-2xl border border-slate-300">
-                <div class="text-xl font-bold text-slate-500 uppercase mb-2">PITA PUTIH</div>
-                <div id="tv-randori-nama-putih" class="text-6xl font-black text-slate-900 leading-tight">SHIRO (PUTIH)</div>
-                <div id="tv-randori-kont-putih" class="text-2xl font-bold text-slate-500 mt-2">KONTINGEN</div>
-            </div>
-            <div class="flex-grow flex items-center justify-center">
-                <div id="tv-randori-skor-putih" class="text-[20rem] font-mono font-black text-slate-900 leading-none">0</div>
-            </div>
-        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
-        // 1. Samakan dengan Config Anda
         const firebaseConfig = {
             apiKey: "AIzaSyA63UtPlhEdC9qKmmHVpDjGv_4RqWjK47k",
             authDomain: "mass-pro-turnamen.firebaseapp.com",
             projectId: "mass-pro-turnamen",
             databaseURL: "https://mass-pro-turnamen-default-rtdb.asia-southeast1.firebasedatabase.app/",
             storageBucket: "mass-pro-turnamen.firebasestorage.app",
-            messagingSenderId: "268290671498",
-            appId: "1:268290671498:web:d55e4960e392f7dfc8fe73"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // 2. Ambil Parameter Court (Contoh: display.html?court=court_1)
         const urlParams = new URLSearchParams(window.location.search);
         const courtId = urlParams.get('court') || 'court_1';
-        document.getElementById('court-name-display').innerText = courtId.replace('_', ' ').toUpperCase();
 
-        const views = {
-            idle: document.getElementById('view-idle'),
-            embu: document.getElementById('view-embu'),
-            randori: document.getElementById('view-randori')
-        };
+        const viewPreview = document.getElementById('view-preview');
+        const viewScore = document.getElementById('view-score');
+        
+        let displayTimer = null; // Stopwatch Rahasia TV
+        let savedPreviewData = null; // Menyimpan data peserta yang mengantre
 
-        function switchView(target) {
-            Object.values(views).forEach(v => v.classList.add('hidden'));
-            views[target].classList.remove('hidden');
-        }
-
-        // 3. Listener Real-time
         database.ref(`live_broadcast/${courtId}`).on('value', (snapshot) => {
             const data = snapshot.val();
-            if (!data || data.type === 'idle') {
-                switchView('idle');
-                return;
+            if (!data) return;
+
+            // 1. Simpan data PREVIEW secara diam-diam (Skenario Detik ke-0.1 saat Auto-Next)
+            if (data.preview_data) {
+                savedPreviewData = data.preview_data;
             }
 
-            if (data.type === 'embu') {
-                switchView('embu');
-                document.getElementById('tv-embu-kategori').innerText = data.kategori || "-";
-                document.getElementById('tv-embu-nama').innerText = data.nama || "-";
-                document.getElementById('tv-embu-kontingen').innerText = data.kontingen || "-";
+            // 2. Jika Surat Perintah berbunyi: "TAMPILKAN SKOR!" (Skenario Detik ke-0.5)
+            if (data.current_action === 'show_score' && data.score_data) {
+                // Hentikan timer sebelumnya jika ada bentrokan
+                if(displayTimer) clearTimeout(displayTimer);
                 
-                // Cek apakah ini mode pre-view (belum dinilai) atau sudah final
-                if (data.status === 'preview') {
-                    document.getElementById('tv-embu-waktu').innerText = "00:00";
-                    document.getElementById('tv-embu-denda').innerText = "0";
-                    document.getElementById('tv-embu-final').innerText = "MENUNGGU";
-                    document.getElementById('tv-embu-wasit-container').innerHTML = '';
-                } else {
-                    document.getElementById('tv-embu-waktu').innerText = data.waktu || "00:00";
-                    document.getElementById('tv-embu-denda').innerText = data.denda || "0";
-                    document.getElementById('tv-embu-final').innerText = data.nilaiAkhir || "000.0";
+                const sData = data.score_data;
+                document.getElementById('tv-header-kategori').innerText = sData.kategori;
+                document.getElementById('tv-header-waktu').innerText = sData.waktu;
+                document.getElementById('tv-score-kontingen').innerText = sData.kontingen;
+                document.getElementById('tv-score-denda').innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
+                document.getElementById('tv-score-final').innerText = sData.nilaiAkhir;
+
+                // Build Name Grid (Support Beregu)
+                let names = sData.nama.split('&').map(n => n.trim());
+                let nameHTML = '';
+                names.forEach((n, idx) => {
+                    nameHTML += `<div class="name-row"><div class="name-num">${idx+1}</div><div class="name-text">${n}</div></div>`;
+                });
+                document.getElementById('tv-score-name-container').innerHTML = nameHTML;
+
+                // Build Judge Panels
+                let wasitHTML = '';
+                let rawScores = sData.rawScores || [];
+                // Pad with empty scores if less than 5
+                while(rawScores.length < 5) rawScores.push('-');
+                
+                rawScores.forEach((score, i) => {
+                    wasitHTML += `<div class="judge-box flex-1"><div class="judge-header">WASIT ${i+1}</div><div class="judge-score text-white">${score > 0 ? parseFloat(score).toFixed(1) : '-'}</div></div>`;
+                });
+                document.getElementById('tv-score-wasit-container').innerHTML = wasitHTML;
+
+                // TAMPILKAN LAYAR SKOR SEKARANG!
+                viewPreview.classList.add('hidden');
+                viewScore.classList.remove('hidden');
+
+                // 3. MULAI STOPWATCH RAHASIA 10 DETIK (Skenario Detik ke-10)
+                displayTimer = setTimeout(() => {
+                    // Waktu Habis! Pindah ke Mode Preview menggunakan data cadangan
+                    if (savedPreviewData) {
+                        document.getElementById('tv-header-kategori').innerText = savedPreviewData.kategori;
+                        document.getElementById('preview-nama').innerText = savedPreviewData.nama;
+                        document.getElementById('preview-kontingen').innerText = savedPreviewData.kontingen;
+                    }
+                    viewScore.classList.add('hidden');
+                    viewPreview.classList.remove('hidden');
                     
-                    let wasitHTML = '';
-                    const rawScores = data.rawScores || [];
-                    rawScores.forEach((score, i) => {
-                        wasitHTML += `
-                        <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center">
-                            <span class="text-sm font-bold text-slate-400 uppercase">Juri ${i+1}</span>
-                            <span class="text-4xl font-black text-white mt-1">${score || '-'}</span>
-                        </div>`;
-                    });
-                    document.getElementById('tv-embu-wasit-container').innerHTML = wasitHTML;
-                }
+                }, 10000); // 10000 ms = 10 Detik
             } 
-            else if (data.type === 'randori') {
-                switchView('randori');
-                document.getElementById('tv-randori-kategori').innerText = data.kategori || "-";
-                document.getElementById('tv-randori-nama-merah').innerText = data.merah.nama || "-";
-                document.getElementById('tv-randori-kont-merah').innerText = data.merah.kontingen || "-";
-                document.getElementById('tv-randori-skor-merah').innerText = data.merah.skor || "0";
+            // Jika Perintahnya adalah Preview (Misal saat panitera mengubah nama secara manual)
+            else if (data.current_action === 'preview' && !displayTimer) {
+                // Hanya izinkan ganti ke layar preview jika Timer Skor TIDAK sedang berjalan
+                document.getElementById('tv-header-kategori').innerText = data.preview_data.kategori;
+                document.getElementById('preview-nama').innerText = data.preview_data.nama;
+                document.getElementById('preview-kontingen').innerText = data.preview_data.kontingen;
+                document.getElementById('tv-header-waktu').innerText = '00:00';
                 
-                document.getElementById('tv-randori-nama-putih').innerText = data.putih.nama || "-";
-                document.getElementById('tv-randori-kont-putih').innerText = data.putih.kontingen || "-";
-                document.getElementById('tv-randori-skor-putih').innerText = data.putih.skor || "0";
-                
-                document.getElementById('tv-randori-waktu').innerText = data.waktu || "00:00";
+                viewScore.classList.add('hidden');
+                viewPreview.classList.remove('hidden');
             }
         });
     </script>
