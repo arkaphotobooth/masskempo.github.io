@@ -1062,16 +1062,20 @@ function renderEmbuLayout(catName, container, poolsConfig) {
                 ? 'bg-yellow-600/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' 
                 : 'bg-slate-900/50 border-slate-700/50 hover:bg-slate-700/40';
 
-            html += `<div onclick="handleEmbuSwap(${p.id}, '${poolType}')" class="cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
-                <div class="flex gap-3 items-start w-full">
-                    <span class="font-mono ${isSelected ? 'text-yellow-400' : 'text-slate-500'} w-5 text-right flex-shrink-0 pt-0.5">${noUrut}.</span>
-                    <span class="font-bold ${isSelected ? 'text-yellow-400' : 'text-white'} whitespace-normal break-words leading-snug">${p.nama}</span>
+            // --- FIX TATA LETAK: 1 Baris, Kontingen di Kanan, Nama Truncate (...) ---
+            html += `<div onclick="handleEmbuSwap(${p.id}, '${poolType}')" class="cursor-pointer flex flex-row items-center justify-between text-sm p-3 rounded-lg border gap-3 transition-all duration-200 ${activeClass}">
+                
+                <div class="flex gap-2 items-center w-full min-w-0">
+                    <span class="font-mono ${isSelected ? 'text-yellow-400' : 'text-slate-500'} w-5 text-right flex-shrink-0">${noUrut}.</span>
+                    <span class="font-bold ${isSelected ? 'text-yellow-400' : 'text-white'} truncate block w-full">${p.nama}</span>
                 </div>
-                <div class="flex justify-start xl:justify-end w-full xl:w-auto pl-8 xl:pl-0">
+                
+                <div class="flex-shrink-0">
                     <span class="text-[10px] ${isSelected ? 'text-yellow-200 bg-yellow-900/50 border-yellow-600' : 'text-slate-400 bg-slate-800 border-slate-700'} px-2 py-1 rounded border whitespace-nowrap shadow-sm">${p.kontingen}</span>
                 </div>
+                
             </div>`; 
-        }); 
+        });
         html += `</div></div>`;
     });
     html += `</div></div>`;
