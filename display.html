@@ -53,45 +53,64 @@
         </div>
     </div>
 
-    <div id="view-score" class="absolute inset-0 z-40 flex flex-col hidden bg-[#262626]">
-        <div class="p-8 flex justify-between items-start">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-400 uppercase tracking-wide">MASS KEMPO TOURNAMENT</h1>
-                <h2 id="tv-score-kategori-head" class="text-5xl font-display font-bold text-white mt-1">-</h2>
-            </div>
-            <div class="text-right flex items-center gap-4">
-                <div class="text-xl text-slate-400 font-bold uppercase tracking-widest text-right">WAKTU<br><span id="tv-score-waktu" class="text-5xl font-display text-white">00:00</span></div>
-            </div>
-        </div>
-        <div class="flex-grow px-8 pb-8 flex flex-col justify-center">
-            <div class="flex gap-8 items-start">
-                <div class="w-5/12 flex flex-col gap-6">
-                    <div id="tv-score-name-container" class="name-grid-container flex flex-col"></div>
-                    <div class="border-2 border-slate-600 bg-black/30 p-4 flex items-center gap-6">
-                        <div class="w-16 h-12 bg-red-600 flex flex-col"><div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div></div>
-                        <div>
-                            <div class="text-lg text-slate-400 font-bold uppercase tracking-widest">KONTINGEN :</div>
-                            <div id="tv-score-kontingen" class="text-4xl font-black text-white uppercase tracking-wider">-</div>
-                        </div>
+    <div id="view-score" class="w-full h-full hidden flex flex-col justify-between pt-4">
+            
+            <div class="flex justify-between items-start mb-6">
+                <div class="border border-slate-400 p-3 flex items-center gap-4 min-w-[300px]">
+                    <div class="w-16 h-12 bg-red-600 flex flex-col border border-slate-500">
+                        <div class="flex-1 bg-red-600"></div>
+                        <div class="flex-1 bg-white"></div>
                     </div>
-                    <div class="w-48 border-2 border-slate-600 bg-black/30 mt-4">
-                        <div class="text-center border-b-2 border-slate-600 p-2 text-xl font-bold text-slate-400 uppercase">DENDA</div>
-                        <div id="tv-score-denda" class="text-center p-4 text-5xl font-black text-red-500 font-display">-0.0</div>
+                    <div>
+                        <div class="text-[11px] text-slate-300 font-bold uppercase tracking-widest leading-none mb-1">KONTINGEN :</div>
+                        <div id="tv-score-kontingen" class="text-3xl font-black text-white uppercase tracking-wider leading-none">DOJO UNDIP</div>
                     </div>
                 </div>
-                <div class="w-7/12 flex flex-col">
-                    <div class="text-right mb-2 text-slate-400 font-bold tracking-widest"><i class="fas fa-users"></i> JUDGE PANEL</div>
-                    <div id="tv-score-wasit-container" class="flex justify-end gap-2 mb-10"></div>
-                    <div class="score-board self-end w-[90%] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                        <div class="score-header">SKOR AKHIR</div>
-                        <div class="text-center py-6">
-                            <span id="tv-score-final" class="text-[10rem] leading-none font-display text-[#cca650]">0.00</span>
+
+                <div class="border border-slate-400 p-3 px-6 flex items-center gap-4">
+                    <span id="tv-score-waktu" class="text-5xl font-mono font-bold text-white tracking-widest">01:30</span>
+                    <i class="fas fa-stopwatch text-4xl text-slate-400"></i>
+                </div>
+            </div>
+
+            <div class="flex gap-6 mb-6 flex-grow">
+                
+                <div class="w-5/12 border border-slate-400 flex flex-col">
+                    <div class="text-center border-b border-slate-400 py-1.5 text-sm font-bold text-slate-300 uppercase tracking-widest">
+                        ATLET
+                    </div>
+                    <div id="tv-score-name-container" class="flex flex-col p-4 gap-2 flex-grow justify-center">
                         </div>
+                </div>
+
+                <div class="w-7/12 border border-slate-400 flex flex-col items-center justify-center relative" 
+                     style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%);">
+                    <div class="text-3xl font-black text-white uppercase tracking-widest mb-2 mt-4">
+                        NILAI AKHIR
+                    </div>
+                    <div class="text-center">
+                        <span id="tv-score-final" class="text-[12rem] leading-none font-black text-[#cca650]">9.825</span>
+                    </div>
+                    <i class="fas fa-sparkles absolute bottom-4 right-4 text-3xl text-slate-500/50"></i>
+                </div>
+
+            </div>
+
+            <div class="grid grid-cols-6 gap-4 h-32">
+                <div id="tv-score-wasit-container" class="col-span-5 grid grid-cols-5 gap-4">
+                    </div>
+
+                <div class="border border-slate-400 flex flex-col text-center">
+                    <div class="border-b border-slate-400 py-2 text-sm font-bold text-slate-300 uppercase tracking-widest">
+                        DENDA
+                    </div>
+                    <div class="flex-grow flex items-center justify-center">
+                        <span id="tv-score-denda" class="text-5xl font-black text-red-500">-0.10</span>
                     </div>
                 </div>
             </div>
+
         </div>
-    </div>
 
     <div id="view-randori" class="absolute inset-0 z-50 flex hidden bg-black">
         <div class="flex-1 bg-red-600 flex flex-col justify-between p-10 relative">
