@@ -17,19 +17,8 @@
             margin: auto; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.9);
         }
 
-        /* FIX: Ukuran diturunkan proporsional & didongkrak sedikit ke atas (Optical Centering) */
-        .skor-raksasa { 
-            font-size: clamp(5rem, 24vh, 15rem); 
-            line-height: 1; 
-            display: inline-block;
-            transform: translateY(-5%); 
-        }
-        .skor-embu { 
-            font-size: clamp(5rem, 20vh, 13rem); 
-            line-height: 1; 
-            display: inline-block;
-            transform: translateY(-5%); 
-        }
+        .skor-raksasa { font-size: clamp(5rem, 24vh, 15rem); line-height: 1; display: inline-block; transform: translateY(-5%); }
+        .skor-embu { font-size: clamp(5rem, 20vh, 13rem); line-height: 1; display: inline-block; transform: translateY(-5%); }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center bg-black">
@@ -65,9 +54,10 @@
             </div>
 
             <div class="flex flex-1 gap-4 min-h-0 mb-4">
-                <div class="border border-[#444] flex flex-col w-[35%] bg-black/10">
-                    <div class="border-b border-[#444] text-center py-2 text-xs md:text-sm font-bold tracking-widest text-slate-400">ATLET</div>
-                    <div id="tv-score-name-container" class="flex-1 overflow-y-auto p-4 flex flex-col justify-center gap-2">
+                <div class="border border-[#444] flex flex-col w-[35%] bg-black/10 overflow-hidden">
+                    <div class="border-b border-[#444] text-center py-2 text-xs md:text-sm font-bold tracking-widest text-slate-400 flex-none">ATLET</div>
+                    
+                    <div id="tv-score-name-container">
                         </div>
                 </div>
 
@@ -118,11 +108,11 @@
                     <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
                         <div class="bg-red-800 text-center py-1 md:py-2 text-xs md:text-sm font-bold tracking-widest text-white uppercase">NAMA ATLET (AKA)</div>
                         <div class="py-2 md:py-4 px-4 flex items-center justify-center">
-                            <span id="tv-randori-nama-merah" class="text-xl md:text-3xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                            <span id="tv-randori-nama-merah" class="text-xl md:text-3xl font-light text-white text-center leading-tight line-clamp-2 truncate w-full">-</span>
                         </div>
                     </div>
 
-                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative">
+                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
                         <span class="absolute top-2 left-4 text-slate-600 font-bold tracking-widest uppercase text-xs md:text-sm">SKOR</span>
                         <span id="tv-randori-skor-merah" class="font-black text-red-500 font-display drop-shadow-lg skor-raksasa">0</span>
                     </div>
@@ -142,11 +132,11 @@
                     <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
                         <div class="bg-slate-200 text-center py-1 md:py-2 text-xs md:text-sm font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (SHIRO)</div>
                         <div class="py-2 md:py-4 px-4 flex items-center justify-center">
-                            <span id="tv-randori-nama-putih" class="text-xl md:text-3xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                            <span id="tv-randori-nama-putih" class="text-xl md:text-3xl font-light text-white text-center leading-tight line-clamp-2 truncate w-full">-</span>
                         </div>
                     </div>
 
-                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative">
+                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
                         <span class="absolute top-2 left-4 text-slate-600 font-bold tracking-widest uppercase text-xs md:text-sm">SKOR</span>
                         <span id="tv-randori-skor-putih" class="font-black text-white font-display drop-shadow-lg skor-raksasa">0</span>
                     </div>
@@ -160,7 +150,9 @@
 
         </div>
 
-    </div> <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
         const firebaseConfig = {
@@ -199,6 +191,37 @@
             if (randoriJudulEl) randoriJudulEl.innerText = judulText;
         });
 
+        // ==============================================================
+        // LOGIKA CERDAS: INJEKSI NAMA ATLET (1 Kolom vs 2 Kolom)
+        // ==============================================================
+        function injectNamesToTV(namaString) {
+            let names = namaString.split('&').map(n => n.trim());
+            let isBeregu = names.length > 3; // Jika lebih dari 3 orang, aktifkan mode 2 Kolom!
+            let containerEl = document.getElementById('tv-score-name-container');
+            
+            // Atur Layout Box (Grid vs Flex)
+            if (isBeregu) {
+                containerEl.className = "flex-1 overflow-hidden p-4 md:p-6 grid grid-cols-2 gap-x-4 gap-y-1 content-center";
+            } else {
+                containerEl.className = "flex-1 overflow-hidden p-4 md:p-6 flex flex-col justify-center gap-2";
+            }
+
+            // Atur Ukuran Font (Sedikit mengecil jika Beregu)
+            let textSize = isBeregu ? "text-sm md:text-lg" : "text-lg md:text-2xl";
+            
+            let nameHTML = '';
+            names.forEach((n, idx) => {
+                // Class 'min-w-0' dan 'truncate' adalah kombinasi ajaib untuk memotong teks jadi titik tiga (...)
+                nameHTML += `
+                <div class="flex items-center ${textSize} text-white font-light border-b border-[#333] pb-1 min-w-0 w-full">
+                    <span class="w-6 md:w-10 text-left text-slate-500 font-mono tracking-widest flex-shrink-0">${idx+1}.</span>
+                    <span class="truncate tracking-wide block w-full">${n}</span>
+                </div>`;
+            });
+            containerEl.innerHTML = nameHTML;
+        }
+        // ==============================================================
+
         let displayTimer = null; 
         let savedPreviewData = null; 
 
@@ -216,16 +239,8 @@
             dendaEl.innerText = "-";
             dendaEl.className = "text-4xl md:text-6xl font-black text-slate-700 font-display";
 
-            let names = previewData.nama.split('&').map(n => n.trim());
-            let nameHTML = '';
-            names.forEach((n, idx) => {
-                nameHTML += `
-                <div class="flex items-center text-base md:text-2xl text-white font-light border-b border-[#333] pb-1">
-                    <span class="w-8 md:w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
-                    <span class="truncate tracking-wide">${n}</span>
-                </div>`;
-            });
-            document.getElementById('tv-score-name-container').innerHTML = nameHTML;
+            // Panggil fungsi pintar
+            injectNamesToTV(previewData.nama);
 
             let wasitHTML = '';
             for(let i=0; i<5; i++) {
@@ -283,16 +298,8 @@
                 dendaEl.innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
                 dendaEl.className = "text-4xl md:text-6xl font-black text-red-500 font-display";
 
-                let names = sData.nama.split('&').map(n => n.trim());
-                let nameHTML = '';
-                names.forEach((n, idx) => {
-                    nameHTML += `
-                    <div class="flex items-center text-base md:text-2xl text-white font-light border-b border-[#333] pb-1">
-                        <span class="w-8 md:w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
-                        <span class="truncate tracking-wide">${n}</span>
-                    </div>`;
-                });
-                document.getElementById('tv-score-name-container').innerHTML = nameHTML;
+                // Panggil fungsi pintar
+                injectNamesToTV(sData.nama);
 
                 let wasitHTML = '';
                 let rawScores = sData.rawScores || [];
