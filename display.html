@@ -17,7 +17,6 @@
             margin: auto; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.9);
         }
 
-        /* FIX: Ukuran Skor diturunkan sedikit agar tidak mengintimidasi Nama */
         .skor-raksasa { font-size: clamp(5rem, 20vh, 14rem); line-height: 1; display: inline-block; transform: translateY(-5%); }
         .skor-embu { font-size: clamp(5rem, 18vh, 12rem); line-height: 1; display: inline-block; transform: translateY(-5%); }
     </style>
@@ -55,7 +54,7 @@
             </div>
 
             <div class="flex flex-1 gap-4 min-h-0 mb-4">
-                <div class="border border-[#444] flex flex-col w-[48%] bg-black/10 overflow-hidden">
+                <div class="border border-[#444] flex flex-col w-[40%] bg-black/10 overflow-hidden">
                     <div class="border-b border-[#444] text-center py-2 text-xs md:text-sm font-bold tracking-widest text-slate-400 flex-none">ATLET</div>
                     
                     <div id="tv-score-name-container">
@@ -106,10 +105,10 @@
                         </div>
                     </div>
                     
-                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none min-h-[100px] md:min-h-[140px]">
-                        <div class="bg-red-800 text-center py-1 md:py-2 text-xs md:text-sm font-bold tracking-widest text-white uppercase">NAMA ATLET (AKA)</div>
-                        <div class="flex-1 px-4 flex items-center justify-center">
-                            <span id="tv-randori-nama-merah" class="text-2xl md:text-4xl font-semibold text-white text-center leading-tight line-clamp-2 w-full">-</span>
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
+                        <div class="bg-red-800 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-white uppercase">NAMA ATLET (PITA MERAH)</div>
+                        <div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0">
+                            <span id="tv-randori-nama-merah" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span>
                         </div>
                     </div>
 
@@ -130,10 +129,10 @@
                         </div>
                     </div>
                     
-                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none min-h-[100px] md:min-h-[140px]">
-                        <div class="bg-slate-200 text-center py-1 md:py-2 text-xs md:text-sm font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (SHIRO)</div>
-                        <div class="flex-1 px-4 flex items-center justify-center">
-                            <span id="tv-randori-nama-putih" class="text-2xl md:text-4xl font-semibold text-white text-center leading-tight line-clamp-2 w-full">-</span>
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
+                        <div class="bg-slate-200 text-center py-1 md:py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-slate-900 uppercase">NAMA ATLET (PITA PUTIH)</div>
+                        <div class="py-1.5 md:py-2 px-4 flex items-center justify-center min-h-0">
+                            <span id="tv-randori-nama-putih" class="text-xl md:text-2xl font-medium text-white text-center leading-tight line-clamp-2 w-full">-</span>
                         </div>
                     </div>
 
@@ -151,9 +150,7 @@
 
         </div>
 
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    </div> <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
         const firebaseConfig = {
@@ -193,7 +190,7 @@
         });
 
         // ==============================================================
-        // LOGIKA CERDAS EMBU (Telah dioptimalkan untuk memaksimalkan ruang nama)
+        // LOGIKA CERDAS EMBU (Tetap dipertahankan dari versi sebelumnya)
         // ==============================================================
         function injectNamesToTV(namaString) {
             let names = namaString.split('&').map(n => n.trim());
@@ -201,26 +198,25 @@
             let containerEl = document.getElementById('tv-score-name-container');
             
             if (isBeregu) {
-                // FIX: Padding sisi (px) dikurangi dan gap antar kolom (gap-x) dirapatkan 
-                // agar jatah ruang untuk teks nama menjadi sangat maksimal!
-                containerEl.className = "flex-1 overflow-hidden px-3 md:px-4 py-2 md:py-4 grid grid-cols-2 gap-x-4 gap-y-2 content-center";
+                containerEl.className = "flex-1 overflow-hidden px-3 md:px-5 py-2 grid grid-cols-2 gap-x-4 gap-y-1.5 content-center";
             } else {
-                containerEl.className = "flex-1 overflow-hidden px-4 md:px-6 py-2 md:py-4 flex flex-col justify-center gap-3";
+                containerEl.className = "flex-1 overflow-hidden px-4 md:px-6 py-2 flex flex-col justify-center gap-3";
             }
 
-            let textSize = isBeregu ? "text-lg md:text-2xl" : "text-2xl md:text-4xl";
+            let textSize = isBeregu ? "text-base md:text-xl" : "text-xl md:text-3xl";
             
             let nameHTML = '';
             names.forEach((n, idx) => {
                 nameHTML += `
-                <div class="flex items-center ${textSize} text-white font-light border-b border-[#333] pb-1 min-w-0 w-full">
-                    <span class="w-5 md:w-7 text-right mr-2 text-slate-500 font-mono tracking-wider flex-shrink-0">${idx+1}.</span>
-                    <span class="truncate tracking-wide block w-full leading-snug">${n}</span>
+                <div class="flex items-center ${textSize} text-white font-light border-b border-[#333] pb-1 min-w-0 w-full mt-1.5">
+                    <span class="w-5 md:w-6 text-right mr-2 text-slate-500 font-mono tracking-wider flex-shrink-0 leading-none">${idx+1}.</span>
+                    <span class="truncate tracking-wide block w-full leading-none mb-0.5">${n}</span>
                 </div>`;
             });
             containerEl.innerHTML = nameHTML;
         }
         // ==============================================================
+
         let displayTimer = null; 
         let savedPreviewData = null; 
 
