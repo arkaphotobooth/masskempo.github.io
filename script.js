@@ -1904,10 +1904,7 @@ function resetTimer() {
 let isSaving = false; // <-- GEMBOK KEAMANAN GLOBAL
 
 function saveScore() { 
-    if (isSaving) {
-        console.warn("Sabar Suhu, data sedang dikirim ke Firebase...");
-        return; 
-    }
+    if (isSaving) return; 
 
     const val = document.getElementById('select-peserta').value; 
     if(!val || !val.includes('|')) return alert('Pilih atlet dari dropdown terlebih dahulu!'); 
@@ -1942,13 +1939,13 @@ function saveScore() {
         isSaving = false; 
         document.body.style.cursor = 'default';
 
-        // --- INJEKSI BROADCAST EMBU (SUTRADARA OTOMATIS) ---
+        // --- INJEKSI BROADCAST EMBU FINAL ---
         if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && DEVICE_ROLE !== 'admin') {
             let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
             let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
             
-            // FIX: Gunakan .set() & tambahkan type: 'embu' untuk menghapus "Hantu" Randori
-            database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+            // FIX: Menambahkan type: 'embu' secara paksa agar TV keluar dari mode Randori!
+            database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
                 type: 'embu',
                 current_action: 'show_score',
                 score_data: {
@@ -1962,7 +1959,7 @@ function saveScore() {
                 }
             });
         }
-        // ---------------------------------------------------
+        // ------------------------------------
 
         alert(`SKOR TERSIMPAN!`); 
         resetTimer();
@@ -3026,16 +3023,15 @@ function toggleBroadcast() {
     IS_TV_LIVE = !IS_TV_LIVE; 
     updateBroadcastUI();
 
-   if (IS_TV_LIVE) {
+    if (IS_TV_LIVE) {
         if (val.startsWith('match-')) {
             pushRandoriToTV();
         } else {
-            // Tembak Embu (Standby)
             const [pIdStr, babak] = val.split('|');
             const p = STATE.participants.find(x => x.id === parseInt(pIdStr));
             if(p) {
                 let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
-                // FIX: Gunakan .set() dan tanamkan type: 'embu'
+                // FIX: Paksa hapus Randori dengan type: 'embu'
                 database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
                     type: 'embu',
                     current_action: 'preview',
