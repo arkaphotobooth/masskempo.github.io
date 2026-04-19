@@ -193,7 +193,7 @@
         });
 
         // ==============================================================
-        // LOGIKA CERDAS EMBU (Telah disesuaikan untuk lebar 48%)
+        // LOGIKA CERDAS EMBU (Telah dioptimalkan untuk memaksimalkan ruang nama)
         // ==============================================================
         function injectNamesToTV(namaString) {
             let names = namaString.split('&').map(n => n.trim());
@@ -201,27 +201,26 @@
             let containerEl = document.getElementById('tv-score-name-container');
             
             if (isBeregu) {
-                // Karena lebar kotak sekarang 48%, kita bisa memberi gap yang lebih lega
-                containerEl.className = "flex-1 overflow-hidden p-4 md:p-6 grid grid-cols-2 gap-x-8 gap-y-2 content-center";
+                // FIX: Padding sisi (px) dikurangi dan gap antar kolom (gap-x) dirapatkan 
+                // agar jatah ruang untuk teks nama menjadi sangat maksimal!
+                containerEl.className = "flex-1 overflow-hidden px-3 md:px-4 py-2 md:py-4 grid grid-cols-2 gap-x-4 gap-y-2 content-center";
             } else {
-                containerEl.className = "flex-1 overflow-hidden p-4 md:p-6 flex flex-col justify-center gap-3";
+                containerEl.className = "flex-1 overflow-hidden px-4 md:px-6 py-2 md:py-4 flex flex-col justify-center gap-3";
             }
 
-            // FIX: Font Beregu diperbesar karena ruangnya sudah lebih luas
             let textSize = isBeregu ? "text-lg md:text-2xl" : "text-2xl md:text-4xl";
             
             let nameHTML = '';
             names.forEach((n, idx) => {
                 nameHTML += `
                 <div class="flex items-center ${textSize} text-white font-light border-b border-[#333] pb-1 min-w-0 w-full">
-                    <span class="w-8 md:w-10 text-left text-slate-500 font-mono tracking-widest flex-shrink-0">${idx+1}.</span>
-                    <span class="truncate tracking-wide block w-full">${n}</span>
+                    <span class="w-5 md:w-7 text-right mr-2 text-slate-500 font-mono tracking-wider flex-shrink-0">${idx+1}.</span>
+                    <span class="truncate tracking-wide block w-full leading-snug">${n}</span>
                 </div>`;
             });
             containerEl.innerHTML = nameHTML;
         }
         // ==============================================================
-
         let displayTimer = null; 
         let savedPreviewData = null; 
 
