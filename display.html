@@ -8,145 +8,163 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #111; color: #fff; overflow: hidden; }
+        /* Background paling belakang (Hitam Pekat) */
+        body { font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow: hidden; margin: 0; padding: 0; }
         .font-display { font-family: 'Oswald', sans-serif; }
+        
+        /* * KUNCI RASIO 16:9 (LETTERBOXING MASTER) 
+         * Rahasia agar UI tidak pernah gepeng/terpotong di layar apapun!
+         */
+        .broadcast-container {
+            position: relative;
+            width: 100vw;
+            height: 56.25vw;     /* Tepat 16:9 berdasarkan lebar */
+            max-height: 100vh;   /* Batas maksimal tinggi layar */
+            max-width: 177.78vh; /* Tepat 16:9 berdasarkan tinggi */
+            margin: auto;        /* Otomatis rata tengah */
+            background-color: #111;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.9); /* Bayangan bioskop */
+        }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col relative bg-[#111]">
+<body class="h-screen w-screen flex items-center justify-center bg-black">
 
-    <div id="view-idle" class="absolute inset-0 z-50 flex flex-col items-center justify-center animate-pulse bg-black">
-        <h1 class="text-3xl font-black text-slate-700 tracking-widest uppercase">TV Sutradara Offline</h1>
-    </div>
+    <div class="broadcast-container">
 
-    <div id="view-score" class="absolute inset-0 z-40 flex flex-col hidden bg-[#111] p-8 font-sans text-white">
-        
-        <div class="flex-none mb-6">
-            <h1 id="tv-global-judul" class="text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">KEJUARAAN NASIONAL BELADIRI SENI 2024</h1>
-            <h2 id="tv-score-kategori-head" class="text-4xl text-white font-light uppercase tracking-wide">-</h2>
+        <div id="view-idle" class="absolute inset-0 z-50 flex-col items-center justify-center animate-pulse bg-black hidden">
+            <h1 class="text-3xl font-black text-slate-700 tracking-widest uppercase">TV Sutradara Offline</h1>
         </div>
 
-        <div class="flex justify-between items-stretch gap-6 flex-none h-[100px] mb-6">
-            <div class="border border-[#444] flex items-center p-5 gap-6 min-w-[400px]">
-                <div class="w-[80px] h-[55px] flex flex-col border border-slate-500 shadow-sm">
-                    <div class="flex-1 bg-red-600"></div>
-                    <div class="flex-1 bg-white"></div>
-                </div>
-                <div class="flex flex-col justify-center">
-                    <span class="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
-                    <span id="tv-score-kontingen" class="text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
-                </div>
-            </div>
-
-            <div class="border border-[#444] flex items-center justify-center px-10 gap-6">
-                <span id="tv-score-waktu" class="text-6xl font-bold tracking-wider font-mono">00:00</span>
-                <i class="fas fa-stopwatch text-5xl text-slate-400"></i>
-            </div>
-        </div>
-
-        <div class="flex gap-6 flex-grow min-h-0 mb-6">
-            <div class="border border-[#444] flex flex-col w-[35%] bg-black/10">
-                <div class="border-b border-[#444] text-center py-2 text-sm font-bold tracking-widest text-slate-400">
-                    ATLET
-                </div>
-                <div id="tv-score-name-container" class="flex-grow overflow-hidden p-6 flex flex-col gap-3">
-                    </div>
-            </div>
-
-            <div class="border border-[#444] flex flex-col flex-1 relative items-center justify-center overflow-hidden bg-black/10" style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%);">
-                <div class="text-4xl font-bold tracking-widest text-white z-10 mb-4 drop-shadow-md">NILAI AKHIR</div>
-                <div id="tv-score-final" class="text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display">-</div>
-            </div>
-        </div>
-
-        <div class="flex gap-6 flex-none h-[130px]">
-            <div id="tv-score-wasit-container" class="flex flex-1 gap-6">
-                </div>
+        <div id="view-score" class="absolute inset-0 z-40 flex-col bg-[#111] p-8 font-sans text-white hidden">
             
-            <div class="border border-[#444] flex flex-col w-[15%] bg-black/10">
-                <div class="border-b border-[#444] text-center py-2 text-sm font-bold tracking-widest text-slate-400">DENDA</div>
-                <div class="flex-grow flex items-center justify-center">
-                    <span id="tv-score-denda" class="text-6xl font-black text-slate-700 font-display">-</span>
-                </div>
+            <div class="flex-none mb-4 xl:mb-6">
+                <h1 id="tv-global-judul" class="text-sm xl:text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">KEJUARAAN NASIONAL BELADIRI SENI 2024</h1>
+                <h2 id="tv-score-kategori-head" class="text-3xl xl:text-4xl text-white font-light uppercase tracking-wide">-</h2>
             </div>
-        </div>
-    </div>
 
-    <div id="view-randori" class="absolute inset-0 z-50 flex flex-col hidden bg-[#111] p-8 font-sans text-white">
-        
-        <div class="flex justify-between items-start mb-6 flex-none">
-            <div>
-                <h1 id="tv-randori-global-judul" class="text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">KEJUARAAN NASIONAL BELADIRI SENI 2024</h1>
-                <h2 id="tv-randori-kategori" class="text-4xl text-white font-light uppercase tracking-wide">-</h2>
-            </div>
-            
-            <div class="border border-[#444] flex items-center justify-center px-8 py-3 gap-6 bg-black/20">
-                <span id="tv-randori-waktu" class="text-6xl font-bold tracking-wider font-mono">00:00</span>
-                <i class="fas fa-stopwatch text-5xl text-slate-400"></i>
-            </div>
-        </div>
-
-        <div class="flex gap-8 flex-grow min-h-0">
-            
-            <div class="flex-1 flex flex-col gap-6">
-                <div class="border border-[#444] flex items-center p-4 gap-6 bg-black/20">
-                    <div class="w-[80px] h-[55px] flex flex-col border border-slate-500 shadow-sm">
+            <div class="flex justify-between items-stretch gap-6 flex-none h-[80px] xl:h-[100px] mb-4 xl:mb-6">
+                <div class="border border-[#444] flex items-center p-3 xl:p-5 gap-4 xl:gap-6 min-w-[300px] xl:min-w-[400px]">
+                    <div class="w-[60px] xl:w-[80px] h-[40px] xl:h-[55px] flex flex-col border border-slate-500 shadow-sm">
                         <div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <span class="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
-                        <span id="tv-randori-kont-merah" class="text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
-                    </div>
-                </div>
-                
-                <div class="border border-[#444] flex flex-col bg-black/20">
-                    <div class="bg-red-800 text-center py-2 text-sm font-bold tracking-widest text-white uppercase">
-                        NAMA ATLET (AKA)
-                    </div>
-                    <div class="p-6 flex items-center justify-center h-[120px]">
-                        <span id="tv-randori-nama-merah" class="text-4xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                        <span class="text-[9px] xl:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
+                        <span id="tv-score-kontingen" class="text-2xl xl:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
                     </div>
                 </div>
 
-                <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
-                    <span class="absolute top-4 left-6 text-slate-600 font-bold tracking-widest uppercase">SKOR</span>
-                    <span id="tv-randori-skor-merah" class="text-[20rem] font-black text-red-500 font-display leading-none drop-shadow-lg">0</span>
+                <div class="border border-[#444] flex items-center justify-center px-6 xl:px-10 gap-4 xl:gap-6">
+                    <span id="tv-score-waktu" class="text-5xl xl:text-6xl font-bold tracking-wider font-mono">00:00</span>
+                    <i class="fas fa-stopwatch text-4xl xl:text-5xl text-slate-400"></i>
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col gap-6">
-                <div class="border border-[#444] flex items-center p-4 gap-6 bg-black/20">
-                    <div class="w-[80px] h-[55px] flex flex-col border border-slate-500 shadow-sm">
-                        <div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div>
+            <div class="flex gap-6 flex-grow min-h-0 mb-4 xl:mb-6">
+                <div class="border border-[#444] flex flex-col w-[35%] bg-black/10">
+                    <div class="border-b border-[#444] text-center py-2 text-xs xl:text-sm font-bold tracking-widest text-slate-400">
+                        ATLET
                     </div>
-                    <div class="flex flex-col justify-center">
-                        <span class="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
-                        <span id="tv-randori-kont-putih" class="text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
+                    <div id="tv-score-name-container" class="flex-grow overflow-hidden p-4 xl:p-6 flex flex-col gap-2 xl:gap-3">
+                        </div>
+                </div>
+
+                <div class="border border-[#444] flex flex-col flex-1 relative items-center justify-center overflow-hidden bg-black/10" style="clip-path: polygon(0 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%);">
+                    <div class="text-2xl xl:text-4xl font-bold tracking-widest text-white z-10 mb-2 xl:mb-4 drop-shadow-md">NILAI AKHIR</div>
+                    <div id="tv-score-final" class="text-[12rem] xl:text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display">-</div>
+                </div>
+            </div>
+
+            <div class="flex gap-6 flex-none h-[100px] xl:h-[130px]">
+                <div id="tv-score-wasit-container" class="flex flex-1 gap-4 xl:gap-6">
+                    </div>
+                
+                <div class="border border-[#444] flex flex-col w-[15%] bg-black/10">
+                    <div class="border-b border-[#444] text-center py-2 text-xs xl:text-sm font-bold tracking-widest text-slate-400">DENDA</div>
+                    <div class="flex-grow flex items-center justify-center">
+                        <span id="tv-score-denda" class="text-5xl xl:text-6xl font-black text-slate-700 font-display">-</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div id="view-randori" class="absolute inset-0 z-50 flex-col bg-[#111] p-8 font-sans text-white hidden">
+            
+            <div class="flex justify-between items-start mb-4 xl:mb-6 flex-none">
+                <div>
+                    <h1 id="tv-randori-global-judul" class="text-sm xl:text-lg font-bold text-slate-400 tracking-widest uppercase mb-1">KEJUARAAN NASIONAL BELADIRI SENI 2024</h1>
+                    <h2 id="tv-randori-kategori" class="text-3xl xl:text-4xl text-white font-light uppercase tracking-wide">-</h2>
+                </div>
                 
-                <div class="border border-[#444] flex flex-col bg-black/20">
-                    <div class="bg-slate-200 text-center py-2 text-sm font-bold tracking-widest text-slate-900 uppercase">
-                        NAMA ATLET (SHIRO)
+                <div class="border border-[#444] flex items-center justify-center px-6 xl:px-8 py-2 xl:py-3 gap-4 xl:gap-6 bg-black/20">
+                    <span id="tv-randori-waktu" class="text-5xl xl:text-6xl font-bold tracking-wider font-mono">00:00</span>
+                    <i class="fas fa-stopwatch text-4xl xl:text-5xl text-slate-400"></i>
+                </div>
+            </div>
+
+            <div class="flex gap-6 xl:gap-8 flex-grow min-h-0">
+                
+                <div class="flex-1 flex flex-col gap-4 xl:gap-6">
+                    <div class="border border-[#444] flex items-center p-3 xl:p-4 gap-4 xl:gap-6 bg-black/20 flex-none">
+                        <div class="w-[60px] xl:w-[80px] h-[40px] xl:h-[55px] flex flex-col border border-slate-500 shadow-sm">
+                            <div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <span class="text-[9px] xl:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
+                            <span id="tv-randori-kont-merah" class="text-2xl xl:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
+                        </div>
                     </div>
-                    <div class="p-6 flex items-center justify-center h-[120px]">
-                        <span id="tv-randori-nama-putih" class="text-4xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                    
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
+                        <div class="bg-red-800 text-center py-2 text-xs xl:text-sm font-bold tracking-widest text-white uppercase">
+                            NAMA ATLET (AKA)
+                        </div>
+                        <div class="p-4 xl:p-6 flex items-center justify-center h-[80px] xl:h-[120px]">
+                            <span id="tv-randori-nama-merah" class="text-3xl xl:text-4xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                        </div>
+                    </div>
+
+                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
+                        <span class="absolute top-3 xl:top-4 left-4 xl:left-6 text-slate-600 font-bold tracking-widest uppercase text-xs xl:text-sm">SKOR</span>
+                        <span id="tv-randori-skor-merah" class="text-[12rem] xl:text-[16rem] font-black text-red-500 font-display leading-none drop-shadow-lg">0</span>
                     </div>
                 </div>
 
-                <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
-                    <span class="absolute top-4 left-6 text-slate-600 font-bold tracking-widest uppercase">SKOR</span>
-                    <span id="tv-randori-skor-putih" class="text-[20rem] font-black text-white font-display leading-none drop-shadow-lg">0</span>
+                <div class="flex-1 flex flex-col gap-4 xl:gap-6">
+                    <div class="border border-[#444] flex items-center p-3 xl:p-4 gap-4 xl:gap-6 bg-black/20 flex-none">
+                        <div class="w-[60px] xl:w-[80px] h-[40px] xl:h-[55px] flex flex-col border border-slate-500 shadow-sm">
+                            <div class="flex-1 bg-red-600"></div><div class="flex-1 bg-white"></div>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <span class="text-[9px] xl:text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-1">KONTINGEN :</span>
+                            <span id="tv-randori-kont-putih" class="text-2xl xl:text-3xl font-black text-white uppercase tracking-wider leading-none">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="border border-[#444] flex flex-col bg-black/20 flex-none">
+                        <div class="bg-slate-200 text-center py-2 text-xs xl:text-sm font-bold tracking-widest text-slate-900 uppercase">
+                            NAMA ATLET (SHIRO)
+                        </div>
+                        <div class="p-4 xl:p-6 flex items-center justify-center h-[80px] xl:h-[120px]">
+                            <span id="tv-randori-nama-putih" class="text-3xl xl:text-4xl font-light text-white text-center leading-tight line-clamp-2">-</span>
+                        </div>
+                    </div>
+
+                    <div class="border border-[#444] flex-1 flex items-center justify-center bg-black/20 relative overflow-hidden">
+                        <span class="absolute top-3 xl:top-4 left-4 xl:left-6 text-slate-600 font-bold tracking-widest uppercase text-xs xl:text-sm">SKOR</span>
+                        <span id="tv-randori-skor-putih" class="text-[12rem] xl:text-[16rem] font-black text-white font-display leading-none drop-shadow-lg">0</span>
+                    </div>
                 </div>
+
+            </div>
+
+            <div class="flex-none mt-2 xl:mt-4 flex justify-center">
+                <h3 id="tv-randori-court" class="text-2xl xl:text-4xl font-black tracking-widest text-slate-600 uppercase">COURT A</h3>
             </div>
 
         </div>
 
-        <div class="flex-none mt-4 flex justify-center">
-            <h3 id="tv-randori-court" class="text-4xl font-black tracking-widest text-slate-600 uppercase">COURT A</h3>
-        </div>
-
-    </div>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    </div> <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
         const firebaseConfig = {
@@ -168,21 +186,28 @@
             randori: document.getElementById('view-randori')
         };
 
+        // Fungsi Transisi Layar Dinamis
         function switchView(target) {
-            Object.values(views).forEach(v => v.classList.add('hidden'));
+            Object.values(views).forEach(v => {
+                v.classList.add('hidden');
+                v.classList.remove('flex'); // Mencegah bentrok CSS
+            });
             views[target].classList.remove('hidden');
+            views[target].classList.add('flex'); // Menjamin layout dalam tetap jalan
         }
 
         // Sensor Judul TV Real-Time
         database.ref('turnamen_data/settings/judulTV').on('value', (snap) => {
+            const judulText = snap.val() || "KEJUARAAN NASIONAL BELADIRI SENI 2024";
             const judulEl = document.getElementById('tv-global-judul');
-            if (judulEl) judulEl.innerText = snap.val() || "KEJUARAAN NASIONAL BELADIRI SENI 2024";
+            const randoriJudulEl = document.getElementById('tv-randori-global-judul');
+            if (judulEl) judulEl.innerText = judulText;
+            if (randoriJudulEl) randoriJudulEl.innerText = judulText;
         });
 
         let displayTimer = null; 
         let savedPreviewData = null; 
 
-        // Fungsi UI Standby (Kosong/Abu-abu)
         function renderEmptyScoreLayout(previewData) {
             if(!previewData) return;
             document.getElementById('tv-score-kategori-head').innerText = previewData.kategori;
@@ -191,18 +216,18 @@
 
             let finalEl = document.getElementById('tv-score-final');
             finalEl.innerText = "-";
-            finalEl.className = "text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display";
+            finalEl.className = "text-[12rem] xl:text-[16rem] font-black text-slate-700 leading-none z-10 drop-shadow-lg font-display";
 
             let dendaEl = document.getElementById('tv-score-denda');
             dendaEl.innerText = "-";
-            dendaEl.className = "text-6xl font-black text-slate-700 font-display";
+            dendaEl.className = "text-5xl xl:text-6xl font-black text-slate-700 font-display";
 
             let names = previewData.nama.split('&').map(n => n.trim());
             let nameHTML = '';
             names.forEach((n, idx) => {
                 nameHTML += `
-                <div class="flex items-center text-2xl text-white font-light border-b border-[#333] pb-2">
-                    <span class="w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
+                <div class="flex items-center text-xl xl:text-2xl text-white font-light border-b border-[#333] pb-1 xl:pb-2">
+                    <span class="w-8 xl:w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
                     <span class="truncate tracking-wide">${n}</span>
                 </div>`;
             });
@@ -212,11 +237,11 @@
             for(let i=0; i<5; i++) {
                 wasitHTML += `
                 <div class="border border-[#444] flex-1 flex flex-col text-center bg-black/10">
-                    <div class="border-b border-[#444] py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <div class="border-b border-[#444] py-1 xl:py-2 text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">
                         WASIT ${i+1}
                     </div>
                     <div class="flex-grow flex items-center justify-center">
-                        <span class="text-6xl font-black text-slate-700 font-display leading-none">-</span>
+                        <span class="text-5xl xl:text-6xl font-black text-slate-700 font-display leading-none">-</span>
                     </div>
                 </div>`;
             }
@@ -243,6 +268,8 @@
                 document.getElementById('tv-randori-nama-putih').innerText = data.putih.nama || "-";
                 document.getElementById('tv-randori-kont-putih').innerText = data.putih.kontingen || "-";
                 document.getElementById('tv-randori-skor-putih').innerText = data.putih.skor || "0";
+                
+                document.getElementById('tv-randori-court').innerText = courtId.replace('_', ' ').toUpperCase();
                 return;
             }
 
@@ -258,18 +285,18 @@
                 
                 let finalEl = document.getElementById('tv-score-final');
                 finalEl.innerText = sData.nilaiAkhir;
-                finalEl.className = "text-[16rem] font-black text-[#cca650] leading-none z-10 drop-shadow-lg font-display";
+                finalEl.className = "text-[12rem] xl:text-[16rem] font-black text-[#cca650] leading-none z-10 drop-shadow-lg font-display";
 
                 let dendaEl = document.getElementById('tv-score-denda');
                 dendaEl.innerText = sData.denda > 0 ? `-${sData.denda}` : '0';
-                dendaEl.className = "text-6xl font-black text-red-500 font-display";
+                dendaEl.className = "text-5xl xl:text-6xl font-black text-red-500 font-display";
 
                 let names = sData.nama.split('&').map(n => n.trim());
                 let nameHTML = '';
                 names.forEach((n, idx) => {
                     nameHTML += `
-                    <div class="flex items-center text-2xl text-white font-light border-b border-[#333] pb-2">
-                        <span class="w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
+                    <div class="flex items-center text-xl xl:text-2xl text-white font-light border-b border-[#333] pb-1 xl:pb-2">
+                        <span class="w-8 xl:w-12 text-left text-slate-500 font-mono tracking-widest">${idx+1}.</span>
                         <span class="truncate tracking-wide">${n}</span>
                     </div>`;
                 });
@@ -282,11 +309,11 @@
                 rawScores.forEach((score, i) => {
                     wasitHTML += `
                     <div class="border border-[#444] flex-1 flex flex-col text-center bg-black/10">
-                        <div class="border-b border-[#444] py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        <div class="border-b border-[#444] py-1 xl:py-2 text-[10px] xl:text-xs font-bold text-slate-400 uppercase tracking-widest">
                             WASIT ${i+1}
                         </div>
                         <div class="flex-grow flex items-center justify-center">
-                            <span class="text-6xl font-black text-white font-display leading-none">${score > 0 ? parseFloat(score).toFixed(2) : '-'}</span>
+                            <span class="text-5xl xl:text-6xl font-black text-white font-display leading-none">${score > 0 ? parseFloat(score).toFixed(2) : '-'}</span>
                         </div>
                     </div>`;
                 });
