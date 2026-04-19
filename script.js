@@ -1725,19 +1725,16 @@ function updateScoringButtonsUI() {
     
     loadExistingScores(); 
 
-    // ===========================================
+   // ===========================================
     // SISTEM MARATON (ALWAYS LIVE TV)
     // ===========================================
     if (typeof updateBroadcastUI === "function") updateBroadcastUI();
 
-    // Jika TV masih menyala (LIVE) saat pindah ke atlet baru,
-    // diam-diam perbarui data "Antrean / Standby" di dalam TV.
     if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && DEVICE_ROLE !== 'admin') {
         let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
         
         database.ref(`live_broadcast/${DEVICE_ROLE}`).update({
-            // Kita HANYA mengupdate preview_data, 
-            // agar tidak mengganggu timer skor 10 detik yang sedang berjalan di TV.
+            type: 'embu', // <-- FIX: Tanamkan ini agar TV tahu ini masuk mode Embu
             preview_data: {
                 kategori: p.kategori,
                 nama: displayNama,
@@ -1904,7 +1901,8 @@ function resetTimer() {
 // FIX FINAL: TIMER & SAVE SCORE (Gembok Anti-Spam Klik)
 // =========================================================
 
-let isSaving = false; 
+let isSaving = false; // <-- GEMBOK KEAMANAN GLOBAL
+
 function saveScore() { 
     if (isSaving) {
         console.warn("Sabar Suhu, data sedang dikirim ke Firebase...");
@@ -1944,12 +1942,14 @@ function saveScore() {
         isSaving = false; 
         document.body.style.cursor = 'default';
 
-        // --- INJEKSI SUTRADARA OTOMATIS (HANYA MENGIRIM JIKA TV SEDANG LIVE) ---
+        // --- INJEKSI BROADCAST EMBU (SUTRADARA OTOMATIS) ---
         if (typeof IS_TV_LIVE !== 'undefined' && IS_TV_LIVE && DEVICE_ROLE !== 'admin') {
             let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
             let timerFmt = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`;
             
+            // FIX: Gunakan .set() & tambahkan type: 'embu' untuk menghapus "Hantu" Randori
             database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+                type: 'embu',
                 current_action: 'show_score',
                 score_data: {
                     kategori: p.kategori,
@@ -1962,7 +1962,7 @@ function saveScore() {
                 }
             });
         }
-        // -----------------------------------------------------------------------
+        // ---------------------------------------------------
 
         alert(`SKOR TERSIMPAN!`); 
         resetTimer();
@@ -1978,7 +1978,6 @@ function saveScore() {
         alert("Gagal Simpan: " + err);
     });
 }
-
 function updateTimerUI() { document.getElementById('timer-display').innerText = `${Math.floor(UI.timerSeconds / 60).toString().padStart(2, '0')}:${(UI.timerSeconds % 60).toString().padStart(2, '0')}`; pushRandoriToTV();}
 
 function calculateRandoriFinalists(catName) {
@@ -3027,9 +3026,8 @@ function toggleBroadcast() {
     IS_TV_LIVE = !IS_TV_LIVE; 
     updateBroadcastUI();
 
-    if (IS_TV_LIVE) {
+   if (IS_TV_LIVE) {
         if (val.startsWith('match-')) {
-            // Tembak Randori
             pushRandoriToTV();
         } else {
             // Tembak Embu (Standby)
@@ -3037,14 +3035,15 @@ function toggleBroadcast() {
             const p = STATE.participants.find(x => x.id === parseInt(pIdStr));
             if(p) {
                 let displayNama = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+                // FIX: Gunakan .set() dan tanamkan type: 'embu'
                 database.ref(`live_broadcast/${DEVICE_ROLE}`).set({
+                    type: 'embu',
                     current_action: 'preview',
                     preview_data: { kategori: p.kategori, nama: displayNama, kontingen: p.kontingen }
                 });
             }
         }
     } else {
-        // Matikan TV
         database.ref(`live_broadcast/${DEVICE_ROLE}`).set({ current_action: 'idle' });
     }
 }
