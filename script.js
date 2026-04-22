@@ -1170,6 +1170,11 @@ function checkExistingDrawing() {
                 // JALUR SINGLE POOL - Cek setting Admin (Dibalik, Diacak Ulang, atau Peringkat)
                 let modeB2 = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
                 
+                // --- PENYIMPANAN OTOMATIS URUTAN B2 UNTUK PRINT CENTER ---
+                let needsFirebaseSync = false;
+                let syncUpdates = {};
+                // -----------------------------------------------------------
+
                 if (modeB2 === 'redraw') {
                     let listB1 = [...list].sort((a,b) => a.urut - b.urut);
                     let listB2 = [...list].filter(p => p.urutB2 > 0).sort((a,b) => a.urutB2 - b.urutB2);
@@ -1184,6 +1189,18 @@ function checkExistingDrawing() {
                     let listB1 = [...list].sort((a,b) => a.urut - b.urut);
                     // Filter yang sudah main B1, urutkan dari nilai TERENDAH ke TERTINGGI (Ascending)
                     let listB2 = [...list].filter(p => p.scores.b1.final > 0).sort((a,b) => a.scores.b1.final - b.scores.b1.final || a.scores.b1.tech - b.scores.b1.tech);
+                    
+                    // --- SAVE KE FIREBASE (HIGHSCORE) ---
+                    listB2.forEach((p, index) => {
+                        let newUrut = index + 1;
+                        if (p.urutB2 !== newUrut) {
+                            p.urutB2 = newUrut; // Update UI Lokal
+                            let pIndex = STATE.participants.findIndex(x => x.id === p.id);
+                            syncUpdates[`turnamen_data/participants/${pIndex}/urutB2`] = newUrut; // Siapkan paket Firebase
+                            needsFirebaseSync = true;
+                        }
+                    });
+
                     let poolsData = [{data: listB1, title: "BABAK 1", isFinal: false, isB2: false}];
                     
                     if (listB2.length > 0) poolsData.push({data: listB2, title: "BABAK 2 (BERDASARKAN PERINGKAT)", isFinal: false, isB2: true});
@@ -1196,10 +1213,29 @@ function checkExistingDrawing() {
                     // MODE DIBALIK (REVERSE)
                     let listB1 = [...list].sort((a,b) => a.urut - b.urut);
                     let listB2 = [...list].sort((a,b) => b.urut - a.urut);
+
+                    // --- SAVE KE FIREBASE (REVERSE) ---
+                    listB2.forEach((p, index) => {
+                        let newUrut = index + 1;
+                        if (p.urutB2 !== newUrut) {
+                            p.urutB2 = newUrut; // Update UI Lokal
+                            let pIndex = STATE.participants.findIndex(x => x.id === p.id);
+                            syncUpdates[`turnamen_data/participants/${pIndex}/urutB2`] = newUrut; // Siapkan paket Firebase
+                            needsFirebaseSync = true;
+                        }
+                    });
+
                     renderEmbuLayout(catName, resultDiv, [
                         {data: listB1, title: "BABAK 1", isFinal: false, isB2: false},
                         {data: listB2, title: "BABAK 2 (URUTAN DIBALIK)", isFinal: false, isB2: true}
                     ]);
+                }
+
+                // --- EKSEKUSI FIREBASE BATCH UPDATE ---
+                // Hanya menembak ke server jika benar-benar ada posisi yang berubah (Mencegah Lag / Infinite Loop)
+                if (needsFirebaseSync && Object.keys(syncUpdates).length > 0) {
+                    console.log("Menyinkronkan Urutan Babak 2 ke Firebase untuk Aplikasi Print Center...");
+                    database.ref().update(syncUpdates).catch(err => console.error("Gagal sync urutB2:", err));
                 }
             } 
         } else { 
