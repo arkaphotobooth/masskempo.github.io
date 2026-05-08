@@ -286,8 +286,21 @@ function handleCSVUpload(event) {
 
             if(cols.length >= 3) { 
                 const nama = cols[0], kontingen = cols[1], kategori = cols[2]; 
+                
+                // --- PROTEKSI & PARSING KOLOM BARU ---
+                let kyuRaw = cols[3] ? String(cols[3]).trim() : "";
+                // Memeras hanya angka, sekotor apa pun ketikannya (misal: "15 Thn" jadi 15)
+                let umurRaw = cols[4] ? parseInt(String(cols[4]).replace(/\D/g, '')) || 0 : 0; 
+
                 if(nama && STATE.categories.some(c => c.name.toLowerCase() === kategori.toLowerCase())) { 
-                    STATE.participants.push({ id: Date.now() + i, nama, kontingen, kategori, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); count++; 
+                    STATE.participants.push({ 
+                        id: Date.now() + i, nama, kontingen, kategori, 
+                        kyu: kyuRaw, umur: umurRaw, // <--- VARIABEL DISIMPAN
+                        urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, 
+                        scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, 
+                        finalScore: 0, techScore: 0 
+                    }); 
+                    count++; 
                 } 
             } 
         }); 
@@ -346,7 +359,25 @@ function saveMinPesertaSetting() {
     renderJuaraUmum();
 }
 
-document.getElementById('form-peserta').addEventListener('submit', (e) => { e.preventDefault(); const catName = document.getElementById('p-kategori').value; if(!catName) return alert("Pilih kategori!"); STATE.participants.push({ id: Date.now(), nama: document.getElementById('p-nama').value, kontingen: document.getElementById('p-kontingen').value, kategori: catName, urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, finalScore: 0, techScore: 0 }); saveToLocalStorage(); renderParticipantTable(); document.getElementById('p-nama').value = ''; document.getElementById('p-nama').focus(); });
+document.getElementById('form-peserta').addEventListener('submit', (e) => { 
+    e.preventDefault(); 
+    const catName = document.getElementById('p-kategori').value; 
+    if(!catName) return alert("Pilih kategori!"); 
+    STATE.participants.push({ 
+        id: Date.now(), 
+        nama: document.getElementById('p-nama').value, 
+        kontingen: document.getElementById('p-kontingen').value, 
+        kategori: catName, 
+        kyu: "", umur: 0, // <--- TAMBAHAN VARIABEL BARU
+        urut: 0, pool: '-', isFinalist: false, urutFinal: 0, losses: 0, 
+        scores: { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time: 0 } }, 
+        finalScore: 0, techScore: 0 
+    }); 
+    saveToLocalStorage(); 
+    renderParticipantTable(); 
+    document.getElementById('p-nama').value = ''; 
+    document.getElementById('p-nama').focus(); 
+});
 
 // --- VARIABEL GLOBAL PAGINATION ---
 let currentAthletePage = 1;
@@ -1271,15 +1302,38 @@ function startDrawing() {
     if(list.length === 0) return alert("Belum ada peserta!"); 
     const catObj = STATE.categories.find(c => c.name === catName);
     
-    // --- ALGORITMA KHUSUS FESTIVAL (PEMBAGI KELOMPOK OTOMATIS) ---
+    // --- ALGORITMA KHUSUS FESTIVAL (PEMBAGI KELOMPOK CERDAS) ---
     if (catObj && catObj.discipline === 'festival') {
         if (list.some(p => p.urut > 0)) {
             if (!confirm("⚠️ Kategori FESTIVAL ini SUDAH DIUNDI.\nYakin ingin mengacak ulang dan mereset nilai?")) return;
             list.forEach(p => { p.scores = { b1: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 }, b2: { raw: [], techRaw: [], penalty: 0, final: 0, tech: 0, time:0 } }; p.finalScore = 0; p.techScore = 0; });
         }
-        shuffleArray(list);
+        
+        // 1. KAMUS BOBOT SABUK (Huruf kecil semua untuk pencocokan)
+        const kyuMap = { "minarai": 0, "kyu 8": 1, "kyu 7": 2, "kyu 6": 3, "kyu 5": 4, "kyu 4": 5, "kyu 3": 6, "kyu 2": 7, "kyu 1": 8, "dan 1": 9, "dan 2": 10, "dan 3": 11 };
+
+        // 2. MULTI-LEVEL SORTING (Sabuk dulu, kalau sama, baru Umur)
+        list.sort((a, b) => {
+            let kyuA = String(a.kyu || "").toLowerCase().trim();
+            let kyuB = String(b.kyu || "").toLowerCase().trim();
+
+            // Jika sabuk aneh/kosong, lempar ke kelompok paling akhir (Bobot 999)
+            let weightA = kyuMap[kyuA] !== undefined ? kyuMap[kyuA] : 999;
+            let weightB = kyuMap[kyuB] !== undefined ? kyuMap[kyuB] : 999;
+
+            if (weightA !== weightB) {
+                return weightA - weightB; // Sort Sabuk Terendah ke Tertinggi
+            }
+            
+            // Tie-Breaker: Sort Umur Termuda ke Tertua
+            let umurA = parseInt(a.umur) || 0;
+            let umurB = parseInt(b.umur) || 0;
+            return umurA - umurB; 
+        });
+
+        // 3. CHUNKING PEMBAGI KELOMPOK (Logic asli yang dipertahankan)
         let total = list.length;
-        let numGroups = Math.ceil(total / 4); // Membagi ke kelompok max 4 orang
+        let numGroups = Math.ceil(total / 4); 
         if (numGroups === 0) return;
         
         let baseSize = Math.floor(total / numGroups);
@@ -1288,21 +1342,21 @@ function startDrawing() {
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         
         for (let i = 0; i < numGroups; i++) {
-            let groupSize = baseSize + (i < remainder ? 1 : 0); // Distribusi rata (3 atau 4 orang)
+            let groupSize = baseSize + (i < remainder ? 1 : 0); 
             let poolName = alphabet[i] || `G${i+1}`;
             for (let j = 0; j < groupSize; j++) {
                 if (currentIndex < total) {
                     let p = STATE.participants.find(item => item.id === list[currentIndex].id);
                     if (p) {
                         p.pool = poolName;
-                        p.urut = j + 1; // RESET NOMOR URUT KE 1 SETIAP KELOMPOK
+                        p.urut = j + 1; 
                     }
                     currentIndex++;
                 }
             }
         }
         saveToLocalStorage(); checkExistingDrawing(); renderParticipantTable();
-        return; // Hentikan fungsi agar tidak menjalankan kode Embu
+        return; 
     }
     // -------------------------------------------------------------
     const isFinalMode = list.some(p => p.isFinalist); 
