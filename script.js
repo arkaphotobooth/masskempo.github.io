@@ -84,6 +84,11 @@ database.ref('turnamen_data').on('value', (snapshot) => {
         // 👇 TAMBAHKAN 2 BARIS INI DI SINI 👇
         let eksibisiEl = document.getElementById('setting-eksibisi-final');
         if (eksibisiEl) eksibisiEl.checked = !!(STATE.settings && STATE.settings.eksibisiLangsungFinal);
+
+        // 👇 TAMBAHKAN 2 BARIS INI UNTUK SINKRONISASI DROPDOWN BABAK 2 👇
+        let embuB2El = document.getElementById('setting-embu-mode');
+        if (embuB2El) embuB2El.value = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
+
     }
 });
 
@@ -200,6 +205,10 @@ function saveEmbuB2Mode() {
     STATE.settings.embuB2Mode = newMode;
 
     let syncUpdates = {};
+
+    // KUNCI ATOMIK: Masukkan setting langsung ke dalam paket Firebase!
+    syncUpdates['turnamen_data/settings/embuB2Mode'] = newMode;
+
     let hasUpdates = false;
 
     // Looping keliling ke semua kategori Embu
@@ -242,18 +251,12 @@ function saveEmbuB2Mode() {
         }
     });
 
-    if (hasUpdates) {
-        // Tembak massal ke Firebase!
-        database.ref().update(syncUpdates).then(() => {
-            saveToLocalStorage();
-            alert("Aturan Babak 2 disimpan & Urutan tampil seluruh atlet berhasil disinkronisasi ke Firebase!");
-            checkExistingDrawing(); filterPesertaScoring();
-        }).catch(err => alert("Gagal Sinkronisasi: " + err));
-    } else {
-        saveToLocalStorage();
-        alert("Aturan urutan Babak 2 Embu disimpan.");
-        checkExistingDrawing(); filterPesertaScoring();
-    }
+    // Tembak massal ke Firebase! (Pasti tereksekusi karena kita mengunggah setting)
+    database.ref().update(syncUpdates).then(() => {
+        alert("Aturan Urutan Babak 2 berhasil disimpan" + (hasUpdates ? " & Posisi Atlet disinkronisasi!" : "!"));
+        checkExistingDrawing();
+        filterPesertaScoring();
+    }).catch(err => alert("Gagal Sinkronisasi: " + err));
 }
 
 function refreshAllData() {
@@ -300,6 +303,10 @@ function switchTab(targetTab) {
         // 👇 TAMBAHKAN 2 BARIS INI DI SINI JUGA 👇
         let eksibisiEl = document.getElementById('setting-eksibisi-final');
         if (eksibisiEl) eksibisiEl.checked = !!(STATE.settings && STATE.settings.eksibisiLangsungFinal);
+
+        // 👇 TAMBAHKAN 2 BARIS INI DI SINI JUGA 👇
+        let embuB2El = document.getElementById('setting-embu-mode');
+        if (embuB2El) embuB2El.value = (STATE.settings && STATE.settings.embuB2Mode) ? STATE.settings.embuB2Mode : 'reverse';
     }
 }
 document.getElementById('form-kategori').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('cat-name').value.trim(); const type = parseInt(document.getElementById('cat-type').value); const discipline = document.getElementById('cat-discipline').value; if (!name) return; if (STATE.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Kategori sudah ada!"); STATE.categories.push({ id: Date.now(), name, type, discipline }); saveToLocalStorage(); refreshAllData(); e.target.reset(); });
