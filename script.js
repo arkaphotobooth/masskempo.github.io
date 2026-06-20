@@ -2531,12 +2531,24 @@ function renderRanking() {
         let poolKeys = ['FINAL', 'SINGLE'].concat(dynamicPools);
 
         poolKeys.forEach(poolKey => {
+            // --- FIX BUG: DEKLARASI POOLLIST YANG SEMPAT HILANG ---
+            let poolList = [];
+            if (poolKey === 'FINAL') {
+                poolList = catList.filter(p => p.isFinalist && p.scores.b2.final > 0);
+            } else {
+                poolList = catList.filter(p => p.pool === poolKey && p.scores.b1.final > 0);
+            }
+            
+            // Jika tidak ada atlet yang sudah dinilai di pool ini, lewati (jangan digambar)
+            if (poolList.length === 0) return; 
+            // -------------------------------------------------------
+
             // Cek kondisi eksibisi di rendering ranking
             let minPeserta = (STATE.settings && STATE.settings.minPesertaJuara) ? parseInt(STATE.settings.minPesertaJuara) : 1;
             let isEksibisi = (catObj.discipline === 'embu' && catList.length < minPeserta && STATE.settings && STATE.settings.eksibisiLangsungFinal === true);
 
-            if (poolKey === 'FINAL') {
-                poolList.sort((a, b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech);
+            if (poolKey === 'FINAL') { 
+                poolList.sort((a, b) => b.scores.b2.final - a.scores.b2.final || b.scores.b2.tech - a.scores.b2.tech); 
             } else if (poolKey === 'SINGLE') {
                 if (isEksibisi) {
                     // BYPASS: Jadikan B1 sebagai harga mati
