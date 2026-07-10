@@ -4384,8 +4384,14 @@ function handleBarcodeCSVUpload(event) {
         const rows = e.target.result.split('\n');
         let count = 0;
         rows.forEach((row, i) => {
-            if (i === 0 || !row.trim()) return;
+            // 🌟 PERBAIKAN 1: Hapus aturan i === 0 agar baris pertama tidak dibuang otomatis
+            if (!row.trim()) return;
+
             let cols = row.split(',').map(item => item.replace(/^"|"$/g, '').trim());
+
+            // 🌟 PERBAIKAN 2: Deteksi Cerdas! Jika baris pertama adalah Header (ada kata "nama"), baru dilewati
+            if (cols[0].toLowerCase().includes('nama')) return;
+
             if (cols.length >= 2) {
                 const nama = cols[0];
                 const jabatan = cols[1]; // WASIT atau OFFICIAL
