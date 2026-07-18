@@ -1089,10 +1089,11 @@
             const btnLock = document.getElementById('btn-lock');
             if (btnLock) btnLock.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...`;
 
-            // Simpan state jadwal dan status Live ke Firebase
+            // Simpan state jadwal, status Live, dan CONFIG UI ke Firebase
             db.ref('turnamen_data/rundown_state').set({
                 isLiveMode: window.IS_LIVE_MODE,
-                schedule: window.MASTER_SCHEDULE
+                schedule: window.MASTER_SCHEDULE,
+                config: getFullUIConfig() // <--- KUNCI: Ikutkan parameter lapangan & hari
             }).then(() => {
                 if (btnLock) btnLock.innerHTML = `<i class="fas fa-lock mr-2"></i>Simpan & Kunci Jadwal`;
             }).catch(error => {
@@ -1102,32 +1103,62 @@
         }
 
         function loadScheduleFromFirebase() {
+            // Tampilkan indikator visual sedang menarik data Cloud
+            const listEl = document.getElementById('jadwal-list');
+            if (listEl && (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0)) {
+                listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-24 text-blue-400">
+                    <i class="fas fa-cloud-arrow-down fa-bounce text-6xl mb-4 opacity-50"></i>
+                    <p class="text-sm font-bold uppercase tracking-widest">Sinkronisasi Cloud...</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Mengambil draft jadwal terakhir dari database.</p>
+                </div>`;
+            }
+
             db.ref('turnamen_data/rundown_state').once('value').then(snapshot => {
                 if (snapshot.exists()) {
                     let data = snapshot.val();
-                    if (data.schedule) {
-                        window.MASTER_SCHEDULE = data.schedule;
-                        window.IS_LIVE_MODE = data.isLiveMode || false;
+                    if (data.schedule && data.schedule.length > 0) {
+                        
+                        // KUNCI: Pulihkan parameter form (Jumlah Hari, Lapangan, Jam) DULU dari Cloud
+                        let targetConfig = data.config || getFullUIConfig();
+                        
+                        setFullUIConfig(targetConfig).then(() => {
+                            // SETELAH form selesai di-render, baru masukkan data jadwal
+                            window.MASTER_SCHEDULE = data.schedule;
+                            window.IS_LIVE_MODE = data.isLiveMode || false;
 
-                        document.getElementById('btn-delete').classList.remove('hidden'); // <--- TAMBAHKAN INI
-                        document.getElementById('btn-save-draft').classList.remove('hidden');
+                            document.getElementById('btn-delete').classList.remove('hidden'); 
+                            document.getElementById('btn-save-draft').classList.remove('hidden');
 
-                        if (window.IS_LIVE_MODE) {
-                            document.getElementById('btn-draft').classList.add('hidden');
-                            document.getElementById('btn-lock').classList.add('hidden');
-                            document.getElementById('btn-unlock').classList.remove('hidden');
-                            document.getElementById('btn-sync').classList.remove('hidden');
-                        } else {
-                            document.getElementById('btn-draft').classList.add('hidden');
-                            document.getElementById('btn-lock').classList.remove('hidden');
+                            if (window.IS_LIVE_MODE) {
+                                document.getElementById('btn-draft').classList.add('hidden');
+                                document.getElementById('btn-lock').classList.add('hidden');
+                                document.getElementById('btn-unlock').classList.remove('hidden');
+                                document.getElementById('btn-sync').classList.remove('hidden');
+                            } else {
+                                document.getElementById('btn-draft').classList.add('hidden');
+                                document.getElementById('btn-lock').classList.remove('hidden');
+                            }
+
+                            // Tampilkan ke layar
+                            recalculateTimeline();
+                        });
+                    }
+                } else {
+                    // Jika cloud kosong, kembalikan tampilan default
+                    if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
+                        if (listEl) {
+                            listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-24 text-slate-600">
+                                <i class="fas fa-clipboard-list text-6xl mb-4 opacity-30"></i>
+                                <p class="text-sm font-bold uppercase tracking-widest">Belum ada jadwal</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Silakan klik "Buat Draft" di panel komando.</p>
+                            </div>`;
                         }
-
-                        recalculateTimeline();
                     }
                 }
+            }).catch(error => {
+                console.error("Gagal menarik draft dari cloud:", error);
             });
         }
-
         function syncLive() {
             let btn = document.getElementById('btn-sync');
             let originalHTML = btn.innerHTML;
@@ -2103,10 +2134,11 @@
             let originalText = btnSave.innerHTML;
             btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...`;
 
-            // Tembak data ke Firebase tapi dengan status isLiveMode: false
+            // Tembak data jadwal sekaligus CONFIG PARAMETER UI ke Firebase
             db.ref('turnamen_data/rundown_state').set({
                 isLiveMode: false,
-                schedule: window.MASTER_SCHEDULE
+                schedule: window.MASTER_SCHEDULE,
+                config: getFullUIConfig() // <--- KUNCI: Ikutkan parameter lapangan & hari
             }).then(() => {
                 btnSave.classList.replace('from-sky-600', 'from-green-600');
                 btnSave.classList.replace('to-cyan-600', 'to-emerald-600');
