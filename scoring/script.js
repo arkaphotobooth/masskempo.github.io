@@ -215,7 +215,10 @@ function injectAdminExportButtons() {
             <p class="text-sm text-slate-400 mb-6">Unduh seluruh rekapitulasi data global (semua kategori).</p>
             
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <button onclick="exportDrawingCSV()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-sitemap text-2xl"></i><span class="text-center">Semua Jadwal<br>& Drawing</span></button>
+               <button onclick="exportDrawingExcel()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2 transition-transform hover:scale-105">
+                    <i class="fas fa-list-ol text-2xl"></i>
+                    <span class="text-center">Download Hasil<br>Drawing</span>
+                </button>
                 <button onclick="exportRekapJuaraCSV()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-trophy text-2xl"></i><span class="text-center">Rekapitulasi<br>Pemenang</span></button>
                 <button onclick="exportMedaliCSV()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-sm flex flex-col items-center justify-center gap-2"><i class="fas fa-medal text-2xl"></i><span class="text-center">Klasemen<br>Medali Akhir</span></button>
                 
@@ -1597,8 +1600,9 @@ function checkExistingDrawing() {
         microDrawBtn = document.createElement('button');
         microDrawBtn.id = 'btn-micro-draw-export';
         microDrawBtn.className = 'w-full md:w-auto bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors text-sm flex items-center justify-center gap-2 mt-4 md:mt-0';
-        microDrawBtn.innerHTML = '<i class="fas fa-file-csv"></i> UNDUH JADWAL';
-        microDrawBtn.onclick = () => exportDrawingCSV(document.getElementById('draw-select-kategori').value);
+        // --- DIUBAH MENJADI ICON EXCEL DAN TEKS BARU ---
+        microDrawBtn.innerHTML = '<i class="fas fa-file-excel"></i> UNDUH HASIL DRAWING';
+        microDrawBtn.onclick = () => exportDrawingExcel(document.getElementById('draw-select-kategori').value);
         drawHeader.appendChild(microDrawBtn);
     }
 
@@ -3104,43 +3108,189 @@ function downloadCSV(filename, rows) {
     link.click();
 }
 
-function exportDrawingCSV(filterCatName = null) {
-    let rows = [["Disiplin", "Kategori", "Pool / Babak", "No. Partai", "Sudut Merah (AKA)", "Kontingen Merah", "Skor Merah", "Sudut Putih (SHIRO)", "Kontingen Putih", "Skor Putih", "Status"]];
-    let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
+async function exportDrawingExcel(filterCatName = null) {
+    if (typeof ExcelJS === 'undefined') {
+        return alert("Library ExcelJS belum termuat. Pastikan koneksi internet aktif untuk memuat library pembuat Excel.");
+    }
 
-    categoriesToExport.forEach(cat => {
-        if (cat.discipline === 'embu') {
-            let catParts = STATE.participants.filter(p => p.kategori === cat.name && p.urut > 0).sort((a, b) => a.pool.localeCompare(b.pool) || a.urut - b.urut);
-            catParts.forEach(p => {
-                let poolLabel = p.isFinalist && p.urutFinal > 0 ? "FINAL" : `Pool ${p.pool}`;
-                let noUrut = p.isFinalist && p.urutFinal > 0 ? p.urutFinal : p.urut;
+    try {
+        document.body.style.cursor = 'wait';
 
-                // UBAH: Format skor dari titik menjadi koma
-                let skorB1 = p.scores.b1.final > 0 ? p.scores.b1.final.toFixed(2).replace('.', ',') : 0;
-                let skorB2 = p.scores.b2.final > 0 ? p.scores.b2.final.toFixed(2).replace('.', ',') : 0;
+        // 1. Inisialisasi Kertas Kerja Excel
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Hasil Drawing", {
+            pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+        });
 
-                rows.push(["EMBU", cat.name, poolLabel, noUrut, formatNama(p.nama, 'excel'), p.kontingen, skorB1, "", "", skorB2, ""]);
-            });
-        } else {
-            let catMatches = STATE.matches.filter(m => m.kategori === cat.name).sort((a, b) => a.matchNum - b.matchNum);
-            catMatches.forEach(m => {
-                let mrh = STATE.participants.find(x => x.id === m.merahId);
-                let pth = STATE.participants.find(x => x.id === m.putihId);
+        // 2. Set Ukuran Kolom
+        sheet.getColumn(1).width = 10; // Urutan
+        sheet.getColumn(2).width = 15; // POOL
+        sheet.getColumn(3).width = 30; // Kontingen
+        sheet.getColumn(4).width = 45; // Nama Atlet
 
-                let nMrh = m.merahId === -1 ? "BYE" : (mrh ? formatNama(mrh.nama, 'excel') : "Menunggu");
-                let nPth = m.putihId === -1 ? "BYE" : (pth ? formatNama(pth.nama, 'excel') : "Menunggu");
+        // 3. Deklarasi Styling Visual
+        const borderAll = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        const titleStyle = { font: { name: 'Arial', size: 14, bold: true }, alignment: { horizontal: 'center' } };
+        const subtitleStyle = { font: { name: 'Arial', size: 10, italic: true }, alignment: { horizontal: 'center' } };
 
-                let kPth = m.putihId === -1 ? "-" : (pth ? pth.kontingen : "-");
+        const headerCatStyle = {
+            font: { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } },
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }, // Biru Gelap
+            alignment: { horizontal: 'left', vertical: 'middle' }
+        };
+        const tableHeaderStyle = {
+            font: { name: 'Arial', size: 10, bold: true },
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }, // Abu-abu
+            alignment: { horizontal: 'center', vertical: 'middle' },
+            border: borderAll
+        };
 
-                let displayNum = m.matchNum % 50 === 0 ? 50 : m.matchNum % 50;
-                let poolLabel = m.pool !== '-' ? `Pool ${m.pool}` : 'Utama';
+        // 4. Cetak Kop Judul Utama
+        sheet.mergeCells('A1:D1');
+        sheet.getCell('A1').value = "HASIL DRAWING DAN JADWAL TANDING - MASS KEMPO";
+        sheet.getCell('A1').style = titleStyle;
 
-                rows.push(["RANDORI", cat.name, `${poolLabel} - ${m.babak}`, `G-${displayNum}`, nMrh, kMrh, m.skorMerah, nPth, kPth, m.skorPutih, m.status === 'done' ? "Selesai" : ""]);
-            });
+        sheet.mergeCells('A2:D2');
+        sheet.getCell('A2').value = `Dicetak pada: ${new Date().toLocaleString('id-ID')}`;
+        sheet.getCell('A2').style = subtitleStyle;
+
+        let currentRow = 4;
+        let dataPrinted = false; // Pelacak jika semua kosong
+
+        // 5. Filter & Urutkan Kategori (FESTIVAL DI ATAS, disusul EMBU. Randori diabaikan)
+        let categoriesToExport = filterCatName ? STATE.categories.filter(c => c.name === filterCatName) : STATE.categories;
+        let drawCats = categoriesToExport.filter(c => c.discipline === 'embu' || c.discipline === 'festival');
+
+        drawCats.sort((a, b) => {
+            if (a.discipline === 'festival' && b.discipline !== 'festival') return -1;
+            if (a.discipline !== 'festival' && b.discipline === 'festival') return 1;
+            return 0;
+        });
+
+        if (drawCats.length === 0) {
+            document.body.style.cursor = 'default';
+            return alert("Tidak ada data kategori Embu atau Festival untuk diekspor.");
         }
-    });
-    let prefix = filterCatName ? `Jadwal_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Semua_Jadwal_Pertandingan`;
-    downloadCSV(`${prefix}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+
+        // 6. MESIN PENCETAK BLOK TABEL
+        const printTableBlock = (title, partsList, urutProp) => {
+            if (partsList.length === 0) return; // SKIP OTOMATIS JIKA KOSONG (Belum Drawing)
+            dataPrinted = true;
+
+            // Cetak Judul Baris (Misal: EMBU BERPASANGAN (BABAK 1))
+            sheet.mergeCells(`A${currentRow}:D${currentRow}`);
+            let catCell = sheet.getCell(`A${currentRow}`);
+            catCell.value = title.toUpperCase();
+            catCell.style = headerCatStyle;
+            currentRow++;
+
+            // Cetak Header Tabel
+            ['Urutan', 'POOL', 'Kontingen', 'Nama Atlet'].forEach((text, i) => {
+                let cell = sheet.getCell(currentRow, i + 1);
+                cell.value = text; cell.style = tableHeaderStyle;
+            });
+            currentRow++;
+
+            // Cetak Baris Atlet
+            partsList.forEach(p => {
+                // Kolom 1: Urutan (Dinamis: urut, urutFinal, atau urutB2)
+                sheet.getCell(currentRow, 1).value = p[urutProp];
+
+                // Kolom 2: POOL (Paksa 'single' jika tidak ada pool)
+                let poolVal = (p.pool === '-' || p.pool === 'SINGLE') ? 'SINGLE' : p.pool;
+                sheet.getCell(currentRow, 2).value = poolVal;
+
+                // Kolom 3: Kontingen
+                sheet.getCell(currentRow, 3).value = p.kontingen;
+
+                // Kolom 4: Nama Atlet (Wrap Text, dipisah \n tiap ada koma/&/+)
+                let names = String(p.nama).split(/[,+&]/).map(n => n.trim()).filter(n => n).join('\n');
+                sheet.getCell(currentRow, 4).value = names;
+
+                // Terapkan Garis & Wrap Text
+                [1, 2, 3, 4].forEach(colIdx => {
+                    let c = sheet.getCell(currentRow, colIdx);
+                    c.border = borderAll;
+                    c.alignment = {
+                        vertical: 'middle',
+                        horizontal: (colIdx === 3 || colIdx === 4) ? 'left' : 'center',
+                        wrapText: colIdx === 4 // Fitur enter otomatis untuk nama beregu
+                    };
+                });
+                currentRow++;
+            });
+            currentRow += 2; // Spasi sebelum blok tabel berikutnya
+        };
+
+        // 7. PROSES PENYORTIRAN KELOMPOK/POOL
+        drawCats.forEach(cat => {
+            let catParts = STATE.participants.filter(p => p.kategori === cat.name && p.urut > 0);
+            if (catParts.length === 0) return; // Skip kategori ini jika sama sekali belum diundi
+
+            if (cat.discipline === 'festival') {
+                // FESTIVAL: Bagi berdasarkan Kelompok
+                let unikPools = [...new Set(catParts.map(p => p.pool))].sort();
+                unikPools.forEach(poolName => {
+                    let poolParts = catParts.filter(p => p.pool === poolName).sort((a, b) => a.urut - b.urut);
+                    printTableBlock(`${cat.discipline} ${cat.name} (KELOMPOK ${poolName})`, poolParts, 'urut');
+                });
+            } else if (cat.discipline === 'embu') {
+                // EMBU: Cek apakah ada sistem Pool / Final
+                let hasFinalists = catParts.some(p => p.isFinalist && p.urutFinal > 0);
+                let isMultiPool = catParts.some(p => p.pool !== '-' && p.pool !== 'SINGLE');
+
+                if (isMultiPool) {
+                    let unikPools = [...new Set(catParts.map(p => p.pool))].sort();
+                    unikPools.forEach(poolName => {
+                        let poolParts = catParts.filter(p => p.pool === poolName).sort((a, b) => a.urut - b.urut);
+                        printTableBlock(`${cat.discipline} ${cat.name} (PENYISIHAN POOL ${poolName})`, poolParts, 'urut');
+                    });
+
+                    if (hasFinalists) {
+                        let finalParts = catParts.filter(p => p.isFinalist && p.urutFinal > 0).sort((a, b) => a.urutFinal - b.urutFinal);
+                        printTableBlock(`${cat.discipline} ${cat.name} (BABAK 2 / FINAL)`, finalParts, 'urutFinal');
+                    }
+                } else {
+                    // Jalur Single Pool
+                    let b1Parts = [...catParts].sort((a, b) => a.urut - b.urut);
+                    printTableBlock(`${cat.discipline} ${cat.name} (BABAK 1)`, b1Parts, 'urut');
+
+                    let b2Parts = catParts.filter(p => p.urutB2 > 0).sort((a, b) => a.urutB2 - b.urutB2);
+                    if (b2Parts.length > 0) {
+                        printTableBlock(`${cat.discipline} ${cat.name} (BABAK 2)`, b2Parts, 'urutB2');
+                    }
+                }
+            }
+        });
+
+        // 8. Peringatan jika semua kategori kosong
+        if (!dataPrinted) {
+            document.body.style.cursor = 'default';
+            return alert("Belum ada satupun kategori Embu / Festival yang sudah dilakukan undian (Drawing).");
+        }
+
+        // 9. Kompilasi dan Unduh File Excel
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        let prefix = filterCatName ? `Hasil_Drawing_${filterCatName.replace(/[^a-zA-Z0-9]/g, '_')}` : `Hasil_Drawing_MASS`;
+        a.download = `${prefix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        a.href = url;
+
+        document.body.appendChild(a);
+        a.click();
+
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        document.body.style.cursor = 'default';
+
+    } catch (err) {
+        document.body.style.cursor = 'default';
+        console.error(err);
+        alert("Gagal mencetak Rekap Excel: " + err.message);
+    }
 }
 
 // =========================================================
@@ -4187,12 +4337,26 @@ async function generateBaganExcel(event) {
                     let kPth = match.putihId === -1 ? "-" : (pth ? pth.kontingen : "-");
 
                     let displayNum = match.matchNum % 50 === 0 ? 50 : match.matchNum % 50;
+
+                    // --- PERBAIKAN COMPOSITE KEY ---
+                    let poolCode = match.pool;
+                    let isFinalCat = cat.name.toUpperCase().includes('FINAL'); // Deteksi Crossover Final
+
+                    // Kode 'S' hanya untuk Final Crossover atau kelas yang murni Single Pool
+                    if (isFinalCat || poolCode === '-' || poolCode === 'SINGLE') {
+                        poolCode = 'S';
+                    }
+                    let compositeKey = `${poolCode}-G-${displayNum}`;
+                    // ------------------------------
+
                     let currentRow = startRow + idx;
 
                     newSheet.getCell(currentRow, COL_DISIPLIN).value = "RANDORI";
                     newSheet.getCell(currentRow, COL_KATEGORI).value = cat.name;
+                    // Kembalikan ke teks Pool / Babak asli yang bisa dibaca panitia
                     newSheet.getCell(currentRow, COL_POOL).value = `${match.pool !== '-' ? 'Pool ' + match.pool : 'Utama'} - ${match.babak}`;
-                    newSheet.getCell(currentRow, COL_PARTAI).value = `G-${displayNum}`;
+                    // Tembak Composite Key di kolom No. Partai untuk dieksekusi rumus VLOOKUP
+                    newSheet.getCell(currentRow, COL_PARTAI).value = compositeKey;
                     newSheet.getCell(currentRow, COL_N_MRH).value = nMrh;
                     newSheet.getCell(currentRow, COL_K_MRH).value = kMrh;
                     newSheet.getCell(currentRow, COL_S_MRH).value = match.skorMerah > 0 ? match.skorMerah : 0;
@@ -4496,9 +4660,10 @@ function renderMasterBarcodeList() {
             <td class="p-3"><span class="px-2 py-1 rounded text-[10px] font-black border ${badgeColor}">${b.jabatan}</span></td>
             <td class="p-3 text-slate-400 text-xs uppercase">${b.kontingen}</td>
             <td class="p-3 text-xs font-bold">${status}</td>
-            <td class="p-3 text-center">
-                <button onclick="openPairingScanner(${b.id})" class="bg-slate-700 hover:bg-blue-600 text-white p-2 rounded transition-colors" title="Pairing Barcode"><i class="fas fa-camera"></i></button>
-                <button onclick="deleteBarcode(${b.id})" class="bg-slate-700 hover:bg-red-600 text-white p-2 rounded ml-1 transition-colors"><i class="fas fa-trash"></i></button>
+            <td class="p-3 text-center whitespace-nowrap">
+                <button onclick="openPairingScanner(${b.id})" class="bg-blue-900/50 border border-blue-700 hover:bg-blue-600 text-blue-300 hover:text-white p-2 w-9 h-9 rounded-lg transition-all" title="Pairing Barcode"><i class="fas fa-camera"></i></button>
+                <button onclick="openAccountForm(${b.id})" class="bg-slate-700 border border-slate-600 hover:bg-yellow-600 text-slate-300 hover:text-white p-2 w-9 h-9 rounded-lg ml-1 transition-all" title="Edit Data"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteBarcode(${b.id})" class="bg-red-900/30 border border-red-800 hover:bg-red-600 text-red-400 hover:text-white p-2 w-9 h-9 rounded-lg ml-1 transition-all" title="Hapus Data"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -4511,188 +4676,247 @@ function deleteBarcode(id) {
     }
 }
 
-// 2. MESIN WEBCAM SCANNER (HTML5-QRCODE)
-let html5QrCode = null;
-let SCANNER_MODE = 'verify'; // 'verify' atau 'pairing'
+// --- KENDALI FORM AKUN (TAMBAH & EDIT) ---
+function openAccountForm(id = null) {
+    const modal = document.getElementById('account-form-modal');
+    const title = document.getElementById('account-form-title');
+    const idInput = document.getElementById('acc-id');
+    const namaInput = document.getElementById('acc-nama');
+    const jabatanInput = document.getElementById('acc-jabatan');
+    const kontingenInput = document.getElementById('acc-kontingen');
+
+    modal.classList.remove('hidden');
+
+    if (id) {
+        const b = STATE.barcodes.find(x => x.id === id);
+        if (b) {
+            title.innerHTML = `<i class="fas fa-user-edit text-blue-500 mr-2"></i>Edit Akun`;
+            idInput.value = b.id;
+            namaInput.value = b.nama;
+            jabatanInput.value = b.jabatan.toUpperCase() === 'WASIT' ? 'WASIT' : 'OFFICIAL';
+            kontingenInput.value = b.kontingen;
+        }
+    } else {
+        title.innerHTML = `<i class="fas fa-user-plus text-blue-500 mr-2"></i>Tambah Akun Baru`;
+        idInput.value = '';
+        namaInput.value = '';
+        jabatanInput.value = 'OFFICIAL';
+        kontingenInput.value = '';
+    }
+    handleJabatanFormChange(); // Kunci/Buka otomatis sesuai jabatan
+}
+
+function closeAccountForm() {
+    document.getElementById('account-form-modal').classList.add('hidden');
+}
+
+function handleJabatanFormChange() {
+    const jabatan = document.getElementById('acc-jabatan').value;
+    const kontingenInput = document.getElementById('acc-kontingen');
+
+    if (jabatan === 'WASIT') {
+        kontingenInput.value = '-';
+        kontingenInput.readOnly = true;
+        kontingenInput.classList.add('opacity-50', 'bg-slate-800', 'cursor-not-allowed');
+    } else {
+        if (kontingenInput.value === '-') kontingenInput.value = '';
+        kontingenInput.readOnly = false;
+        kontingenInput.classList.remove('opacity-50', 'bg-slate-800', 'cursor-not-allowed');
+    }
+}
+
+function saveAccountForm(event) {
+    event.preventDefault();
+    const id = document.getElementById('acc-id').value;
+    const nama = document.getElementById('acc-nama').value.trim();
+    const jabatan = document.getElementById('acc-jabatan').value;
+    const kontingen = document.getElementById('acc-kontingen').value.trim() || '-';
+
+    if (!nama) return;
+
+    if (id) {
+        // Mode Edit
+        const idx = STATE.barcodes.findIndex(b => b.id == id);
+        if (idx > -1) {
+            if (STATE.barcodes.some(b => b.id != id && b.nama.toLowerCase() === nama.toLowerCase())) {
+                return alert("Gagal: Nama ini sudah ada di database!");
+            }
+            STATE.barcodes[idx].nama = nama;
+            STATE.barcodes[idx].jabatan = jabatan;
+            STATE.barcodes[idx].kontingen = kontingen;
+        }
+    } else {
+        // Mode Tambah Baru
+        if (STATE.barcodes.some(b => b.nama.toLowerCase() === nama.toLowerCase())) {
+            return alert("Gagal: Nama ini sudah ada di database!");
+        }
+        STATE.barcodes.push({
+            id: Date.now(),
+            nama: nama,
+            jabatan: jabatan,
+            kontingen: kontingen,
+            barcodeUrl: null
+        });
+    }
+
+    saveToLocalStorage();
+    renderMasterBarcodeList();
+    closeAccountForm();
+}
+
+let pairingScannerRef = null;
 let SCANNER_TARGET_ID = null;
 
-function populateCameras() {
-    Html5Qrcode.getCameras().then(devices => {
-        const select = document.getElementById('camera-select');
-        if (!select) return;
-        select.innerHTML = '';
-        if (devices && devices.length) {
-            let savedCam = localStorage.getItem('mass_selected_camera');
-            let hasSaved = false;
-
-            devices.forEach(d => {
-                let selected = '';
-                if (savedCam === d.id) { selected = 'selected'; hasSaved = true; }
-                select.innerHTML += `<option value="${d.id}" ${selected}>${d.label}</option>`;
-            });
-
-            if (!hasSaved && devices.length > 0) {
-                localStorage.setItem('mass_selected_camera', devices[0].id);
-            }
-        }
-
-        // 🌟 SUNTIKAN KILL SWITCH (ANTI GHOST-STREAM) 🌟
-        // Matikan paksa arus stream setelah browser berhasil membaca daftar kamera
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    stream.getTracks().forEach(track => track.stop());
-                }).catch(err => { });
-        }
-
-    }).catch(err => console.log("Kamera diblokir atau tidak ditemukan:", err));
-}
-
-function saveCameraSelection() {
-    const select = document.getElementById('camera-select');
-    if (select && select.value) {
-        localStorage.setItem('mass_selected_camera', select.value);
-    }
-}
-
-// Override fungsi openMasterBarcodeModal untuk memuat kamera saat pop-up dibuka
-function openMasterBarcodeModal() {
-    document.getElementById('barcode-modal').classList.remove('hidden');
-    renderMasterBarcodeList();
-    populateCameras(); // <-- Panggil kamera di sini
-}
-
 function openPairingScanner(id) {
-    SCANNER_MODE = 'pairing';
     SCANNER_TARGET_ID = id;
     let b = STATE.barcodes.find(x => x.id === id);
-    document.getElementById('scanner-title').innerHTML = `<i class="fas fa-link text-blue-500 mr-2"></i>PAIRING: ${b.nama}`;
-    document.getElementById('scanner-modal').classList.remove('hidden');
-    // populateCameras(); <-- Dihapus, kamera sudah global
+    if (!b) return;
+
+    // Set Identitas UI Radar
+    document.getElementById('pairing-target-name').innerText = b.nama;
+    document.getElementById('pairing-target-role').innerText = b.jabatan;
+
+    // Tampilkan Modal
+    document.getElementById('pairing-radar-modal').classList.remove('hidden');
+
+    // AKTIFKAN LISTENER INBOX KHUSUS ADMIN
+    pairingScannerRef = database.ref(`scanner_inbox/admin`);
+    pairingScannerRef.on('child_added', (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.url) {
+            processPairingUrl(data.url, snapshot.key);
+        }
+    });
 }
 
-let html5QrCodeVerify = null; // Mesin khusus untuk modal Persetujuan
+function processPairingUrl(url, snapKey) {
+    let idx = STATE.barcodes.findIndex(b => b.id === SCANNER_TARGET_ID);
+    if (idx > -1) {
+        // Cek apakah URL sudah dipakai orang lain
+        let exist = STATE.barcodes.find(b => b.barcodeUrl === url && b.id !== SCANNER_TARGET_ID);
 
-// Fungsi ini sudah dipanggil dari tombol PERSETUJUAN di UI
+        if (exist) {
+            // GAGAL: Kirim sinyal TETOT ke HP Admin & Hapus Inbox
+            database.ref(`scanner_feedback/admin`).set({ id: snapKey, status: 'FAILED', timestamp: Date.now() });
+            database.ref(`scanner_inbox/admin/${snapKey}`).remove();
+            alert(`❌ GAGAL! Barcode ini sudah dipakai oleh: ${exist.nama}`);
+            return false;
+        }
+
+        // SUKSES: Simpan Data & Kirim sinyal BEEP ke HP Admin
+        STATE.barcodes[idx].barcodeUrl = url;
+        saveToLocalStorage();
+        renderMasterBarcodeList();
+
+        database.ref(`scanner_feedback/admin`).set({ id: snapKey, status: 'SUCCESS', timestamp: Date.now() });
+        database.ref(`scanner_inbox/admin/${snapKey}`).remove();
+
+        closePairingRadarModal();
+        return true;
+    }
+}
+
+function closePairingRadarModal() {
+    document.getElementById('pairing-radar-modal').classList.add('hidden');
+    if (pairingScannerRef) {
+        pairingScannerRef.off(); // Matikan sensor agar tidak bocor
+        pairingScannerRef = null;
+    }
+}
+
+// 2. MESIN RADAR VERIFIKASI (MEJA PANITERA / COURT)
+let mobileScannerRef = null;
+
 function openVerificationModal() {
     if (!currentRandoriMatchId) return alert("Pilih partai Randori terlebih dahulu!");
-    SCANNER_MODE = 'verify';
 
     let match = STATE.matches.find(m => m.id === currentRandoriMatchId);
-    refreshVerifikatorUI(match);
+    if (!match) return;
 
+    // Suntikkan Identitas Partai
+    let pMrh = STATE.participants.find(p => p.id === match.merahId);
+    let pPth = STATE.participants.find(p => p.id === match.putihId);
+    let displayNum = match.matchNum % 50 === 0 ? 50 : match.matchNum % 50;
+
+    document.getElementById('v-match-identity').innerHTML = `
+        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest border-b border-slate-700 pb-1 mb-1">Partai G-${displayNum} &bull; Pool ${match.pool} &bull; ${match.babak}</div>
+        <div class="text-[11px] font-black text-blue-400 mb-2 leading-tight">${match.kategori}</div>
+        <div class="flex justify-between items-center text-xs font-bold bg-slate-950 p-2 rounded-lg border border-slate-800">
+            <span class="text-red-400 truncate w-[45%]">${pMrh ? pMrh.nama.split(',')[0] : '-'}</span>
+            <span class="text-slate-600 text-[9px] italic">VS</span>
+            <span class="text-white truncate w-[45%] text-right">${pPth ? pPth.nama.split(',')[0] : '-'}</span>
+        </div>
+    `;
+
+    // Set Label Court di Layar Radar
+    let badgeCourt = document.getElementById('ui-court-badge');
+    if (badgeCourt) badgeCourt.innerText = String(DEVICE_ROLE).replace('_', ' ').toUpperCase();
+
+    refreshVerifikatorUI(match);
     document.getElementById('verification-modal').classList.remove('hidden');
 
-    let camId = localStorage.getItem('mass_selected_camera');
+    // AKTIFKAN LISTENER INBOX KHUSUS COURT INI
+    if (DEVICE_ROLE !== 'admin') {
+        mobileScannerRef = database.ref(`scanner_inbox/${DEVICE_ROLE}`);
+        mobileScannerRef.on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.url) {
+                let isSuccess = processVerificationUrl(data.url);
 
-    // SUNTIKAN PERBAIKAN: AUTO-DETECT KAMERA UNTUK PANITERA
-    if (!camId) {
-        Html5Qrcode.getCameras().then(devices => {
-            if (devices && devices.length > 0) {
-                camId = devices[0].id;
-                localStorage.setItem('mass_selected_camera', camId);
-                mulaiScannerVerifikasi(camId);
-            } else {
-                alert("Tidak ada kamera terdeteksi di laptop ini!");
-                closeVerificationModal();
+                // Umpan Balik Sinyal ke HP Court
+                database.ref(`scanner_feedback/${DEVICE_ROLE}`).set({
+                    id: snapshot.key,
+                    status: isSuccess ? 'SUCCESS' : 'FAILED',
+                    timestamp: Date.now()
+                });
+                snapshot.ref.remove(); // Bersihkan Inbox
             }
-        }).catch(err => {
-            alert("Kamera diblokir browser!");
-            closeVerificationModal();
         });
-        return;
+    } else {
+        alert("Peringatan: Perangkat ini di-set sebagai 'Admin Utama'. Mode Radar Mobile hanya bekerja jika Anda mengatur peran perangkat menjadi Court 1/2/3.");
     }
-
-    mulaiScannerVerifikasi(camId);
-}
-
-// Fungsi pembantu untuk menyalakan scanner (Tambahkan di bawahnya)
-function mulaiScannerVerifikasi(camId) {
-    if (!html5QrCodeVerify) html5QrCodeVerify = new Html5Qrcode("reader-verify");
-
-    html5QrCodeVerify.start(camId, { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-            if (html5QrCodeVerify.getState() === Html5QrcodeScannerState.SCANNING) {
-                html5QrCodeVerify.pause();
-            }
-            handleScanSuccess(decodedText);
-        },
-        (err) => { /* Abaikan frame kosong */ }
-    ).catch(err => {
-        alert("Gagal mengakses kamera: " + err);
-    });
 }
 
 function closeVerificationModal() {
     document.getElementById('verification-modal').classList.add('hidden');
-    if (html5QrCodeVerify) {
-        try {
-            // 1. Wajib RESUME sebelum STOP jika sedang di-pause
-            if (html5QrCodeVerify.getState() === 3 || html5QrCodeVerify.getState() === Html5QrcodeScannerState.PAUSED) {
-                html5QrCodeVerify.resume();
-            }
-
-            // 2. Stop arus listrik kamera dan bersihkan memori RAM
-            html5QrCodeVerify.stop().then(() => {
-                html5QrCodeVerify.clear();
-                html5QrCodeVerify = null;
-            }).catch(e => {
-                html5QrCodeVerify.clear();
-                html5QrCodeVerify = null;
-            });
-        } catch (error) {
-            html5QrCodeVerify.clear();
-            html5QrCodeVerify = null;
-        }
+    if (mobileScannerRef) {
+        mobileScannerRef.off();
+        mobileScannerRef = null;
     }
 }
 
-function closeScannerModal() {
-    document.getElementById('scanner-modal').classList.add('hidden');
-    if (html5QrCode) {
-        try {
-            // Wajib RESUME sebelum STOP jika kamera sempat ter-pause
-            if (html5QrCode.getState() === 3 || html5QrCode.getState() === Html5QrcodeScannerState.PAUSED) {
-                html5QrCode.resume();
-            }
+function processVerificationUrl(url) {
+    let user = STATE.barcodes.find(b => b.barcodeUrl === url);
+    if (!user) return false;
 
-            html5QrCode.stop().then(() => {
-                html5QrCode.clear();
-                html5QrCode = null;
-            }).catch(err => {
-                html5QrCode.clear();
-                html5QrCode = null;
-            });
-        } catch (error) {
-            // Jika terjadi crash parah, paksa hapus instance
-            html5QrCode.clear();
-            html5QrCode = null;
-        }
-    }
-}
+    let match = STATE.matches.find(m => m.id === currentRandoriMatchId);
+    if (!match) return false;
+    if (!match.verifikator) match.verifikator = { wasit: null, officialMerah: null, officialPutih: null };
 
-function startWebcam() {
-    let camId = localStorage.getItem('mass_selected_camera');
+    let jabatan = user.jabatan.toUpperCase();
 
-    // Proteksi: Jika Panitera langsung scan tapi belum pernah setup kamera
-    if (!camId) {
-        const selectEl = document.getElementById('camera-select');
-        if (selectEl && selectEl.value) {
-            camId = selectEl.value;
-            localStorage.setItem('mass_selected_camera', camId);
-        } else {
-            return alert("Kamera Global belum diatur!\nSilakan atur kamera di Tab Admin -> Kelola Master Data terlebih dahulu.");
-        }
+    // Smart Assign Induk Kontingen
+    if (jabatan === 'WASIT') {
+        match.verifikator.wasit = user.nama;
+    } else {
+        let pMrh = STATE.participants.find(p => p.id === match.merahId);
+        let pPth = STATE.participants.find(p => p.id === match.putihId);
+        let kUser = cleanKontingen(user.kontingen);
+        let kMrh = pMrh ? cleanKontingen(pMrh.kontingen) : '';
+        let kPth = pPth ? cleanKontingen(pPth.kontingen) : '';
+
+        if (kUser === kMrh) match.verifikator.officialMerah = user.nama;
+        else if (kUser === kPth) match.verifikator.officialPutih = user.nama;
+        else return false;
     }
 
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+    // Update Firebase Pertandingan
+    let mIdx = STATE.matches.findIndex(m => m.id === currentRandoriMatchId);
+    database.ref(`turnamen_data/matches/${mIdx}/verifikator`).set(match.verifikator);
 
-    html5QrCode.start(camId, { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-            html5QrCode.stop(); // Hentikan agar tidak scan dobel beruntun
-            handleScanSuccess(decodedText);
-        },
-        (errorMessage) => { /* Abaikan error frame scanning */ }).catch(err => alert("Gagal menyalakan kamera. Pastikan browser diizinkan mengakses kamera: " + err));
+    // Update Warna Blok Layar Instan
+    refreshVerifikatorUI(match);
+    return true;
 }
 
 // 3. LOGIKA SMART ASSIGN & REGEX KONTINGEN (REVISI KOTA/KAB)
@@ -4855,3 +5079,69 @@ loadRandoriMatch = function () {
         }
     }
 };
+
+// --- SISTEM SMART URL & QR GENERATOR ---
+
+function saveScannerUrl() {
+    let url = document.getElementById('setting-scanner-url').value.trim();
+    if (!url) return alert("URL tidak boleh kosong!");
+
+    // Pastikan tidak ada spasi atau slash (/) berlebih di ujung
+    if (url.endsWith('/')) url = url.slice(0, -1);
+
+    if (!STATE.settings) STATE.settings = {};
+    STATE.settings.scannerBaseUrl = url;
+    saveToLocalStorage();
+    alert("URL Mobile Scanner berhasil disimpan!\nQR Code siap digunakan.");
+}
+
+// Injeksi ke fungsi switchTab (Biar input form-nya terisi otomatis saat Tab Admin dibuka)
+const originalSwitchTab = switchTab;
+switchTab = function (targetTab) {
+    originalSwitchTab(targetTab);
+    if (targetTab === 'admin') {
+        let urlEl = document.getElementById('setting-scanner-url');
+        if (urlEl) urlEl.value = (STATE.settings && STATE.settings.scannerBaseUrl) ? STATE.settings.scannerBaseUrl : '';
+    }
+}
+
+// Fungsi Buka Pop-up & Gambar QR
+function openQrOperatorModal() {
+    let baseUrl = (STATE.settings && STATE.settings.scannerBaseUrl) ? STATE.settings.scannerBaseUrl : '';
+
+    if (!baseUrl) {
+        alert("⚠️ Base URL Scanner belum diatur!\nSilakan isi URL aplikasi Scanner Anda di Tab Admin -> Sistem Paperless terlebih dahulu.");
+        return;
+    }
+
+    if (DEVICE_ROLE === 'admin') {
+        alert("Perangkat Anda berstatus 'Admin'. QR Code ini dirancang khusus untuk memanggil Scanner Court (Court 1/2/3).");
+        return;
+    }
+
+    // 1. Bersihkan QR Lama
+    document.getElementById("qr-code-canvas").innerHTML = "";
+
+    // 2. RAKIT URL CERDAS
+    let smartUrl = `${baseUrl}?lokasi=${DEVICE_ROLE}`;
+
+    // 3. Gambar QR Code Baru
+    new QRCode(document.getElementById("qr-code-canvas"), {
+        text: smartUrl,
+        width: 190, // Ukuran pas untuk kotak putih
+        height: 190,
+        colorDark: "#0f172a", // Hitam kebiruan elegan (Slate-950)
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H // Level akurasi tinggi
+    });
+
+    // 4. Update Teks UI
+    document.getElementById('qr-target-court').innerText = DEVICE_ROLE.replace('_', ' ').toUpperCase();
+
+    // 5. Tampilkan Modal
+    document.getElementById('qr-operator-modal').classList.remove('hidden');
+}
+
+function closeQrOperatorModal() {
+    document.getElementById('qr-operator-modal').classList.add('hidden');
+}
