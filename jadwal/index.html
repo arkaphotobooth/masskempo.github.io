@@ -414,19 +414,26 @@
                             <i class="fa-solid fa-chevron-right text-[9px] opacity-60"></i>
                         </button>
 
+                        <!-- TOMBOL BUAT DRAFT -->
                         <button id="btn-draft" onclick="mulaiDraft()"
-                            class="w-full inline-flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-bold shadow-lg shadow-indigo-900/40 transition-all">
+                            class="w-full inline-flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] font-bold shadow-lg shadow-indigo-900/40 transition-all mb-4">
                             <span class="flex items-center gap-2.5"><i
                                     class="fa-solid fa-wand-magic-sparkles text-xs"></i>Buat Draft</span>
                             <i class="fa-solid fa-chevron-right text-[9px] opacity-60"></i>
                         </button>
 
-                        <button id="btn-save-draft" onclick="simpanDraftKeCloud()"
-                            class="hidden w-full inline-flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 text-white text-[11px] font-bold shadow-lg shadow-cyan-900/40 transition-all mb-1">
-                            <span class="flex items-center gap-2.5"><i
-                                    class="fa-solid fa-cloud-arrow-up text-xs"></i>Simpan Draft (Cloud)</span>
-                            <i class="fa-solid fa-floppy-disk text-[11px] opacity-60"></i>
-                        </button>
+                        <!-- TOMBOL SIMPAN & TARIK (BERDAMPINGAN KIRI-KANAN) -->
+                        <div class="flex gap-2 mb-4">
+                            <button id="btn-save-draft" onclick="simpanDraftKeCloud()"
+                                class="hidden flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-500 hover:to-cyan-500 text-white text-[10px] font-bold shadow-lg shadow-cyan-900/40 transition-all">
+                                <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i>Simpan Cloud
+                            </button>
+
+                            <button id="btn-pull-draft" onclick="loadScheduleFromFirebase(true)"
+                                class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg bg-slate-800/80 hover:bg-sky-900/40 border border-slate-700/40 hover:border-sky-500/50 text-sky-400 hover:text-sky-300 text-[10px] font-bold transition-all">
+                                <i class="fa-solid fa-cloud-arrow-down text-[11px]"></i>Tarik Cloud
+                            </button>
+                        </div>
 
                         <button id="btn-lock" onclick="toggleModeLive(true)"
                             class="hidden w-full inline-flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[11px] font-bold shadow-lg shadow-emerald-900/30 transition-all">
@@ -1102,14 +1109,18 @@
             });
         }
 
-        function loadScheduleFromFirebase() {
-            // Tampilkan indikator visual sedang menarik data Cloud
+        function loadScheduleFromFirebase(isManual = false) {
             const listEl = document.getElementById('jadwal-list');
-            if (listEl && (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0)) {
+            const btnPull = document.getElementById('btn-pull-draft');
+            let originalText = btnPull ? btnPull.innerHTML : '';
+
+            if (isManual && btnPull) {
+                btnPull.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Menarik...`;
+            }
+            else if (listEl && (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0)) {
                 listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-24 text-blue-400">
                     <i class="fas fa-cloud-arrow-down fa-bounce text-6xl mb-4 opacity-50"></i>
                     <p class="text-sm font-bold uppercase tracking-widest">Sinkronisasi Cloud...</p>
-                    <p class="text-[11px] text-slate-500 mt-1">Mengambil draft jadwal terakhir dari database.</p>
                 </div>`;
             }
 
@@ -1117,16 +1128,16 @@
                 if (snapshot.exists()) {
                     let data = snapshot.val();
                     if (data.schedule && data.schedule.length > 0) {
-                        
-                        // KUNCI: Pulihkan parameter form (Jumlah Hari, Lapangan, Jam) DULU dari Cloud
+
+                        // KUNCI: Membaca parameter UI yang disimpan di Cloud
                         let targetConfig = data.config || getFullUIConfig();
-                        
+
+                        // Menerapkan parameter UI terlebih dahulu, baru menyusun jadwal
                         setFullUIConfig(targetConfig).then(() => {
-                            // SETELAH form selesai di-render, baru masukkan data jadwal
-                            window.MASTER_SCHEDULE = data.schedule;
+                            window.MASTER_SCHEDULE = reconcileSchedule(data.schedule, targetConfig);
                             window.IS_LIVE_MODE = data.isLiveMode || false;
 
-                            document.getElementById('btn-delete').classList.remove('hidden'); 
+                            document.getElementById('btn-delete').classList.remove('hidden');
                             document.getElementById('btn-save-draft').classList.remove('hidden');
 
                             if (window.IS_LIVE_MODE) {
@@ -1139,26 +1150,33 @@
                                 document.getElementById('btn-lock').classList.remove('hidden');
                             }
 
-                            // Tampilkan ke layar
                             recalculateTimeline();
+
+                            if (isManual && btnPull) {
+                                btnPull.classList.replace('text-sky-400', 'text-green-400');
+                                btnPull.innerHTML = `<i class="fas fa-check mr-1"></i>Sukses!`;
+                                setTimeout(() => {
+                                    btnPull.classList.replace('text-green-400', 'text-sky-400');
+                                    btnPull.innerHTML = originalText;
+                                }, 2000);
+                            }
                         });
                     }
                 } else {
-                    // Jika cloud kosong, kembalikan tampilan default
-                    if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
-                        if (listEl) {
-                            listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-24 text-slate-600">
-                                <i class="fas fa-clipboard-list text-6xl mb-4 opacity-30"></i>
-                                <p class="text-sm font-bold uppercase tracking-widest">Belum ada jadwal</p>
-                                <p class="text-[11px] text-slate-500 mt-1">Silakan klik "Buat Draft" di panel komando.</p>
-                            </div>`;
-                        }
+                    if (isManual) {
+                        alert("⚠️ Cloud Kosong! Belum ada draft yang tersimpan di server.");
+                        if (btnPull) btnPull.innerHTML = originalText;
                     }
                 }
             }).catch(error => {
                 console.error("Gagal menarik draft dari cloud:", error);
+                if (isManual && btnPull) {
+                    alert("Koneksi gagal! Periksa jaringan internet Anda.");
+                    btnPull.innerHTML = originalText;
+                }
             });
         }
+
         function syncLive() {
             let btn = document.getElementById('btn-sync');
             let originalHTML = btn.innerHTML;
@@ -2123,7 +2141,6 @@
             alert("✅ Pengaturan waktu berhasil diterapkan pada jadwal!");
         }
 
-        // --- FITUR BARU: SIMPAN DRAFT KE CLOUD MANUAL (HEMAT KUOTA) ---
         function simpanDraftKeCloud() {
             if (!window.MASTER_SCHEDULE || window.MASTER_SCHEDULE.length === 0) {
                 alert("⚠️ Jadwal kosong! Tidak ada yang bisa disimpan.");
@@ -2132,17 +2149,17 @@
 
             const btnSave = document.getElementById('btn-save-draft');
             let originalText = btnSave.innerHTML;
-            btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...`;
+            btnSave.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>Proses...`;
 
-            // Tembak data jadwal sekaligus CONFIG PARAMETER UI ke Firebase
+            // KUNCI: Menyelipkan getFullUIConfig() agar Setting Hari & Waktu ikut terbang ke Firebase
             db.ref('turnamen_data/rundown_state').set({
-                isLiveMode: false,
+                isLiveMode: window.IS_LIVE_MODE || false,
                 schedule: window.MASTER_SCHEDULE,
-                config: getFullUIConfig() // <--- KUNCI: Ikutkan parameter lapangan & hari
+                config: getFullUIConfig()
             }).then(() => {
                 btnSave.classList.replace('from-sky-600', 'from-green-600');
                 btnSave.classList.replace('to-cyan-600', 'to-emerald-600');
-                btnSave.innerHTML = `<i class="fas fa-check mr-2"></i>Draft Tersimpan!`;
+                btnSave.innerHTML = `<i class="fas fa-check mr-1"></i>Tersimpan!`;
 
                 setTimeout(() => {
                     btnSave.className = btnSave.className.replace(/from-green-600|to-emerald-600/g, '');
@@ -3121,7 +3138,7 @@
         }
 
         // =========================================================================
-        // ARSITEKTUR RESTORE GLOBAL (IMPORT JSON + REKONSILIASI)
+        // ARSITEKTUR RESTORE GLOBAL (IMPORT JSON + REKONSILIASI) - UPDATED
         // =========================================================================
         function restoreJSON(event) {
             let file = event.target.files[0];
@@ -3132,33 +3149,51 @@
                 try {
                     let data = JSON.parse(e.target.result);
 
-                    if (data.schedule && data.schedule.length > 0) {
-                        let targetConfig = data.config || getFullUIConfig();
+                    // 1. Validasi Keamanan Lapis Pertama (File MASS KEMPO Asli atau Bukan?)
+                    if (data.appName && data.appName !== "MASS_KEMPO_SCHEDULER") {
+                        alert("⚠️ File Ditolak: Ini bukan file backup jadwal MASS KEMPO.");
+                        return;
+                    }
 
-                        // KUNCI PERBAIKAN: Tunggu `setFullUIConfig` selesai merender form hari sebelum menjalankan rekonsiliasi
+                    // 2. Deteksi struktur: Dukung JSON baru (berlapis) maupun JSON versi lama
+                    let scheduleData = data.schedule || data;
+                    let configData = data.config || null;
+
+                    if (scheduleData && scheduleData.length > 0) {
+
+                        // Gunakan config dari JSON, atau fallback ke config UI saat ini
+                        let targetConfig = configData || getFullUIConfig();
+
+                        // 3. Eksekusi Berantai (Config Dulu -> Rekonsiliasi -> Render Timeline)
                         setFullUIConfig(targetConfig).then(() => {
-                            window.MASTER_SCHEDULE = reconcileSchedule(data.schedule, targetConfig);
 
+                            // Kita pertahankan mesin rekonsiliasi cerdas milik Anda
+                            window.MASTER_SCHEDULE = reconcileSchedule(scheduleData, targetConfig);
+
+                            // Kembalikan tombol-tombol panel komando ke mode edit
                             window.IS_LIVE_MODE = false;
                             document.getElementById('btn-draft').classList.add('hidden');
-                            document.getElementById('btn-save-draft').classList.remove('hidden'); // Munculkan Tombol Save Draft
+                            document.getElementById('btn-save-draft').classList.remove('hidden');
                             document.getElementById('btn-lock').classList.remove('hidden');
                             document.getElementById('btn-unlock').classList.add('hidden');
                             document.getElementById('btn-sync').classList.add('hidden');
                             document.getElementById('btn-delete').classList.remove('hidden');
 
-                            // Kalkulator jalan SETELAH semua atribut HTML & JSON beres
+                            // Kalkulator pergerakan waktu berjalan
                             recalculateTimeline();
-                            alert("✅ RESTORE BERHASIL!\n\nData JSON cadangan Anda berhasil dimuat dan bagan telah disesuaikan otomatis (Auto-Split/Merge) dengan kuota peserta Firestore terbaru.");
+
+                            alert("✅ RESTORE SEMPURNA!\n\nJadwal dan parameter form telah direstrukturisasi menyesuaikan file backup.");
                         });
 
                     } else {
-                        alert("⚠️ RESTORE GAGAL: Struktur file JSON cadangan tidak valid atau kosong.");
+                        alert("⚠️ RESTORE GAGAL: Struktur file JSON cadangan kosong.");
                     }
                 } catch (err) {
                     alert("⚠️ ERROR: Gagal membaca file JSON. Pastikan berkas tidak rusak.");
                     console.error(err);
                 }
+
+                // Reset input agar bisa memuat file yang sama berulang kali jika dibutuhkan
                 event.target.value = '';
             };
             reader.readAsText(file);
