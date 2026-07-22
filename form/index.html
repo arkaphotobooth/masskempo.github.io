@@ -102,7 +102,10 @@
                                     <td className="whitespace-nowrap font-bold uppercase border border-black px-2 py-1">{data?.keteranganBabak || "-"}</td>
                                 </tr>
                                 <tr>
-                                    <td className="w-20 whitespace-nowrap font-bold uppercase border border-black px-2 py-1 align-top">Nama :</td>
+                                    <td className="w-24 border border-black p-1 align-middle text-center">
+                                        <div className="text-[10px] font-bold uppercase leading-tight">No Urut Main</div>
+                                        <div className="text-3xl font-black mt-1">{data?.game || "-"}</div>
+                                    </td>
                                     <td colSpan={4} className="p-0 border border-black align-top">
                                         {[0, 2, 4].map((startIndex, rowIndex) => (
                                             <div key={startIndex} className={`flex w-full ${rowIndex < 2 ? 'border-b border-black' : ''}`}>
