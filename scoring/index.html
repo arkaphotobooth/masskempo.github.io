@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MASS PRO - Martial Arts Scoring System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="../assets/js/auth-guard.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
@@ -414,6 +414,10 @@
                             PARTAI / PESERTA</label>
                         <select id="select-peserta"
                             class="w-full bg-blue-900/30 border border-blue-500/50 rounded p-2 text-white text-sm focus:border-blue-500 outline-none font-semibold"></select>
+                        <button id="btnTembakWasit" onclick="toggleWasitMode()"
+                            class="w-full hidden bg-blue-600 hover:bg-blue-500 text-white font-black py-3 px-4 rounded-xl shadow-lg mt-3 transition-all">
+                            <i class="fas fa-broadcast-tower mr-2"></i> AKTIFKAN KONEKSI HP WASIT
+                        </button>
                         <button id="btn-broadcast-toggle" onclick="toggleBroadcast()"
                             class="hidden w-full mt-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 font-bold py-2.5 px-4 rounded-lg shadow-md text-xs transition-all flex items-center justify-center gap-2 tracking-widest">
                             <i id="icon-broadcast" class="fas fa-tv-slash text-sm"></i>
@@ -830,6 +834,22 @@
                         (Verifikasi)</h2>
                     <p class="text-sm text-slate-400 mb-4">Aktifkan fitur scan ID Card Official & Wasit menggunakan
                         Webcam di meja Panitera (Khusus Randori).</p>
+                    <!-- PENGATURAN LINK SCANNER -->
+                    <div
+                        class="flex flex-col md:flex-row items-center justify-between gap-4 mb-5 bg-slate-900/50 p-4 rounded-xl border border-slate-700 shadow-inner">
+                        <div class="text-left w-full">
+                            <h3 class="font-bold text-slate-300 text-sm">URL Link Mobile Scanner</h3>
+                            <p class="text-[10px] text-slate-500">Alamat web (Netlify/Hosting) aplikasi Scanner Anda.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="text" id="setting-scanner-url" placeholder="https://app-anda.netlify.app"
+                                class="w-full md:w-56 bg-slate-950 border border-slate-600 rounded-lg p-2.5 text-blue-300 text-xs font-bold focus:border-purple-500 outline-none">
+                            <button onclick="saveScannerUrl()"
+                                class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2.5 px-4 rounded-lg transition-colors shadow-md whitespace-nowrap text-xs"><i
+                                    class="fas fa-save mr-1"></i> Simpan</button>
+                        </div>
+                    </div>
                     <div class="flex items-center justify-center gap-4 mb-4">
                         <span class="font-bold text-slate-300 text-sm">Status Verifikator Webcam:</span>
                         <label class="relative inline-flex items-center cursor-pointer">
@@ -847,12 +867,13 @@
                 </div>
 
                 <!-- TAMBAHKAN BLOK INI DI ATAS ZONA BERBAHAYA -->
-                <div class="bg-indigo-950/30 p-6 rounded-2xl border border-indigo-800 shadow-xl text-center mb-6">
-                    <h2 class="text-xl font-black text-indigo-400 mb-2"><i
+                <div id="containerIntegrasi"
+                    class="bg-indigo-950/30 p-6 rounded-2xl border border-indigo-800 shadow-xl text-center mb-6">
+                    <h2 id="titleIntegrasi" class="text-xl font-black text-indigo-400 mb-2"><i
                             class="fas fa-cloud-download-alt mr-2"></i>Integrasi Sistem Pendaftaran</h2>
-                    <p class="text-sm text-indigo-300/70 mb-6">Sedot data pendaftar terbaru secara langsung dari server
-                        Pendaftaran tanpa perlu Import CSV.</p>
-                    <button onclick="tarikDataPendaftaran()"
+                    <p id="descIntegrasi" class="text-sm text-indigo-300/70 mb-6">Sedot data pendaftar terbaru secara
+                        langsung dari server Pendaftaran tanpa perlu Import CSV.</p>
+                    <button id="btnSyncData" onclick="tarikDataPendaftaran()"
                         class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 px-8 rounded-xl transition-transform hover:scale-105 shadow-[0_0_15px_rgba(79,70,229,0.5)] text-sm tracking-wider">
                         <i class="fas fa-sync-alt mr-2 animate-spin-slow"></i> MULAI SINKRONISASI DATA
                     </button>
@@ -997,32 +1018,38 @@
                     class="text-slate-400 hover:text-red-400 transition-colors"><i
                         class="fas fa-times text-2xl"></i></button>
             </div>
+
             <div
                 class="flex flex-col md:flex-row justify-between items-center mb-4 bg-slate-900 p-3 rounded-xl border border-slate-700 gap-3">
-                <div class="text-xs text-slate-400 flex-1">Format CSV: <b>Nama, Jabatan(Wasit/Official),
-                        Kontingen(Kosongi jika Wasit)</b></div>
+                <div class="text-xs text-slate-400 flex-1">
+                    <i class="fas fa-info-circle text-blue-400 mr-1"></i> Format CSV: <b>Nama, Jabatan(Wasit/Official),
+                        Kontingen(Kosongi jika Wasit)</b>
+                </div>
                 <div class="flex items-center gap-2 w-full md:w-auto">
-                    <label class="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap"><i
-                            class="fas fa-camera mr-1"></i>Kamera Global:</label>
-                    <select id="camera-select" onchange="saveCameraSelection()"
-                        class="bg-slate-800 border border-slate-600 rounded-lg p-2 text-white text-xs focus:border-blue-500 outline-none w-full md:w-48 cursor-pointer"></select>
+                    <button onclick="openAccountForm()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-[11px] flex items-center justify-center gap-2 whitespace-nowrap transition-transform hover:scale-105">
+                        <i class="fas fa-user-plus text-sm"></i> TAMBAH MANUAL
+                    </button>
 
                     <input type="file" id="csv-barcode-upload" accept=".csv" class="hidden"
                         onchange="handleBarcodeCSVUpload(event)">
                     <button onclick="document.getElementById('csv-barcode-upload').click()"
-                        class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow text-xs flex items-center justify-center gap-2 whitespace-nowrap"><i
-                            class="fas fa-file-csv"></i> IMPORT CSV</button>
+                        class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-[11px] flex items-center justify-center gap-2 whitespace-nowrap transition-transform hover:scale-105">
+                        <i class="fas fa-file-csv text-sm"></i> IMPORT CSV
+                    </button>
                 </div>
             </div>
-            <div class="overflow-y-auto custom-scrollbar flex-1 bg-slate-950 rounded-xl border border-slate-700">
+
+            <div
+                class="overflow-y-auto custom-scrollbar flex-1 bg-[#0f172a] rounded-xl border border-slate-700 shadow-inner">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-800 text-xs uppercase text-slate-400 sticky top-0 shadow-md">
+                    <thead class="bg-slate-800 text-xs uppercase text-slate-400 sticky top-0 shadow-md z-10">
                         <tr>
-                            <th class="p-3">Nama Lengkap</th>
-                            <th class="p-3">Jabatan</th>
-                            <th class="p-3">Kontingen</th>
-                            <th class="p-3">Status Barcode</th>
-                            <th class="p-3 text-center">Aksi (Pairing)</th>
+                            <th class="p-4">Nama Lengkap</th>
+                            <th class="p-4">Jabatan</th>
+                            <th class="p-4">Kontingen</th>
+                            <th class="p-4">Status Barcode</th>
+                            <th class="p-4 text-center">Aksi (Pairing)</th>
                         </tr>
                     </thead>
                     <tbody id="barcode-list-body" class="text-slate-300"></tbody>
@@ -1031,24 +1058,98 @@
         </div>
     </div>
 
-    <!-- MODAL WEBCAM SCANNER -->
-    <div id="scanner-modal"
+    <div id="account-form-modal"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex items-center justify-center z-[80] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-slate-700 p-6 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+                <h3 id="account-form-title" class="text-lg font-black text-white"><i
+                        class="fas fa-user-edit text-blue-500 mr-2"></i>Formulir Akun</h3>
+                <button onclick="closeAccountForm()" class="text-slate-400 hover:text-white transition-colors"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <form onsubmit="saveAccountForm(event)" class="space-y-4">
+                <input type="hidden" id="acc-id">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Nama
+                        Lengkap</label>
+                    <input type="text" id="acc-nama" required
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label
+                        class="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Jabatan</label>
+                    <select id="acc-jabatan" required onchange="handleJabatanFormChange()"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-blue-500 outline-none">
+                        <option value="OFFICIAL">Official Tim</option>
+                        <option value="WASIT">Wasit Utama</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label
+                        class="block text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">Kontingen</label>
+                    <input type="text" id="acc-kontingen"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                        placeholder="Kosongi jika Wasit">
+                </div>
+
+                <!-- 👇 TAMBAHKAN BLOK KODE INI TEPAT DI BAWAH KONTINGEN 👇 -->
+                <div class="mb-6">
+                    <label class="block text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">ID Login
+                        Manual (Otomatis)</label>
+                    <input type="text" id="acc-short-id" readonly
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2.5 text-sm text-yellow-500 font-mono font-bold outline-none cursor-not-allowed text-center tracking-widest"
+                        placeholder="DIBUAT OTOMATIS">
+                </div>
+                <!-- 👆 BATAS AKHIR KODE TAMBAHAN 👆 -->
+
+                <!-- Tombol Simpan Data biasanya ada di bawah sini -->
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeAccountForm()"
+                        class="px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">Batal</button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-md">Simpan
+                        Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL RADAR PAIRING (HP ADMIN) -->
+    <div id="pairing-radar-modal"
         class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[70] animate-fade-in p-4">
         <div
-            class="bg-dark-card border border-slate-700 p-4 md:p-6 rounded-2xl shadow-2xl w-full max-w-xl flex flex-col transform transition-all">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
-                <h3 id="scanner-title" class="text-xl font-black text-white"><i
-                        class="fas fa-camera text-blue-500 mr-2"></i>SCAN ID CARD</h3>
-                <button onclick="closeScannerModal()" class="text-slate-400 hover:text-red-400 transition-colors"><i
-                        class="fas fa-times text-2xl"></i></button>
+            class="bg-dark-card border border-blue-500/30 p-8 rounded-3xl shadow-[0_0_50px_rgba(59,130,246,0.15)] w-full max-w-md flex flex-col items-center text-center transform transition-all relative overflow-hidden">
+
+            <button onclick="closePairingRadarModal()"
+                class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                    class="fas fa-times text-xl"></i></button>
+
+            <h3
+                class="text-sm font-black text-blue-400 tracking-widest uppercase mb-6 border-b border-slate-700/50 pb-2 w-full">
+                PAIRING MODE AKTIF</h3>
+
+            <div class="relative flex items-center justify-center mb-6">
+                <!-- Efek Gelombang Radar -->
+                <div class="absolute w-32 h-32 border-4 border-blue-500/30 rounded-full animate-ping"></div>
+                <div class="absolute w-24 h-24 border-2 border-blue-400/40 rounded-full animate-pulse"></div>
+                <div
+                    class="w-20 h-20 bg-slate-800 border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] z-10 relative">
+                    <i class="fas fa-mobile-alt text-3xl text-white"></i>
+                </div>
             </div>
+
+            <p class="text-xs text-slate-400 mb-2">Sistem menunggu scan barcode untuk:</p>
+            <div class="bg-slate-900 border border-slate-700 w-full p-4 rounded-xl shadow-inner mb-6">
+                <div id="pairing-target-role"
+                    class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">JABATAN</div>
+                <div id="pairing-target-name" class="text-xl font-black text-white">NAMA TARGET</div>
+            </div>
+
             <div
-                class="bg-black rounded-xl overflow-hidden border-2 border-dashed border-blue-500/50 flex items-center justify-center relative min-h-[300px]">
-                <div id="reader" class="w-full h-full"></div>
+                class="text-[10px] font-bold text-yellow-400 bg-yellow-900/20 px-4 py-2 rounded-lg border border-yellow-700/30 animate-pulse w-full">
+                Scan ID Card menggunakan Mobile Scanner (Mode Admin).
             </div>
-            <button onclick="startWebcam()"
-                class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-md transition-colors"><i
-                    class="fas fa-play mr-2"></i>AKTIFKAN KAMERA</button>
         </div>
     </div>
 
@@ -1059,24 +1160,48 @@
 
             <div class="flex-1 flex flex-col">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                    <h3 class="text-lg font-black text-white"><i class="fas fa-camera text-blue-500 mr-2"></i>SCAN ID
-                        CARD OFFICIAL & WASIT</h3>
+                    <h3 class="text-lg font-black text-white"><i class="fas fa-mobile-alt text-blue-500 mr-2"></i>MOBILE
+                        SCANNER TERHUBUNG</h3>
                     <button onclick="closeVerificationModal()"
                         class="text-slate-400 hover:text-red-400 transition-colors md:hidden"><i
                             class="fas fa-times text-2xl"></i></button>
                 </div>
+
+                <!-- WADAH RADAR HP -->
                 <div
-                    class="bg-black rounded-xl border-2 border-dashed border-slate-600 overflow-hidden relative flex-1 min-h-[300px] flex items-center justify-center">
-                    <div id="reader-verify" class="w-full h-full"></div>
-                </div>
-                <div
-                    class="text-center mt-3 text-[11px] font-bold text-yellow-400 uppercase tracking-widest animate-pulse">
-                    Arahkan ID Card secara bergantian. Sistem akan mendeteksi otomatis.
+                    class="bg-[#0f172a] rounded-xl border-2 border-dashed border-blue-500/50 overflow-hidden relative flex-1 min-h-[300px] flex flex-col items-center justify-center transition-all p-6 text-center">
+                    <div class="relative">
+                        <i
+                            class="fas fa-wifi text-blue-500 text-5xl absolute -top-8 -left-4 animate-ping opacity-50"></i>
+                        <i
+                            class="fas fa-mobile-alt text-6xl text-slate-300 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] z-10 relative"></i>
+                    </div>
+                    <h4 class="text-lg font-black text-white mt-6 tracking-widest">SISTEM MENUNGGU SCAN...</h4>
+                    <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                        Silakan buka aplikasi Scanner di HP Panitera.<br>
+                        Pastikan HP berada di <b id="ui-court-badge"
+                            class="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px]">COURT INI</b>.
+                    </p>
+
+                    <div id="verify-scan-hint"
+                        class="mt-8 text-[11px] font-bold text-yellow-400 uppercase tracking-widest bg-yellow-900/30 border border-yellow-700/50 px-4 py-2 rounded-lg animate-pulse">
+                        Arahkan ID Card ke kamera HP Panitera sekarang.
+                    </div>
+
+                    <!-- 🌟 TOMBOL UNGU MAGIS 🌟 -->
+                    <button onclick="openQrOperatorModal()"
+                        class="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-500 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.5)] transition-transform hover:scale-110 group z-20 border border-purple-400/50">
+                        <i class="fas fa-qrcode text-2xl"></i>
+                        <div
+                            class="absolute bottom-full right-0 mb-3 w-48 bg-slate-800 text-white text-[10px] font-bold py-2 px-3 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-center border border-slate-600">
+                            Tampilkan QR Code untuk Operator HP
+                        </div>
+                    </button>
                 </div>
             </div>
 
             <div class="w-full md:w-1/3 flex flex-col gap-3">
-                <div class="justify-between items-center mb-1 md:mb-4 border-b border-slate-700 pb-2 hidden md:flex">
+                <div class="justify-between items-center mb-1 md:mb-2 border-b border-slate-700 pb-2 hidden md:flex">
                     <h3 class="text-lg font-black text-white"><i
                             class="fas fa-check-circle text-green-500 mr-2"></i>STATUS PERSETUJUAN</h3>
                     <button onclick="closeVerificationModal()"
@@ -1084,34 +1209,72 @@
                             class="fas fa-times text-xl"></i></button>
                 </div>
 
+                <div id="v-match-identity"
+                    class="bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-inner mb-1 flex flex-col justify-center">
+                </div>
+
                 <div id="v-block-wasit"
-                    class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[90px]">
-                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">WASIT
-                        UTAMA</span>
-                    <span id="v-name-wasit" class="font-bold text-slate-600 text-sm">Menunggu Scan...</span>
+                    class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">WASIT UTAMA</span>
+                    <span id="v-name-wasit" class="font-bold text-slate-600 text-sm">Menunggu...</span>
                 </div>
 
-                <div id="v-block-merah"
-                    class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[90px]">
-                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">OFFICIAL
-                        MERAH</span>
-                    <span id="v-name-merah" class="font-bold text-slate-600 text-sm">Menunggu Scan...</span>
-                </div>
+                <div class="flex gap-3">
+                    <div id="v-block-merah"
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">OFF.
+                            MERAH</span>
+                        <span id="v-name-merah" class="font-bold text-slate-600 text-sm">Menunggu...</span>
+                    </div>
 
-                <div id="v-block-putih"
-                    class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[90px]">
-                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">OFFICIAL
-                        PUTIH</span>
-                    <span id="v-name-putih" class="font-bold text-slate-600 text-sm">Menunggu Scan...</span>
+                    <div id="v-block-putih"
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 min-h-[75px]">
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">OFF.
+                            PUTIH</span>
+                        <span id="v-name-putih" class="font-bold text-slate-600 text-sm">Menunggu...</span>
+                    </div>
                 </div>
 
                 <button onclick="saveRandoriMatchResult()"
-                    class="mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] text-sm tracking-widest flex items-center justify-center gap-2">
-                    <i class="fas fa-save text-lg"></i> SIMPAN HASIL PERTANDINGAN
+                    class="mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-transform hover:scale-[1.02] text-sm tracking-widest flex items-center justify-center gap-2">
+                    <i class="fas fa-save text-lg"></i> SIMPAN HASIL
                 </button>
             </div>
         </div>
     </div>
+
+    <!-- MODAL QR CODE OPERATOR (SMART URL) -->
+    <div id="qr-operator-modal"
+        class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center z-[90] animate-fade-in p-4">
+        <div
+            class="bg-dark-card border border-purple-500/50 p-8 rounded-3xl shadow-[0_0_50px_rgba(147,51,234,0.2)] w-full max-w-sm flex flex-col items-center text-center transform transition-all relative overflow-hidden">
+            <button onclick="closeQrOperatorModal()"
+                class="absolute top-4 right-4 text-slate-500 hover:text-red-400 transition-colors"><i
+                    class="fas fa-times text-xl"></i></button>
+
+            <h3
+                class="text-sm font-black text-purple-400 tracking-widest uppercase mb-2 border-b border-slate-700 pb-3 w-full">
+                <i class="fas fa-mobile-alt mr-2"></i>LINK OPERATOR SCANNER
+            </h3>
+
+            <p class="text-[11px] text-slate-300 mb-6 leading-relaxed">Gunakan kamera bawaan HP Panitera Pembantu untuk
+                men-scan QR ini. HP akan otomatis terhubung ke lokasi yang tepat.</p>
+
+            <!-- Tempat QR Code digambar -->
+            <div
+                class="bg-white p-4 rounded-2xl shadow-inner mb-6 flex items-center justify-center w-[220px] h-[220px]">
+                <div id="qr-code-canvas"></div>
+            </div>
+
+            <div
+                class="text-[10px] font-bold text-white bg-indigo-900/40 px-4 py-3 rounded-xl border border-indigo-700/50 w-full flex flex-col items-center gap-1 shadow-inner">
+                <span class="text-slate-400">Target Tugas Scanner:</span>
+                <span id="qr-target-court" class="text-xl font-black tracking-widest text-indigo-300">-</span>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

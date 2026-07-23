@@ -39,6 +39,7 @@ let RANDORI_STATE = { merah: { score: 0, warn1: false, warn2: false }, putih: { 
 let RANDORI_HISTORY = []
 let SWAP_SELECTION = null;
 let EMBU_SWAP_SELECTION = null; // Memori untuk menyimpan atlet pertama yang diklik
+let TEMP_RINCIAN_WASIT = {};
 // --- SUNTIKAN PERBAIKAN: VARIABEL GLOBAL WAJIB DI ATAS ---
 let DEVICE_ROLE = localStorage.getItem('mass_device_role') || 'admin';
 let IS_TV_LIVE = false;
@@ -291,11 +292,41 @@ if (btnBack) {
             const adminContainer = document.querySelector('#section-admin .max-w-3xl');
             if (adminContainer) {
                 Array.from(adminContainer.children).forEach(child => {
-                    // Berikan pengecualian untuk 2 kotak: Broadcast DAN Paperless
-                    if (child.id !== 'admin-broadcast-zone' && child.id !== 'admin-paperless-zone') {
+                    // Berikan pengecualian untuk 3 kotak: Broadcast, Paperless, DAN Integrasi (untuk diubah)
+                    if (child.id !== 'admin-broadcast-zone' && child.id !== 'admin-paperless-zone' && child.id !== 'containerIntegrasi') {
                         child.style.display = 'none';
                     }
                 });
+            }
+
+            // --- SUNTIKAN BARU: SULAP TOMBOL INTEGRASI JADI CACHE LOKAL ---
+            const titleIntegrasi = document.getElementById("titleIntegrasi");
+            const descIntegrasi = document.getElementById("descIntegrasi");
+            const btnSync = document.getElementById("btnSyncData");
+
+            if (titleIntegrasi && descIntegrasi && btnSync) {
+                titleIntegrasi.innerHTML = "<i class='fas fa-download mr-2'></i>Tarik Data Atlet Lokal";
+                descIntegrasi.innerText = "Simpan data jadwal dan waza khusus court ini ke memori laptop (Cache) agar siap dikirim ke wasit tanpa lag.";
+
+                // Ubah gaya tombol jadi warna Hijau (Emerald)
+                btnSync.innerHTML = "<i class='fas fa-save mr-2'></i>TARIK & SIMPAN DATA LOKAL";
+                btnSync.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-8 rounded-xl transition-transform hover:scale-105 shadow-[0_0_15px_rgba(16,185,129,0.5)] text-sm tracking-wider";
+
+                // Ubah fungsinya jadi simpan lokal (Karena STATE sudah ditarik otomatis oleh RTDB di kode Anda)
+                btnSync.onclick = function () {
+                    btnSync.innerHTML = "<i class='fas fa-spinner fa-spin mr-2'></i>Menyimpan ke Laptop...";
+                    btnSync.disabled = true;
+                    try {
+                        localStorage.setItem("CACHE_DATA_EMBU", JSON.stringify(STATE));
+                        setTimeout(() => {
+                            btnSync.innerHTML = "<i class='fas fa-check-circle mr-2'></i>DATA TERSIMPAN DI LAPTOP";
+                            btnSync.disabled = false;
+                        }, 1000);
+                    } catch (err) {
+                        alert("Gagal menyimpan ke memori lokal laptop.");
+                        btnSync.disabled = false;
+                    }
+                };
             }
         }, 150);
     }
@@ -1896,6 +1927,21 @@ function filterPesertaScoring() {
     // NEW: Deklarasi Tombol Simpan Randori di Header
     const topActionRandori = document.getElementById('top-action-randori');
 
+    // =========================================================================
+    // SUNTIKKAN KODE RESET UI DI SINI (BERLAKU UNTUK SELURUH WASIT 1 HINGGA 5)
+    // =========================================================================
+    for (let i = 1; i <= 5; i++) {
+        let stempel = document.getElementById(`stempelJuri${i}`);
+        let btnReset = document.getElementById(`btnReset${i}`);
+        if (stempel) stempel.classList.add('hidden');
+        if (btnReset) btnReset.classList.add('hidden');
+
+        let scoreInput = document.getElementById(`score-${i}`);
+        let techInput = document.getElementById(`tech-${i}`);
+        if (scoreInput) scoreInput.removeAttribute('readonly');
+        if (techInput) techInput.removeAttribute('readonly');
+    }
+
     if (!categoryObj) return;
 
     const currentSelectedMatchOrAthlete = selectEl.value;
@@ -2286,11 +2332,12 @@ function updateScoringButtonsUI() {
 
     if (btnB1) btnB1.classList.add('hidden');
     if (btnB2) btnB2.classList.add('hidden');
-    if (btnPen) btnPen.classList.add('hidden');
-    if (btnFin) btnFin.classList.add('hidden');
+    if (btnPen) btnPen.classList.add('hidden'); // Abaikan tombol lama ini
+    if (btnFin) btnFin.classList.add('hidden'); // Abaikan tombol lama ini
 
     let catObj = STATE.categories.find(c => c.name === p.kategori);
 
+    // LOGIKA CERDAS PENAMAAN TOMBOL (HANYA PAKAI B1 & B2)
     if (catObj && catObj.discipline === 'festival') {
         if (btnB1) {
             btnB1.classList.remove('hidden');
@@ -2299,11 +2346,29 @@ function updateScoringButtonsUI() {
         }
     } else {
         if (babak === 'b1') {
-            if (btnPen && val.includes('[Pool')) { btnPen.classList.remove('hidden'); }
-            else if (btnB1) { btnB1.classList.remove('hidden'); btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 1'; btnB1.className = "flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"; }
+            if (btnB1) {
+                btnB1.classList.remove('hidden');
+                if (val.includes('[Pool')) {
+                    // Berubah wujud jadi PENYISIHAN
+                    btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN PENYISIHAN';
+                    btnB1.className = "flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]";
+                } else {
+                    btnB1.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 1';
+                    btnB1.className = "flex-1 md:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]";
+                }
+            }
         } else {
-            if (btnFin && val.includes('[FINAL]')) { btnFin.classList.remove('hidden'); }
-            else if (btnB2) { btnB2.classList.remove('hidden'); btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2'; }
+            if (btnB2) {
+                btnB2.classList.remove('hidden');
+                if (val.includes('[FINAL]')) {
+                    // Berubah wujud jadi FINAL (Warna Kuning Emas)
+                    btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN FINAL';
+                    btnB2.className = "flex-1 md:flex-none bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(202,138,4,0.39)]";
+                } else {
+                    btnB2.innerHTML = '<i class="fas fa-save mr-2"></i>SIMPAN BABAK 2';
+                    btnB2.className = "flex-1 md:flex-none bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-xl transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(147,51,234,0.39)]";
+                }
+            }
         }
     }
 
@@ -2337,12 +2402,41 @@ function updateScoringButtonsUI() {
             }
         });
     }
+
+    // ===========================================
+    // SUNTIKAN BARU: JEMBATAN RTDB UNTUK WASIT
+    // ===========================================
+    const currentRole = sessionStorage.getItem('role');
+
+    // FIX JALUR NYASAR: Pakai safeCourtId
+    const safeCourtId = DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+
+    if (currentRole === 'panitera' && catObj && catObj.discipline !== 'randori') {
+
+        // 1. Munculkan tombol saklar (Jangan diubah warnanya di sini, biarkan fungsi toggle yang mengatur)
+        const btnTembak = document.getElementById('btnTembakWasit');
+        if (btnTembak) btnTembak.classList.remove('hidden');
+
+        // 2. Tembak otomatis (Fungsi ini sudah cerdas, dia HANYA akan menembak jika saklar sedang ON)
+        tembakDataKeFirebase();
+
+        // 3. Kunci tombol simpan panitera jika mode digital sedang ON (agar nunggu wasit selesai)
+        if (isWasitDigitalMode) {
+            if (btnB1) { btnB1.disabled = true; btnB1.classList.add('opacity-50', 'cursor-not-allowed'); }
+            if (btnB2) { btnB2.disabled = true; btnB2.classList.add('opacity-50', 'cursor-not-allowed'); }
+        } else {
+            if (btnB1) { btnB1.disabled = false; btnB1.classList.remove('opacity-50', 'cursor-not-allowed'); }
+            if (btnB2) { btnB2.disabled = false; btnB2.classList.remove('opacity-50', 'cursor-not-allowed'); }
+        }
+
+        // 4. Pasang telinga pendengar
+        listenStatusJuri(safeCourtId);
+    }
 }
 
 function setJudges(n) {
-    localStorage.setItem('local_judges', n); // Simpan hanya di memori laptop lokal
+    localStorage.setItem('local_judges', n);
 
-    // Warnai tombol aktif
     let btnJ3 = document.getElementById('btn-j3');
     let btnJ5 = document.getElementById('btn-j5');
     if (btnJ3) btnJ3.className = n === 3 ? 'px-4 py-1.5 rounded font-bold text-sm bg-blue-600 text-white' : 'px-4 py-1.5 rounded font-semibold text-sm text-slate-400 hover:text-white';
@@ -2351,7 +2445,7 @@ function setJudges(n) {
     const container = document.getElementById('judge-inputs');
     if (!container) return;
 
-    // --- FIX BUG JURI: Simpan nilai yang sudah diketik sebelum kotak di-reset ---
+    // Simpan nilai sementara agar tidak hilang saat klik tombol 3 Wasit / 5 Wasit
     let tempScores = [];
     let tempTechs = [];
     for (let i = 1; i <= 5; i++) {
@@ -2362,16 +2456,148 @@ function setJudges(n) {
     }
 
     container.innerHTML = '';
+
+    // --- TAMPILAN HYBRID UNTUK SEMUA ROLE (Bisa Manual & Bisa Terima Data Digital) ---
     for (let i = 1; i <= n; i++) {
-        // Menggambar kotak baru sambil memasukkan kembali nilai dari memori (tempScores)
-        container.innerHTML += `<div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors"><div class="text-center mb-2 pb-2 border-b border-slate-700"><label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label></div><div class="space-y-2"><div><label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label><input type="number" step="0.5" id="score-${i}" value="${tempScores[i - 1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0"></div><div><label class="block text-[9px] text-slate-500 mb-1 flex justify-between"><span>TEKNIK</span> ${i === 1 ? '<span class="text-yellow-500 font-bold">TIE-BREAK</span>' : ''}</label><input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i - 1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i === 1 ? 'text-yellow-400' : 'text-blue-300'} placeholder-slate-700" placeholder="Opsional"></div></div></div>`;
+        container.innerHTML += `
+        <div class="bg-slate-900 p-3 rounded-lg border border-slate-600 focus-within:border-blue-500 transition-colors relative overflow-hidden group">
+            <div class="text-center mb-2 pb-2 border-b border-slate-700">
+                <label class="block text-[10px] text-slate-400 uppercase font-bold">Wasit ${i}</label>
+            </div>
+            
+            <div class="space-y-2 relative z-10">
+                <div>
+                    <label class="block text-[9px] text-slate-500 mb-1">TOTAL NILAI</label>
+                    <input type="number" step="0.5" id="score-${i}" value="${tempScores[i - 1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-2xl font-black outline-none text-center text-white placeholder-slate-700" placeholder="0.0">
+                </div>
+                <div>
+                    <label class="block text-[9px] text-slate-500 mb-1 flex justify-between">
+                        <span>TEKNIK</span> ${i === 1 ? '<span class="text-yellow-500 font-bold">TIE-BREAK</span>' : ''}
+                    </label>
+                    <input type="number" step="0.5" id="tech-${i}" value="${tempTechs[i - 1] || ''}" oninput="calculateLive()" class="w-full bg-slate-800 p-2 rounded text-sm font-bold outline-none text-center ${i === 1 ? 'text-yellow-400' : 'text-blue-300'} placeholder-slate-700" placeholder="Opsional">
+                </div>
+            </div>
+
+                        <!-- Tombol Batal/Manual (Muncul untuk membuka gembok stempel) -->
+            <button onclick="resetJuriTunggal(${i})" id="btnReset${i}" class="hidden absolute top-0 right-0 bg-red-600 text-white w-8 h-8 rounded-bl-xl shadow-lg z-30 flex items-center justify-center hover:bg-red-500 transition-colors" title="Batal & Ubah Manual">
+                <i class="fas fa-unlock text-xs"></i>
+            </button>
+        </div>
+        `;
     }
+
+    // Jalankan kalkulasi setiap kali form dirender ulang
     calculateLive();
+}
+
+let juriListenerRef = null; // Gembok listener agar tidak menumpuk (Memory Leak)
+
+// 1. Tambahkan memori status reset di bagian atas (luar fungsi)
+let requestedResetJuri = { 1: false, 2: false, 3: false, 4: false, 5: false };
+
+// 2. Timpa fungsi ini
+function listenStatusJuri(courtId) {
+    const rtdbRef = database.ref(`live_embu/${courtId}`);
+
+    // Matikan listener yang lama sebelum membuat yang baru
+    if (juriListenerRef) juriListenerRef.off();
+    juriListenerRef = rtdbRef;
+
+    rtdbRef.on('value', (snapshot) => {
+        const liveData = snapshot.val() || {};
+        const dataJuri = liveData.juri || {};
+        const selectEl = document.getElementById('select-peserta');
+        const currentSelectedPartai = selectEl ? selectEl.value : null;
+
+        // 🛡️ FILTER ANTI-BOCOR
+        if (liveData.partai_id && currentSelectedPartai && liveData.partai_id !== currentSelectedPartai) {
+            return;
+        }
+
+        let actualJudges = parseInt(localStorage.getItem('local_judges')) || 5;
+        let submittedJudges = 0;
+
+        for (let i = 1; i <= actualJudges; i++) {
+            const inputScore = document.getElementById(`score-${i}`);
+            const inputTech = document.getElementById(`tech-${i}`);
+            const stempel = document.getElementById(`stempelJuri${i}`);
+            const btnReset = document.getElementById(`btnReset${i}`);
+
+            if (!inputScore) continue;
+
+            if (dataJuri[i]) {
+                // KONDISI 1: WASIT MENGIRIM DATA (KUNCI GEMBOK)
+                requestedResetJuri[i] = false; // Matikan bendera reset
+
+                inputScore.value = dataJuri[i].total;
+                if (inputTech) inputTech.value = dataJuri[i].teknik;
+                TEMP_RINCIAN_WASIT[i] = dataJuri[i].rincian || "";
+
+                inputScore.readOnly = true;
+                if (inputTech) inputTech.readOnly = true;
+                inputScore.classList.add('text-green-400', 'font-black');
+
+                if (stempel) stempel.classList.remove('hidden');
+
+                if (btnReset) {
+                    btnReset.classList.remove('hidden');
+                    // Tampilkan Gembok Merah
+                    btnReset.className = "absolute top-0 right-0 bg-red-600 text-white w-8 h-8 rounded-bl-xl shadow-lg z-30 flex items-center justify-center hover:bg-red-500 transition-colors cursor-pointer";
+                    btnReset.innerHTML = '<i class="fas fa-lock text-xs"></i>';
+                    btnReset.title = "Buka Kunci Wasit";
+                }
+                submittedJudges++;
+            } else {
+                // KONDISI 2: KOSONG ATAU SEDANG DI-RESET (BUKA KUNCI & FAIL-SAFE)
+                inputScore.readOnly = false; // ✅ FAIL-SAFE: PANITERA BISA INPUT MANUAL
+                if (inputTech) inputTech.readOnly = false;
+                inputScore.classList.remove('text-green-400', 'font-black');
+                delete TEMP_RINCIAN_WASIT[i];
+
+                if (stempel) stempel.classList.add('hidden');
+
+                if (requestedResetJuri[i] && btnReset) {
+                    // Tampilkan Tombol Restart (Biru & Berputar)
+                    btnReset.classList.remove('hidden');
+                    btnReset.className = "absolute top-0 right-0 bg-blue-500 text-white w-8 h-8 rounded-bl-xl shadow-lg z-30 flex items-center justify-center hover:bg-blue-400 transition-colors";
+                    btnReset.innerHTML = '<i class="fas fa-sync-alt fa-spin text-xs"></i>';
+                    btnReset.title = "Menunggu Wasit (Bisa Diisi Manual)";
+                } else if (btnReset) {
+                    // Kosong murni dari awal pertandingan
+                    btnReset.classList.add('hidden');
+                }
+            }
+        }
+
+        calculateLive();
+    });
+}
+
+function resetJuriTunggal(nomorJuri) {
+    if (confirm(`Minta Wasit ${nomorJuri} mengisi ulang nilainya?\n\n(Layar HP wasit akan terbuka. Jika wasit bermasalah, Anda dapat mengisi nilainya secara manual).`)) {
+        const safeCourtId = typeof DEVICE_ROLE !== 'undefined' && DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+
+        // Nyalakan bendera reset agar icon berubah jadi Restart
+        requestedResetJuri[nomorJuri] = true;
+
+        database.ref(`live_embu/${safeCourtId}/juri/${nomorJuri}`).set(null)
+            .then(() => {
+                // Kosongkan form input
+                document.getElementById(`score-${nomorJuri}`).value = '';
+                if (document.getElementById(`tech-${nomorJuri}`)) document.getElementById(`tech-${nomorJuri}`).value = '';
+                calculateLive();
+            })
+            .catch(err => alert("Gagal mereset: " + err));
+    }
 }
 
 function loadExistingScores() {
     const val = document.getElementById('select-peserta').value;
     if (!val || !val.includes('|')) return;
+
+    // 👇 SUNTIKAN RESET IKON RESTART (Matikan Semua Bendera Restart Saat Ganti Atlet) 👇
+    requestedResetJuri = { 1: false, 2: false, 3: false, 4: false, 5: false };
+
     const [pIdStr, babak] = val.split('|');
     const pId = parseInt(pIdStr);
 
@@ -2484,6 +2710,7 @@ function calculateLive() {
             }
         }
     }
+    // ... (kode penalti waktu di calculateLive) ...
     let finalScore = totalRaw - penalty;
 
     // 5. Update UI
@@ -2491,6 +2718,32 @@ function calculateLive() {
     let penEl = document.getElementById('live-penalty');
     if (scoreEl) scoreEl.innerText = finalScore.toFixed(1);
     if (penEl) penEl.innerText = `Penalti Waktu: ${penalty}`;
+
+    // 👇 SENSOR KELENGKAPAN UNTUK MEMBUKA KUNCI TOMBOL 👇
+    let filledCount = 0;
+    for (let i = 1; i <= actualJudges; i++) {
+        let sEl = document.getElementById(`score-${i}`);
+        if (sEl && sEl.value.trim() !== "") filledCount++;
+    }
+
+    let isComplete = (filledCount === actualJudges && actualJudges > 0);
+    const saveBtns = [document.getElementById("btn-save-b1"), document.getElementById("btn-save-b2")];
+
+    saveBtns.forEach(btn => {
+        if (btn && !btn.classList.contains('hidden')) {
+            if (isComplete) {
+                btn.disabled = false; // Buka Kunci Mati!
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.add('animate-pulse');
+            } else {
+                if (typeof isWasitDigitalMode !== 'undefined' && isWasitDigitalMode) {
+                    btn.disabled = true; // Kunci kembali jika dikosongkan
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                btn.classList.remove('animate-pulse');
+            }
+        }
+    });
 
     return { raw: raw, techRaw: techRaw, penalty: penalty, final: finalScore, tieBreaker: totalTech };
 }
@@ -2582,6 +2835,45 @@ function saveScore() {
     document.body.style.cursor = 'wait';
 
     database.ref().update(updates).then(() => {
+
+        // ======================================================
+        // 🚀 INJEKSI FIRESTORE BATCH WRITE & FLUSH RTDB
+        // ======================================================
+        const safeCourtId = typeof DEVICE_ROLE !== 'undefined' && DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+
+        // Buat ID Dokumen yang Absolut (Mencegah duplikasi data jika di-Undo)
+        const partaiDocId = `embu_${p.kategori.replace(/\s+/g, '_')}_${pId}_${babak}`;
+
+        try {
+            const firestorePayload = {
+                waktu_simpan: firebase.firestore.FieldValue.serverTimestamp(),
+                court: safeCourtId,
+                kategori: p.kategori,
+                atlet: p.nama,
+                kontingen: p.kontingen,
+                babak: babak,
+                rincian_juri: TEMP_RINCIAN_WASIT || {}, // Berisi object {1: "8|8|...", 2: "..."}
+                total_nilai: calc.final,
+                total_teknik: calc.tieBreaker
+            };
+
+            // 1. Tembak ke Firestore (Hanya dihitung 1 Write untuk 5 wasit & 50 item!)
+            firebase.firestore().collection('hasil_rincian_embu').doc(partaiDocId).set(firestorePayload, { merge: true })
+                .then(() => {
+                    console.log("✅ Rincian audit sukses diamankan di Brankas Firestore.");
+
+                    // 2. FLUSH RTDB (Hanya bersihkan nilai juri, biarkan identitas atlet tetap tampil di HP Wasit)
+                    database.ref(`live_embu/${safeCourtId}/juri`).set(null);
+
+                    // 3. Bersihkan memori lokal laptop Panitera
+                    TEMP_RINCIAN_WASIT = {};
+                })
+                .catch(e => console.error("Gagal simpan rincian ke Firestore:", e));
+        } catch (e) {
+            console.warn("Firestore belum siap atau tidak tersedia.", e);
+        }
+        // ======================================================
+
         isSaving = false;
         document.body.style.cursor = 'default';
 
@@ -4684,10 +4976,15 @@ function openAccountForm(id = null) {
     const namaInput = document.getElementById('acc-nama');
     const jabatanInput = document.getElementById('acc-jabatan');
     const kontingenInput = document.getElementById('acc-kontingen');
+    const shortIdInput = document.getElementById('acc-short-id'); // <-- Elemen baru untuk ID Manual
+
+    // Proteksi jika modal HTML belum siap
+    if (!modal) return alert("Error: Elemen HTML untuk Modal Edit Akun tidak ditemukan!");
 
     modal.classList.remove('hidden');
 
     if (id) {
+        // MODE EDIT
         const b = STATE.barcodes.find(x => x.id === id);
         if (b) {
             title.innerHTML = `<i class="fas fa-user-edit text-blue-500 mr-2"></i>Edit Akun`;
@@ -4695,15 +4992,19 @@ function openAccountForm(id = null) {
             namaInput.value = b.nama;
             jabatanInput.value = b.jabatan.toUpperCase() === 'WASIT' ? 'WASIT' : 'OFFICIAL';
             kontingenInput.value = b.kontingen;
+            // Tampilkan ID yang sudah ada, atau beri label jika belum punya
+            if (shortIdInput) shortIdInput.value = b.shortId || "BELUM ADA";
         }
     } else {
+        // MODE TAMBAH BARU
         title.innerHTML = `<i class="fas fa-user-plus text-blue-500 mr-2"></i>Tambah Akun Baru`;
         idInput.value = '';
         namaInput.value = '';
         jabatanInput.value = 'OFFICIAL';
         kontingenInput.value = '';
+        if (shortIdInput) shortIdInput.value = "DIBUAT OTOMATIS";
     }
-    handleJabatanFormChange(); // Kunci/Buka otomatis sesuai jabatan
+    handleJabatanFormChange();
 }
 
 function closeAccountForm() {
@@ -4735,7 +5036,7 @@ function saveAccountForm(event) {
     if (!nama) return;
 
     if (id) {
-        // Mode Edit
+        // SIMPAN EDIT
         const idx = STATE.barcodes.findIndex(b => b.id == id);
         if (idx > -1) {
             if (STATE.barcodes.some(b => b.id != id && b.nama.toLowerCase() === nama.toLowerCase())) {
@@ -4744,18 +5045,30 @@ function saveAccountForm(event) {
             STATE.barcodes[idx].nama = nama;
             STATE.barcodes[idx].jabatan = jabatan;
             STATE.barcodes[idx].kontingen = kontingen;
+
+            // Generate ID otomatis jika ini adalah akun lama yang belum punya ID
+            if (!STATE.barcodes[idx].shortId) {
+                let prefix = jabatan === 'WASIT' ? 'W' : 'O';
+                STATE.barcodes[idx].shortId = prefix + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+            }
         }
     } else {
-        // Mode Tambah Baru
+        // SIMPAN BARU
         if (STATE.barcodes.some(b => b.nama.toLowerCase() === nama.toLowerCase())) {
             return alert("Gagal: Nama ini sudah ada di database!");
         }
+
+        // Generate ID Ringkas saat tombol simpan ditekan
+        let prefix = jabatan === 'WASIT' ? 'W' : 'O';
+        let newShortId = prefix + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
         STATE.barcodes.push({
             id: Date.now(),
             nama: nama,
             jabatan: jabatan,
             kontingen: kontingen,
-            barcodeUrl: null
+            barcodeUrl: null,
+            shortId: newShortId // <-- Simpan ID ringkas ke dalam database state
         });
     }
 
@@ -5144,4 +5457,111 @@ function openQrOperatorModal() {
 
 function closeQrOperatorModal() {
     document.getElementById('qr-operator-modal').classList.add('hidden');
+}
+
+// ==========================================
+// SISTEM SAKLAR KENDALI HP WASIT (TOGGLE)
+// ==========================================
+let isWasitDigitalMode = false; // Memori saklar (Bawaan: OFF)
+
+function toggleWasitMode() {
+    isWasitDigitalMode = !isWasitDigitalMode;
+    const btnTembak = document.getElementById('btnTembakWasit');
+    const safeCourtId = DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+
+    if (isWasitDigitalMode) {
+        // MODE DIGITAL ON
+        if (btnTembak) {
+            btnTembak.innerHTML = '<i class="fas fa-satellite-dish animate-pulse mr-2"></i> KONEKSI WASIT AKTIF (KLIK MATIKAN)';
+            btnTembak.classList.replace('bg-blue-600', 'bg-green-600');
+        }
+        tembakDataKeFirebase();
+    } else {
+        // MODE DIGITAL OFF -> OTOMATIS TENDANG WASIT KE CADANGAN
+        if (btnTembak) {
+            btnTembak.innerHTML = '<i class="fas fa-broadcast-tower mr-2"></i> AKTIFKAN KONEKSI HP WASIT';
+            btnTembak.classList.replace('bg-green-600', 'bg-blue-600');
+        }
+        kunciLayarWasit();
+        // Mengirim sinyal tendang
+        database.ref(`live_embu/${safeCourtId}/command`).set({ action: 'logout_posisi', timestamp: Date.now() });
+    }
+}
+
+// Tambahkan fungsi ini agar bisa dipanggil lewat tombol manual di UI Panitera
+function tendangSemuaWasit() {
+    if (confirm("Tendang semua wasit ke posisi Non-Aktif / Cadangan?\nMereka harus memilih posisi wasit kembali.")) {
+        const safeCourtId = DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+        database.ref(`live_embu/${safeCourtId}/command`).set({ action: 'logout_posisi', timestamp: Date.now() });
+        alert("Sinyal tendang berhasil dikirim ke seluruh HP Wasit di court ini.");
+    }
+}
+
+function tembakDataKeFirebase() {
+    if (!isWasitDigitalMode) return; // Jangan tembak data kalau saklar belum dinyalakan!
+
+    const val = document.getElementById('select-peserta').value;
+    if (!val || !val.includes('|')) return;
+
+    const [pIdStr, babak] = val.split('|');
+    const pId = parseInt(pIdStr);
+    const p = STATE.participants.find(x => x.id === pId);
+    if (!p) return;
+
+    const safeCourtId = DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+    let displayNamaUmpan = p.nama.split(/[,+&]/).map(n => n.trim()).join(" & ");
+
+    // --- FUNGSI PEMBANTU ---
+    const kirimKeWasit = (wazaArray) => {
+        const umpanData = {
+            status: "aktif",
+            partai_id: val,
+            urut: p.urut || "?",
+            no_urut: p.urut || "?",
+            kategori: p.kategori || "-",
+            kontingen: p.kontingen || "-",
+            nama: displayNamaUmpan || "-",
+            waza: wazaArray,
+            juri: { 1: null, 2: null, 3: null, 4: null, 5: null }
+        };
+
+        // Menembak ke Project Utama (MASS KEMPO - RTDB) menggunakan variabel 'database'
+        database.ref(`live_embu/${safeCourtId}`).set(umpanData)
+            .then(() => console.log("Data sukses ditembak ke layar Wasit!"))
+            .catch(err => console.error("Gagal sinkron ke RTDB:", err));
+    };
+
+    const docId = p.idFirestore;
+
+    if (!docId) {
+        console.warn("Atlet tidak memiliki idFirestore. Menggunakan Waza default.");
+        kirimKeWasit(["Waza 1", "Waza 2", "Waza 3", "Waza 4", "Waza 5", "Waza 6"]);
+        return;
+    }
+
+    // PERUBAHAN 1: Ganti "peserta" menjadi "pendaftaran_t2"
+    firestoreDB.collection("pendaftaran_t2").doc(docId).get().then((doc) => {
+        if (doc.exists) {
+            const dataLengkap = doc.data();
+
+            // PERUBAHAN 2: Ganti "komposisiWaza" menjadi "waza"
+            let wazaList = (dataLengkap.waza && Array.isArray(dataLengkap.waza) && dataLengkap.waza.length > 0)
+                ? dataLengkap.waza
+                : ["Waza 1", "Waza 2", "Waza 3", "Waza 4", "Waza 5", "Waza 6"];
+
+            kirimKeWasit(wazaList);
+        } else {
+            console.warn("Dokumen tidak ditemukan di Firestore! Menggunakan Waza default.");
+            kirimKeWasit(["Waza 1", "Waza 2", "Waza 3", "Waza 4", "Waza 5", "Waza 6"]);
+        }
+    }).catch((error) => {
+        console.error("Error menjemput data Waza dari firestoreDB:", error);
+        kirimKeWasit(["Waza 1", "Waza 2", "Waza 3", "Waza 4", "Waza 5", "Waza 6"]);
+    });
+}
+
+function kunciLayarWasit() {
+    const safeCourtId = DEVICE_ROLE !== 'admin' ? DEVICE_ROLE : 'court_1';
+    // Kirim sinyal 'locked' agar HP Wasit memunculkan gambar gembok
+    database.ref(`live_embu/${safeCourtId}`).update({ status: 'locked' }).catch(err => console.error(err));
 }
