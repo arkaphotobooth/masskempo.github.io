@@ -885,7 +885,16 @@
                             const rawNama = m?.nama || "-";
                             // Memotong nama atlet & waza
                             const namaArray = rawNama.split(/[,&]/).map(n => n.trim());
-                            const nomorUrutGrouped = (allArr || []).filter(item => item.pool === m.pool).findIndex(item => item.id === m.id) + 1;
+                            
+                            // PERBAIKAN: Gunakan urutFinal/urutB2 jika bukan babak 1
+                            let nomorUrutGrouped;
+                            if (selectedBabak === "Final") {
+                                nomorUrutGrouped = m.urutFinal || "-";
+                            } else if (selectedBabak === "Babak 2") {
+                                nomorUrutGrouped = m.urutB2 || "-";
+                            } else {
+                                nomorUrutGrouped = (allArr || []).filter(item => item.pool === m.pool).findIndex(item => item.id === m.id) + 1;
+                            }
 
                             return {
                                 ...m,
@@ -1243,10 +1252,16 @@
                                                                 <td className="p-4 font-black uppercase text-slate-700">{item.nama}</td>
                                                                 <td className="p-4 font-bold text-slate-400 uppercase">{item.kontingen}</td>
                                                                 <td className="p-4 text-center font-black text-red-600">
-                                                                    {/* Gunakan (displayData || []) untuk memastikan array tidak undefined */}
-                                                                    {(displayData || [])
-                                                                        .filter((itemLain, indexLain) => indexLain <= i && itemLain.pool === item.pool)
-                                                                        .length}
+                                                                    {/* PERBAIKAN: Render nilai urutFinal/urutB2 langsung jika masuk babak lanjutan */}
+                                                                    {selectedBabak === "Final" ? (
+                                                                        item.urutFinal || "-"
+                                                                    ) : selectedBabak === "Babak 2" ? (
+                                                                        item.urutB2 || "-"
+                                                                    ) : (
+                                                                        (displayData || [])
+                                                                            .filter((itemLain, indexLain) => indexLain <= i && itemLain.pool === item.pool)
+                                                                            .length
+                                                                    )}
                                                                 </td>
                                                             </>
                                                         )}
